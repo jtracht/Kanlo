@@ -2,9 +2,10 @@ const $ = (id) => document.getElementById(id);
 let activeBoard;
 let loading = false;
 async function api(path, method = 'GET', body) {
+  const metadata=body?await fetch('/api/v1/health').then(response=>response.json()):null;
   const response = await fetch(`/api/v1${path}`, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
+    headers: body ? { 'Content-Type': 'application/json','Idempotency-Key':crypto.randomUUID(),'X-Kanlo-Client':'online-probe','X-Kanlo-Instance':metadata.instance_id,'X-Kanlo-Epoch':metadata.epoch } : {},
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) {

@@ -9,6 +9,19 @@ use serde_json::{Value, json};
 use tower::ServiceExt;
 
 async fn call(app: axum::Router, method: &str, path: &str, body: Value) -> (StatusCode, Value) {
+    let metadata = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/health")
+                .header("Host", "localhost:8080")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let metadata: Value =
+        serde_json::from_slice(&metadata.into_body().collect().await.unwrap().to_bytes()).unwrap();
     let response = app
         .oneshot(
             Request::builder()
@@ -17,6 +30,13 @@ async fn call(app: axum::Router, method: &str, path: &str, body: Value) -> (Stat
                 .header("Host", "localhost:8080")
                 .header("Origin", "http://localhost:8080")
                 .header("Content-Type", "application/json")
+                .header("Idempotency-Key", uuid::Uuid::new_v4().to_string())
+                .header("X-Kanlo-Client", "http-test")
+                .header(
+                    "X-Kanlo-Instance",
+                    metadata["instance_id"].as_str().unwrap(),
+                )
+                .header("X-Kanlo-Epoch", metadata["epoch"].as_str().unwrap())
                 .body(Body::from(body.to_string()))
                 .unwrap(),
         )

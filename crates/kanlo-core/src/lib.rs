@@ -1,5 +1,9 @@
 //! Shared domain contracts. HTTP and persistence use these same validators.
 use serde::{Deserialize, Serialize};
+pub mod engine;
+pub mod model;
+pub mod sync;
+pub use model::*;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -11,6 +15,10 @@ pub enum Error {
     Conflict(String),
     #[error("Strict WIP limit reached")]
     WipLimit,
+    #[error("An unfinished prerequisite blocks this action")]
+    Blocked,
+    #[error("Authentication required or expired")]
+    Unauthorized,
     #[error("Storage operation failed")]
     Storage,
 }
@@ -42,6 +50,11 @@ pub struct Board {
     pub name: String,
     pub prefix: String,
     pub revision: i64,
+    #[serde(default = "initial_counter")]
+    pub next_ticket_number: i64,
+}
+fn initial_counter() -> i64 {
+    1
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +79,8 @@ pub struct Ticket {
     pub importance: u8,
     pub done: bool,
     pub revision: i64,
+    #[serde(default)]
+    pub details: TicketDetails,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
