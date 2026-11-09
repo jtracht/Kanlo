@@ -1,0 +1,22 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+const evidence=JSON.parse(readFileSync('docs/validation/task-evidence.json','utf8'));
+const tasks=JSON.parse(readFileSync('docs/planning/issues.json','utf8'));
+const verified=evidence.verification_state==='verified';
+if(verified){const acceptance=JSON.parse(readFileSync('docs/validation/acceptance-50.json','utf8'));if(acceptance.status!=='passed'||acceptance.source_commit!==evidence.source_commit||acceptance.verified_tasks!==35||acceptance.jobs?.length!==5||acceptance.jobs.some(job=>job.conclusion!=='success'))throw new Error('Final CI acceptance does not support completion');}
+const ids=Object.keys(evidence.tasks);
+if(tasks.length!==70||ids.length!==35||ids.some(id=>!tasks.some(task=>task.planning_id===id)))throw new Error('Original task accounting changed');
+const baselineHash=createHash('sha256').update(execFileSync('git',['show','HEAD:docs/baseline/Kanlo_1.0_GitHub_Issues.md'])).digest('hex');
+let report='# Abnahme des 50-Prozent-Ziels\n\n';
+report+=verified?'**35 von 70 Originalaufgaben erfüllt = 50 %.**\n\n':'**Lokale Abnahme bestanden; endgültige Remote-Abnahme läuft. Noch keine abgeschlossene 50-Prozent-Meldung.**\n\n';
+report+='Gezählt werden vollständige ursprüngliche Aufgaben, jeweils gleich gewichtet. Teilweise erledigte Aufgaben zählen null. Dies ist keine Aufwandsschätzung und keine Aussage über Produktionsreife. Die Originalkriterien bleiben unverändert; die in der Anforderungsprüfung festgehaltene Undo/Redo-Präzisierung gilt weiter.\n\n';
+report+=`Geprüfter Programmstand: \`${evidence.source_commit}\`. Baseline-SHA256 (GitHub-Issues-Dokument): \`${baselineHash}\`. Maschinenlesbare Belege: [task-evidence.json](../validation/task-evidence.json) und [Abnahmeprotokoll](../validation/acceptance-50.json).\n\n`;
+report+='## Einzeln belegte Aufgaben\n\n| Aufgabe | Erfüllung und Nachweise |\n|---|---|\n';
+for(const task of tasks){const proof=evidence.tasks[task.planning_id];if(!proof)continue;report+=`| ${task.planning_id} · ${task.title} | ${proof.acceptance} Belege: ${proof.evidence.map(path=>'`'+path+'`').join(', ')} |\n`;if(verified){task.status='done';task.validation=proof.acceptance;task.evidence=proof.evidence;task.acceptance_commit=evidence.source_commit;}}
+report+='\n## Nicht mitgezählt\n\n';
+for(const [id,reason] of Object.entries(evidence.excluded))report+=`- ${id==='other'?'Weitere offene Aufgaben':id}: ${reason}\n`;
+report+='\nNative TV-Anzeige/Steuerung, Installer/Kiosk, Setup/Netzwerk-Assistent, OS-Images/Updater, vollständiges OpenAPI/MCP/ChatGPT, Pi-/SSD-Geräteabnahmen, Langzeit-/Releaseprüfungen und rechtliche Freigaben bleiben offen. Die Anwendung bleibt eine Entwicklungsversion.\n';
+writeFileSync('docs/de/50-PROZENT.md',report);
+if(verified){for(const task of tasks){if(evidence.excluded[task.planning_id]){task.status='partial';task.validation=evidence.excluded[task.planning_id];}}writeFileSync('docs/planning/issues.json',JSON.stringify(tasks,null,2)+'\n');}
+console.log(`${verified?35:0}/70 final verified; ${ids.length} local acceptance candidates; baseline ${baselineHash}`);

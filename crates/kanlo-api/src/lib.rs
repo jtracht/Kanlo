@@ -10,8 +10,10 @@ use kanlo_core::{Error, MoveTicket, NewBoard, NewColumn, NewTicket};
 use kanlo_db::Store;
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
+pub mod ingress;
+mod routes;
 
-type Database = Arc<Mutex<Store>>;
+pub type Database = Arc<Mutex<Store>>;
 pub struct ApiError(Error);
 
 impl IntoResponse for ApiError {
@@ -21,6 +23,8 @@ impl IntoResponse for ApiError {
             Error::NotFound => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             Error::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
             Error::WipLimit => (StatusCode::CONFLICT, "WIP_LIMIT"),
+            Error::Blocked => (StatusCode::CONFLICT, "BLOCKED_BY_DEPENDENCY"),
+            Error::Unauthorized => (StatusCode::UNAUTHORIZED, "AUTH_EXPIRED"),
             Error::Storage => (StatusCode::INTERNAL_SERVER_ERROR, "STORAGE"),
         };
         (
@@ -45,17 +49,21 @@ async fn database<T: Send + 'static>(
 }
 
 pub fn router(store: Store) -> Router {
+    router_shared(Arc::new(Mutex::new(store)), ingress::Policy::local())
+}
+
+pub fn router_shared(db: Database, policy: ingress::Policy) -> Router {
     Router::new()
         .route(
             "/",
-            get(|| async { Html(include_str!("../../../web/index.html")) }),
+            get(|| async { Html(include_str!("../assets/index.html")) }),
         )
         .route(
             "/app.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../../web/app.js"),
+                    include_str!("../assets/app.js"),
                 )
             }),
         )
@@ -64,11 +72,44 @@ pub fn router(store: Store) -> Router {
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/css; charset=utf-8")],
-                    include_str!("../../../web/style.css"),
+                    include_str!("../assets/style.css"),
                 )
             }),
         )
         .route("/api/v1/health", get(health))
+        .route(
+            "/sw.js",
+            get(|| async {
+                (
+                    [
+                        (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
+                        (
+                            header::HeaderName::from_static("service-worker-allowed"),
+                            "/",
+                        ),
+                    ],
+                    include_str!("../assets/sw.js"),
+                )
+            }),
+        )
+        .route(
+            "/manifest.webmanifest",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "application/manifest+json")],
+                    include_str!("../assets/manifest.webmanifest"),
+                )
+            }),
+        )
+        .route(
+            "/icon.svg",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "image/svg+xml")],
+                    include_str!("../assets/icon.svg"),
+                )
+            }),
+        )
         .route("/api/v1/boards", get(boards).post(create_board))
         .route(
             "/api/v1/boards/{id}/columns",
@@ -76,62 +117,19 @@ pub fn router(store: Store) -> Router {
         )
         .route(
             "/api/v1/boards/{id}/tickets",
-            get(tickets).post(create_ticket),
+            get(tickets)
+                .post(create_ticket)
+                .layer(DefaultBodyLimit::max(128 * 1024)),
         )
         .route("/api/v1/tickets/{id}", get(ticket))
         .route("/api/v1/tickets/{id}/move", post(move_ticket))
-        .layer(DefaultBodyLimit::max(128 * 1024))
-        .layer(middleware::from_fn(guard))
-        .with_state(Arc::new(Mutex::new(store)))
-}
-
-// The development listener is loopback-only. Browser writes also require a
-// same-origin Origin header. Forwarded headers never change authorization.
-async fn guard(request: axum::extract::Request, next: Next) -> Response {
-    let host = request
-        .headers()
-        .get(header::HOST)
-        .and_then(|h| h.to_str().ok());
-    let valid_host = host.is_some_and(|host| {
-        host == "127.0.0.1"
-            || host == "localhost"
-            || host == "[::1]"
-            || host.strip_prefix("127.0.0.1:").is_some_and(valid_port)
-            || host.strip_prefix("localhost:").is_some_and(valid_port)
-            || host.strip_prefix("[::1]:").is_some_and(valid_port)
-    });
-    if !valid_host {
-        return (StatusCode::FORBIDDEN, "Invalid host").into_response();
-    }
-    if !matches!(
-        *request.method(),
-        axum::http::Method::GET | axum::http::Method::HEAD
-    ) {
-        let expected = format!("http://{}", host.unwrap_or_default());
-        if request
-            .headers()
-            .get(header::ORIGIN)
-            .and_then(|h| h.to_str().ok())
-            != Some(expected.as_str())
-        {
-            return (StatusCode::FORBIDDEN, "Same-origin Origin header required").into_response();
-        }
-    }
-    let mut response = next.run(request).await;
-    for (name, value) in [
-        (
-            "content-security-policy",
-            "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
-        ),
-        ("x-content-type-options", "nosniff"),
-        ("referrer-policy", "no-referrer"),
-        ("cache-control", "no-store"),
-    ] {
-        response
-            .headers_mut()
-            .insert(name, HeaderValue::from_static(value));
-    }
-    response
+        .merge(routes::routes())
+        .layer(DefaultBodyLimit::max(32 * 1024 * 1024))
+        .layer(middleware::from_fn_with_state(
+            ingress::GuardState::new(db.clone(), policy),
+            ingress::guard,
+        ))
+        .with_state(db)
 }
 
 fn valid_port(value: &str) -> bool {
@@ -149,11 +147,22 @@ async fn boards(State(db): State<Database>) -> Result<Json<Vec<kanlo_core::Board
 }
 async fn create_board(
     State(db): State<Database>,
+    headers: axum::http::HeaderMap,
     Json(input): Json<NewBoard>,
 ) -> Result<impl IntoResponse, ApiError> {
     Ok((
         StatusCode::CREATED,
-        Json(database(db, |db| db.create_board(input)).await?),
+        Json(
+            legacy_write(
+                db,
+                headers,
+                kanlo_core::Command::CreateBoard {
+                    name: input.name,
+                    prefix: input.prefix,
+                },
+            )
+            .await?,
+        ),
     ))
 }
 async fn columns(
@@ -165,11 +174,25 @@ async fn columns(
 async fn create_column(
     State(db): State<Database>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(input): Json<NewColumn>,
 ) -> Result<impl IntoResponse, ApiError> {
     Ok((
         StatusCode::CREATED,
-        Json(database(db, move |db| db.create_column(&id, input)).await?),
+        Json(
+            legacy_write(
+                db,
+                headers,
+                kanlo_core::Command::CreateColumn {
+                    board_id: id,
+                    name: input.name,
+                    is_done: input.is_done,
+                    wip_limit: input.wip_limit,
+                    wip_strict: input.wip_strict,
+                },
+            )
+            .await?,
+        ),
     ))
 }
 async fn tickets(
@@ -181,11 +204,27 @@ async fn tickets(
 async fn create_ticket(
     State(db): State<Database>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(input): Json<NewTicket>,
 ) -> Result<impl IntoResponse, ApiError> {
     Ok((
         StatusCode::CREATED,
-        Json(database(db, move |db| db.create_ticket(&id, input)).await?),
+        Json(
+            legacy_write(
+                db,
+                headers,
+                kanlo_core::Command::CreateTicket {
+                    board_id: id,
+                    title: input.title,
+                    description: input.description,
+                    importance: input.importance,
+                    column_id: input.column_id,
+                    parent_id: None,
+                    type_id: None,
+                },
+            )
+            .await?,
+        ),
     ))
 }
 async fn ticket(
@@ -197,9 +236,65 @@ async fn ticket(
 async fn move_ticket(
     State(db): State<Database>,
     Path(id): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(input): Json<MoveTicket>,
 ) -> Result<Json<kanlo_core::Ticket>, ApiError> {
-    Ok(Json(
-        database(db, move |db| db.move_ticket(&id, input)).await?,
-    ))
+    Ok(Json({
+        legacy_write(
+            db.clone(),
+            headers,
+            kanlo_core::Command::MoveTicket {
+                id: id.clone(),
+                base_revision: input.base_revision,
+                board_id: input.board_id,
+                column_id: input.column_id,
+                activate_types: false,
+                convert_types: std::collections::BTreeMap::new(),
+            },
+        )
+        .await?;
+        database(db, move |db| db.ticket(&id)).await?
+    }))
+}
+
+async fn legacy_write(
+    db: Database,
+    headers: axum::http::HeaderMap,
+    command: kanlo_core::Command,
+) -> Result<Value, ApiError> {
+    let get = |name: &str| {
+        headers
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(String::from)
+            .ok_or_else(|| {
+                ApiError(Error::Validation(format!(
+                    "Missing header {name}; prefer /api/v1/commands"
+                )))
+            })
+    };
+    let operation = kanlo_db::Mutation {
+        base_context: Value::Null,
+        op_id: get("idempotency-key")?,
+        client_id: get("x-kanlo-client")?,
+        server_instance_id: get("x-kanlo-instance")?,
+        base_epoch: get("x-kanlo-epoch")?,
+        command,
+    };
+    database(db, move |db| {
+        let receipt = db.mutate(operation)?;
+        let state = db.workspace()?;
+        let key = receipt.result.entity_id.as_ref().ok_or(Error::Storage)?;
+        if let Ok(ticket) = state.find_ticket(key) {
+            return serde_json::to_value(ticket).map_err(|_| Error::Storage);
+        }
+        if let Some(board) = state.boards.iter().find(|b| &b.id == key) {
+            return serde_json::to_value(board).map_err(|_| Error::Storage);
+        }
+        if let Some(column) = state.columns.iter().find(|c| &c.id == key) {
+            return serde_json::to_value(column).map_err(|_| Error::Storage);
+        }
+        Err(Error::Storage)
+    })
+    .await
 }

@@ -1,65 +1,62 @@
 # Entwicklungsstand — 9. November 2026
 
-## Tatsächlich vorhanden
+**50 % des ursprünglichen Aufgabenbestands abgenommen: 35 von 70 Aufgaben.**
+53 Rust- und 32 Browserprüfungen sowie alle fünf Jobs der
+[Gitea-CI 787](https://git.tracht-digital.de/jtracht/Kanlo/actions/runs/787)
+sind erfolgreich. Programm-/Prüfstand: `0c1cd59a7dd8685e5605116f758ad3e5c81a4ea8`.
+Die abschließenden Dokumentationsänderungen ändern diesen Programmstand nicht.
 
-- Drei Originaldokumente unverändert übernommen, Konsistenzprüfung und Roadmap.
-- Privates Gitea-Repository und privates GitHub-Repository angelegt.
-- Elf Meilensteine M0–M10 und 70 offene Issues in Gitea erstellt.
-  Zuordnung mit echten Remote-Nummern unter `docs/planning/remote-state.json`.
-- Rust-Workspace mit Domainverträgen, SQLite-Mutation-Service und HTTP-Adapter.
-- Migration, WAL/FK, Instanz/Epoche, Seed, permanente Ticketnummern.
-- Boards/Spalten/Tickets anlegen/lesen und revisionsgeprüfter Ticketumzug,
-  Done/Backlog, transaktionale strikte WIP-Sperre auch bei konkurrierenden DB-Verbindungen.
-- Provisorischer deutscher Online-Browserclient; ausschließlich Loopback.
-- Lokale Assets, CSP, Host-/Origin-Prüfung, Bodylimit, systemd-Entwurf.
-- GitHub-CI-Definition für Qualität, Browser und Debian-13-Buildmatrix
-  amd64/arm64/armhf. Noch kein Stable-Release.
+Die Umsetzung auf `feature/fifty-percent` umfasst den Domainkern, sichere
+HTTP-Zugänge, eine vollständige bearbeitbare Weboberfläche und die dauerhafte
+Offline-Warteschlange. Der abschließende Abgleich der 70 ursprünglichen Aufgaben
+steht in [50-PROZENT.md](50-PROZENT.md); nur vollständig belegte Aufgaben zählen.
 
-## Nachgewiesen lokal
+## Nachgewiesener Funktionsumfang
 
-Windows, Rust/Cargo 1.99.1, Node 24.16.0:
+- SQLite-Schemaversion 4 mit transaktionaler Migration, WAL/FK, Integritätsprüfung,
+  eindeutigen Kennungen, privater Datenablage und Änderungsgruppen.
+- Boards/Spalten, Farben/Done/WIP; Tickets/Untertickets, Typaktivierung und
+  ausdrückliche Typkonvertierung beim Boardwechsel; Labels und eigene Textfelder.
+- Zyklenverbot, Abschlussblockade und transitive Wiederöffnung mit Backlog-Fallback.
+- Kommentarmodell/Links, Markdown-Sanitizing, Suche, strukturierte Filter,
+  gewichteter Score und vom Sortierwechsel unabhängiger manueller Rang.
+- Papierkorb mit Kaskade, bestätigungspflichtige Vorschau, konfliktgeprüfte
+  Wiederherstellung; Archiv und standardmäßig ausgeschaltete Fristen.
+- Persistentes Undo 0–1000, gruppierte/mehrschrittige Rücknahme mit Vorschau;
+  Statistik und Papierkorb funktionieren bei Undo=0 weiterhin.
+- Wiederholung mit Zeitzonen/DST, Wochen-/Monatsregeln und „erst nach Abschluss“.
+- Versionierte JSON-Roundtrips, eingeschränktes/formelgeschütztes CSV,
+  Importvorschau, konsistente Datenbackups ohne Auth-Geheimnisse, Sicherheitskopie
+  vor vollständigem/selektivem Restore und neue Datenepoche.
+- Getrennte LAN-/externe Router, keine Autorisierung durch Forwarded-Header;
+  Argon2id, Secure/HttpOnly/SameSite-Cookies, CSRF, Rate Limit, widerrufbare API-Keys.
+- Preact/TypeScript mit DE/EN, Themes, Touch/Drag/Tastatur, persistenten Ansichten,
+  sichtbaren Lade-/Fehler-/Synczuständen und Undo-Toast nur bei aktivierter Historie.
+- IndexedDB-Queue mit stabilen op_ids, kausalen temporären IDs, Mehrtab-Koordination,
+  Three-Way-Merge und expliziten Konflikt-/Epochenentscheidungen. Bestätigte
+  Entitätsänderungen werden vor weiteren Netzabrufen atomar lokal gespeichert.
+- Metadaten-Ereignisstrom, Browser-Reconnect; Webmodal behält ungespeicherte
+  Eingaben bei externen Änderungen. Keine TV-Laufzeit wird vorgetäuscht.
 
-- `cargo test --workspace --locked`: 13 Tests bestanden.
-- `cargo clippy --workspace --all-targets --locked -- -D warnings`: bestanden.
-- `cargo fmt --all -- --check`: bestanden.
-- `cargo build --workspace --locked`: bestanden.
-- `node --check web/app.js`: bestanden.
-- `npm test --prefix tests/browser`: zwei Chromium-Tests bestanden,
-  Desktop 1440×1000 und mobiles Layout 390×844. Erstellen, Verschieben,
-  Neuladen/Persistenz, HTML als Text, keine JS-Fehler/kein Seitenüberlauf.
-- Laufender HTTP-Server: Health und tatsächliche Ticketanlage erfolgreich.
+## Prüfungen und Grenzen
 
-Die integrierte Browseransicht konnte wegen fehlender Laufzeitdateien nicht
-gestartet werden; die gesonderten Playwright-Tests liefen anschließend erfolgreich.
-Vorhandene DB-Tests belegen Neustartpersistenz zusätzlich zum Browser-Neuladen.
+Die aktuellen maschinenlesbaren Nachweise und Testergebnisse liegen unter
+`docs/validation/`. Browserfälle prüfen Desktop 1440×1000 und mobiles Chromium
+390×844, Offline-Neuladen, Mehrtab, gleiche/unabhängige Felder, Restore-Epoche,
+HTTPS-PWA, Session-Widerruf, gespeicherte Ansichten, Bulk-Vorschau, DE/EN und Undo=0.
+Der isolierte HTTPS-Browser vertraut ausschließlich dem Testzertifikat über
+seinen SPKI-Pin; das ist kein Nachweis einer öffentlich ausgestellten Zertifikatskette.
 
-## Offen
+Debian 13 wurde im Container ohne Netzwerk, Anzeige und zusätzliche Fähigkeiten
+unter dem Dienstnutzer `kanlo` gestartet, neugestartet und beendet. Offene SSE-
+Verbindungen verhindern den Shutdown nicht. AMD64/ARM64/armhf-Debug-Builds werden
+mit Zielarchitektur und SHA256 geprüft. Docker ist nur eine Testumgebung und
+keine Produktabhängigkeit.
 
-M0 ist vorbereitet und die CI ist grün; Branchregeln/Lizenzfreigabe noch separat abzunehmen.
-M1/M2/M3 sind begonnen, keine dieser Gesamtphasen ist fertig. Alle 70 Issues
-bleiben offen. Vollständiger Domainkern, Editieren/Löschen, Offline/Sync,
-TV-Renderer, Preact/TypeScript und DE/EN, Auth/MCP/OpenAPI, Backup/Restore,
-Installer/Updater/Image und Release-/Hardwareabnahmen fehlen.
-Keine Pi-Hardware-/Debian-Laufzeitmessungen, kein externer Auth- oder Live-Voice-Test.
+Keine reale Pi-Hardware, kein TV-Renderer, kein Geräte-Boot/Kiosk, kein SSD-
+Hardwaretest, kein fertiger Installer/Updater, kein vollständiges OpenAPI/MCP,
+keine öffentliche App-Listung oder Live-Voice-Abnahme. Das Laden des Domain-
+Aggregats in RAM bleibt ein ausdrücklich offenes Pi-Ressourcenrisiko.
 
-## Remote-Nachweise
-
-Erster Implementierungscommit `06f21598021e4472a4ac5359519a027d96e4a63c`
-auf Gitea und GitHub gepusht; beide Branch-IDs per `git ls-remote` abgeglichen.
-GitHub-Lauf: https://github.com/jtracht/Kanlo/actions/runs/42575662919.
-Qualitätsjob inklusive Rust- und Browsertests erfolgreich. ARM32/ARM64-Builds
-meldeten fehlende Cross-libc-Header beim SQLite-Build. Die Matrix wurde um
-`libc6-dev-armhf-cross`/`libc6-dev-arm64-cross` ergänzt.
-
-**Erfolgreiche erneute Abnahme:** Commit
-`96c8c3811d77fc0e45a6b5e7932da0ef469fdf87`, GitHub-Lauf
-https://github.com/jtracht/Kanlo/actions/runs/42575913887.
-Alle vier Jobs erfolgreich: Qualität sowie Debian-13-Release-Builds für
-amd64, arm64 und armhf. Der amd64-Container führte zusätzlich die Rust-Tests aus.
-Drei Artefakte heruntergeladen und SHA256 sowie ELF-Zielarchitektur geprüft
-(x86-64: 62, AArch64: 183, ARM: 40); alle Prüfungen erfolgreich.
-Maschinenlesbarer Nachweis: `docs/validation/ci-42575913887.json`.
-Diese Buildabnahme ersetzt keine Tests auf physischer Pi-Hardware.
-
-Die anschließende reine Dokumentationsaktualisierung verwendet `[skip ci]`;
-der oben genannte geprüfte Programm-/CI-Stand bleibt unverändert.
+Frühere CI-Nachweise bleiben als Historie erhalten, gelten aber nur für ihre
+jeweiligen Commits. Neue Abnahmen werden mit eigener Commit-ID dokumentiert.

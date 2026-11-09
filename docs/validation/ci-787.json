@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "id": 787,
+  "url": "https://git.tracht-digital.de/jtracht/Kanlo/actions/runs/787",
+  "source_commit": "0c1cd59a7dd8685e5605116f758ad3e5c81a4ea8",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 1171,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 1172,
+      "name": "debian-build (amd64, gcc, libc6-dev, gcc, x86_64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 1173,
+      "name": "debian-build (arm64, aarch64-linux-gnu-gcc, libc6-dev-arm64-cross, gcc-aarch64-linux-gnu, aarch64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 1174,
+      "name": "debian-build (armhf, arm-linux-gnueabihf-gcc, libc6-dev-armhf-cross, gcc-arm-linux-gnueabihf, armv7-unknown-linux-gnueabihf)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 1175,
+      "name": "headless",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "quality": {
+    "rust_tests": 53,
+    "browser_tests": 32
+  },
+  "architecture_inspections": [
+    {
+      "job": 1172,
+      "target": "x86_64-unknown-linux-gnu",
+      "elf_description": "artifacts/kanlo-server-x86_64-unknown-linux-gnu: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=7efc54f2d69a81d558738cd65f4ae00138563ae1, for GNU/Linux 3.2.0, not stripped",
+      "debug_build": true,
+      "release_build": true
+    },
+    {
+      "job": 1173,
+      "target": "aarch64-unknown-linux-gnu",
+      "elf_description": "artifacts/kanlo-server-aarch64-unknown-linux-gnu: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, BuildID[sha1]=d9ce7fa26382df9ef0acf54496301db8fd015a63, for GNU/Linux 3.7.0, not stripped",
+      "debug_build": true,
+      "release_build": true
+    },
+    {
+      "job": 1174,
+      "target": "armv7-unknown-linux-gnueabihf",
+      "elf_description": "artifacts/kanlo-server-armv7-unknown-linux-gnueabihf: ELF 32-bit LSB pie executable, ARM, EABI5 version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-armhf.so.3, BuildID[sha1]=1a124fa3aff4a43db6cc479174f9b1d827eea1b6, for GNU/Linux 3.2.0, not stripped",
+      "debug_build": true,
+      "release_build": true
+    }
+  ],
+  "headless": {
+    "network": "none",
+    "user": "kanlo",
+    "capabilities": "all dropped",
+    "display": false,
+    "runtime_passed": true,
+    "debian_rust_tests": 53
+  }
+}

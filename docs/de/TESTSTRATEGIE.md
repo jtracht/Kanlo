@@ -5,7 +5,9 @@
 - `cargo fmt --all -- --check`: Format.
 - `cargo clippy --workspace --all-targets --locked -- -D warnings`: Lint.
 - `cargo test --workspace --locked`: Domain, SQLite und HTTP.
-- `node --check web/app.js`: Syntax des vorläufigen Online-Clients.
+- `npm run build --prefix web`: TypeScript-Prüfung und lokaler Produktionsbuild.
+- `npm test --prefix tests/browser`: Desktop-/Mobile-, Offline-, Mehrtab-,
+  HTTPS-/Auth-, Epochen-, Filter-/Bulk- und Eingabeprüfungen mit realem Server.
 
 DB-Tests prüfen Neustart/Instanz/Epoche/Zähler, Zukunftsschema, Integrität,
 atomaren Fehlversuch, Done/Backlog, falsche Boardspalte, stabile ID nach Umzug,
@@ -13,19 +15,35 @@ stale Revision und zwei konkurrierende Verbindungen am WIP-Limit.
 HTTP-Tests prüfen Roundtrip, Validierung, Host/Origin-/Forwarded-Header-Umgehung,
 Bodylimit, unerlaubte Felder, Priorität und lokale Assets mit CSP.
 
-## Weitere verpflichtende Suites
+## Abdeckung und weiterhin verpflichtende Suites
 
 Domain: Typ-/Kind-/Abhängigkeitsregeln, WIP warning/strict, Undo=0, atomarer Batch.
-Offline: unabhängige Felder/gleiche Felder, kausale Queue, temp IDs,
+Offline (implementierte Abnahme): unabhängige Felder/gleiche Felder, kausale Queue, temp IDs,
 Idempotenz, Mehrtab, 401/403, Epochwechsel und Tombstones.
-Browser: Smartphone/Desktop, DE/EN, Keyboard/Touch, persistentes Modal ohne
-TV-Effekt, echtes HTTPS/PWA, Konfliktdialog, sichere Markdown-Ausgabe.
+Browser (implementierte Abnahme): Smartphone/Desktop, DE/EN, Keyboard/Touch,
+persistentes Modal, HTTPS/PWA mit im isolierten Browser gepinntem Testzertifikat,
+Konfliktdialog, sichere Markdown-Ausgabe. TV-Effekte bleiben bis zum nativen
+Renderer unprüfbar; öffentliche TLS-Zertifikatsketten sind ein Betriebsgate.
 TV: max. 1/2 Overlays, Backlog-/Elternrückkehr, 2D-Scroll, Rotation-Pause,
 Dirty Regions, Crash-Restore und Langzeitbetrieb.
 Security: getrennte Listener, Proxy-Bypass, Sessions/Keys/CSRF/Rate Limits,
 XSS/SSRF, Pfade, CSV-Formeln, kein Secret in Export/Backup/Logs/Cache.
 Recovery: Onlinebackup, selektiver Restore, Migrationsabbruch, Rollback,
 Datenortwechsel, Fresh-Flash und manuell angestoßenes Update.
+
+## Debian- und Architektur-Abnahme reproduzieren
+
+```sh
+docker build -f packaging/tests/Dockerfile -t kanlo-validation:debian13 .
+docker run --rm -v "$PWD:/src" -v kanlo-build:/build kanlo-validation:debian13 sh scripts/debian-validate.sh
+docker run --rm --network none --user kanlo --cap-drop ALL -v "$PWD/artifacts:/artifacts:ro" -v "$PWD/packaging/tests:/tests:ro" kanlo-validation:debian13 python3 /tests/headless.py
+```
+
+PowerShell: Bind-Mount-Pfade absolut angeben. Der Build erzeugt Debug-ELF und
+SHA256 für AMD64/ARM64/armhf und führt die AMD64-Rustsuite aus. Der zweite
+Container hat kein Netzwerk außer Loopback, keine Anzeige und keinen Rootnutzer.
+Er prüft Start/Neustart, Verzeichnisrechte, Health, Integrität und SIGTERM bei
+offenem Ereignisstrom. Keine dieser Prüfungen ersetzt physische Pi-/SSD-Tests.
 
 ## Geräte-Messplan
 

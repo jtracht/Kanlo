@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "primary": "https://git.tracht-digital.de/jtracht/Kanlo",
+  "github_mirror": "https://github.com/jtracht/Kanlo",
+  "branch": "feature/fifty-percent",
+  "pull_request": 71,
+  "validated_source_commit": "0c1cd59a7dd8685e5605116f758ad3e5c81a4ea8",
+  "closed_original_issue_numbers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    23,
+    24,
+    25,
+    26,
+    35,
+    36,
+    37,
+    38,
+    39,
+    42,
+    43,
+    44,
+    45,
+    46,
+    50,
+    52,
+    53,
+    54,
+    55
+  ],
+  "partially_implemented_original_tasks_left_open": [
+    "KAN-021",
+    "KAN-022",
+    "KAN-040",
+    "KAN-041",
+    "KAN-047",
+    "KAN-048",
+    "KAN-049",
+    "KAN-051",
+    "KAN-056"
+  ],
+  "closed_milestones": [
+    {
+      "id": 116,
+      "name": "M0",
+      "closed_tasks": 5
+    },
+    {
+      "id": 118,
+      "name": "M2",
+      "closed_tasks": 9
+    }
+  ],
+  "note": "Original denominator remains 70. Pull request #71 is not an additional product task. Integration to main is pending review; no stable or device release is claimed."
+}

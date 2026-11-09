@@ -1,19 +1,55 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig } from "@playwright/test";
+import { certificate } from "./https-fixture.js";
 
 export default defineConfig({
-  testDir: '.',
-  testMatch: '*.spec.js',
+  testDir: ".",
+  testMatch: "*.spec.js",
   workers: 1,
-  webServer: {
-    command: 'cargo run --locked --manifest-path ../../Cargo.toml -p kanlo-api --bin kanlo-server',
-    url: 'http://127.0.0.1:18080/api/v1/health',
-    reuseExistingServer: !process.env.CI,
-    env: { KANLO_BIND: '127.0.0.1:18080', KANLO_DATA_DIR: '../../data/browser-tests' },
-    timeout: 120000,
+  webServer: [
+    {
+      command:
+        "cargo run --locked --manifest-path ../../Cargo.toml -p kanlo-api --bin kanlo-server",
+      url: "http://127.0.0.1:18080/api/v1/health",
+      reuseExistingServer: !process.env.CI,
+      env: {
+        KANLO_BIND: "127.0.0.1:18080",
+        KANLO_DATA_DIR: "../../data/browser-tests",
+      },
+      timeout: 120000,
+    },
+    {
+      command:
+        "cargo run --locked --manifest-path ../../Cargo.toml -p kanlo-api --example browser_fixture",
+      url: "http://127.0.0.1:18082/api/v1/health",
+      timeout: 120000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: "node https-fixture.js",
+      url: "https://127.0.0.1:18443/",
+      ignoreHTTPSErrors: true,
+      timeout: 30000,
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
+  use: {
+    baseURL: "http://127.0.0.1:18080",
+    launchOptions: {
+      args: [
+        `--ignore-certificate-errors-spki-list=${certificate().pin}`,
+        "--host-resolver-rules=MAP kanlo.test 127.0.0.1",
+      ],
+    },
   },
-  use: { baseURL: 'http://127.0.0.1:18080' },
   projects: [
-    { name: 'desktop', use: { viewport: { width: 1440, height: 1000 } } },
-    { name: 'mobile', use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+    { name: "desktop", use: { viewport: { width: 1440, height: 1000 } } },
+    {
+      name: "mobile",
+      use: {
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
 });
