@@ -63,4 +63,3 @@ Source-available ist das beabsichtigte Modell; der konkrete Lizenztext ist noch
 nicht freigegeben. Keine OSI-Open-Source- oder Stable-Behauptung.
 Siehe `LICENSE` und `NOTICE`. Bis zur Lizenz-/Markenprüfung bleiben neue
 Remote-Repositories privat. Es gibt keine technische Lizenzaktivierung.
-

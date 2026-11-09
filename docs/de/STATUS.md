@@ -42,5 +42,11 @@ TV-Renderer, Preact/TypeScript und DE/EN, Auth/MCP/OpenAPI, Backup/Restore,
 Installer/Updater/Image und Release-/Hardwareabnahmen fehlen.
 Keine Pi-Hardware-/Debian-Laufzeitmessungen, kein externer Auth- oder Live-Voice-Test.
 
-Git-Push-/CI-Ergebnisse werden erst nach tatsächlicher Prüfung ergänzt.
+## Remote-Nachweise
 
+Erster Implementierungscommit `06f21598021e4472a4ac5359519a027d96e4a63c`
+auf Gitea und GitHub gepusht; beide Branch-IDs per `git ls-remote` abgeglichen.
+GitHub-Lauf: https://github.com/jtracht/Kanlo/actions/runs/42575662919.
+Qualitätsjob inklusive Rust- und Browsertests erfolgreich. ARM32/ARM64-Builds
+meldeten fehlende Cross-libc-Header beim SQLite-Build. Die Matrix wurde um
+`libc6-dev-armhf-cross`/`libc6-dev-arm64-cross` ergänzt; erneute Abnahme steht aus.

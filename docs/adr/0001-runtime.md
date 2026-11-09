@@ -45,4 +45,3 @@ will replace the browser Origin requirement for authenticated API callers.
 
 Resolved versions, rather than `latest` documentation links, are pinned in Cargo.lock.
 No architecture compatibility claim follows from compiling on Windows.
-

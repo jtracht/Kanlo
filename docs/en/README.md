@@ -19,4 +19,3 @@ runtime or Pi display compatibility. Hardware measurements are still required.
 Gitea is the intended primary, GitHub the commit mirror and later CI/release host.
 New repositories stay private pending final licensing and trademark review.
 No production ingress should proxy this development listener.
-

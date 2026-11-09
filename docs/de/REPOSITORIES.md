@@ -31,4 +31,3 @@ Nach dem initialen Import Featurebranches mit Review verwenden. Schutzregeln
 erst anhand tatsächlicher CI-Namen aktivieren, um den Erstimport nicht zu sperren.
 Keine Stable-Tags/öffentlichen Repositories vor vollständiger Abnahme und
 Lizenzprüfung. Entwicklungsartefakte im CI sind keine Stable-Releases.
-

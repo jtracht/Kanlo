@@ -40,4 +40,3 @@ Dev: Teilumfang, Tests und offene Punkte benannt.
 Beta: Kernfunktionen plus Geräte-/Recovery-/Security-Nachweise.
 Stable: alle Baseline-Gates, Lizenz/Markenprüfung, reproduzierbare Artefakte,
 SHA256 und DE-/EN-Anleitungen tatsächlich vorhanden.
-

@@ -37,14 +37,17 @@ jobs:
             arch: amd64
             compiler: gcc
             package: gcc
+            libc_package: libc6-dev
           - target: aarch64-unknown-linux-gnu
             arch: arm64
             compiler: aarch64-linux-gnu-gcc
             package: gcc-aarch64-linux-gnu
+            libc_package: libc6-dev-arm64-cross
           - target: armv7-unknown-linux-gnueabihf
             arch: armhf
             compiler: arm-linux-gnueabihf-gcc
             package: gcc-arm-linux-gnueabihf
+            libc_package: libc6-dev-armhf-cross
     steps:
       - uses: actions/checkout@v4
       - name: Build in Debian 13
@@ -52,11 +55,12 @@ jobs:
           TARGET: ${{ matrix.target }}
           CC_TARGET: ${{ matrix.compiler }}
           CC_PACKAGE: ${{ matrix.package }}
+          LIBC_PACKAGE: ${{ matrix.libc_package }}
         run: |
           docker run --rm -v "$PWD:/src" -w /src \
-            -e TARGET -e CC_TARGET -e CC_PACKAGE debian:13-slim sh -ec '
+            -e TARGET -e CC_TARGET -e CC_PACKAGE -e LIBC_PACKAGE debian:13-slim sh -ec '
               apt-get update
-              apt-get install -y --no-install-recommends ca-certificates curl build-essential "$CC_PACKAGE" file
+              apt-get install -y --no-install-recommends ca-certificates curl build-essential "$CC_PACKAGE" "$LIBC_PACKAGE" file
               curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup.sh
               sh /tmp/rustup.sh -y --profile minimal --default-toolchain 1.99.1
               . "$HOME/.cargo/env"
@@ -77,4 +81,3 @@ jobs:
         with:
           name: kanlo-dev-${{ matrix.arch }}
           path: artifacts/*
-

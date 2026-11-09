@@ -41,4 +41,3 @@ Keine Löschaktion, kein Offline-Versprechen und keine ungeschützte Netzwerkfre
 Remote-Issues werden mit KAN-ID, Komponente, Abhängigkeiten, Originalcheckliste,
 Tests und Gate geführt. Keine automatischen Abschlussbehauptungen aufgrund
 eines Dateigerüsts. Dev-/Beta-Releases dürfen Teilumfang ehrlich ausweisen.
-

@@ -9,4 +9,3 @@ Do not enable a TV service until a native renderer exists. KAN-008–011 and
 KAN-061–065 remain open. No install.sh, flash image, update or rollback is
 represented as ready. Docker is used only by the optional CI build environment;
 the Kanlo runtime has no Docker dependency.
-

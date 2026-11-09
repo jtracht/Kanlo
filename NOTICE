@@ -10,4 +10,3 @@ Before public release: inventory all locked transitive dependencies and bundled
 SQLite, collect license texts/notices, assess compatibility with the final Kanlo
 license, and verify the product name/trademark. None of these legal gates is
 claimed complete by this development scaffold.
-

@@ -45,4 +45,3 @@ Debian-Testumgebung nachgewiesen. Keine vorhandenen Releases, Benchmarks,
 Remote-Issues, Branchregeln oder abgeschlossenen CI-Läufe werden vorausgesetzt.
 Die 70 KAN-IDs sind Planungskennungen. Keines der 70 Gesamttickets wird allein
 durch diesen ersten Teil als abgeschlossen erklärt.
-
