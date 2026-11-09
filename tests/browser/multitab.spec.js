@@ -47,8 +47,15 @@ test("two tabs synchronize one causal offline queue without duplicate tickets", 
 
 test("only visited board ticket data is cached", async ({ page, request }) => {
   const visited = await fixture(request, "Visited");
-  const unvisited = await fixture(request, "Unvisited");
   await visit(page, visited);
+  // Create this board after choosing the landing board: it cannot have been
+  // automatically opened as the initial board in a fresh browser profile.
+  const unvisited = await fixture(request, "Unvisited");
+  await expect(
+    page
+      .getByRole("combobox", { name: "Board auswählen", exact: true })
+      .locator(`option[value="${unvisited.id}"]`),
+  ).toHaveCount(1);
   const keys = await page.evaluate(
     () =>
       new Promise((resolve) => {
