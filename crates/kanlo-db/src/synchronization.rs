@@ -77,7 +77,7 @@ impl Store {
             .as_ref()
             .map(|id| map_temporary(&tx, &operation.client_id, id))
             .transpose()?;
-        let result = apply_transaction(
+        let (result, changes) = apply_transaction_detailed(
             &tx,
             Command::CreateTicket {
                 board_id: operation.board_id,
@@ -101,6 +101,8 @@ impl Store {
             revision: revision(&tx)?,
             result,
             temp_ids: BTreeMap::from([(operation.temporary_id, id)]),
+            changes,
+            epoch: identity(&tx)?.1,
         };
         save_receipt(
             &tx,
@@ -129,7 +131,7 @@ impl Store {
             ));
         }
         let ticket_id = map_temporary(&tx, &operation.client_id, &operation.entity_id)?;
-        let result = apply_transaction(
+        let (result, changes) = apply_transaction_detailed(
             &tx,
             Command::AddComment {
                 ticket_id,
@@ -142,6 +144,8 @@ impl Store {
             revision: revision(&tx)?,
             result,
             temp_ids: BTreeMap::new(),
+            changes,
+            epoch: identity(&tx)?.1,
         };
         save_receipt(
             &tx,
@@ -205,13 +209,92 @@ impl Store {
                 epoch_changed: true,
             });
         }
-        let result = apply_transaction(
+        let mut candidate = state.clone();
+        let key = ticket.id.clone();
+        let mut result = ChangeResult::default();
+        let structural =
+            merge.fields.contains_key("board_id") || merge.fields.contains_key("column_id");
+        if structural
+            && (!operation.changed_fields.contains_key("board_id")
+                || !operation.changed_fields.contains_key("column_id")
+                || !operation.base_fields.contains_key("board_id")
+                || !operation.base_fields.contains_key("column_id"))
+        {
+            return Err(Error::Validation(
+                "Moves require both base and target board_id/column_id".into(),
+            ));
+        }
+        if structural && merge.fields.contains_key("done") {
+            return Err(Error::Validation(
+                "Choose a move or a binary completion, not both".into(),
+            ));
+        }
+        let metadata: BTreeMap<_, _> = merge
+            .fields
+            .iter()
+            .filter(|(name, _)| {
+                !["board_id", "column_id", "done", "archived"].contains(&name.as_str())
+            })
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        let mut collect = |change: ChangeResult| {
+            result.entity_id = change.entity_id;
+            result.affected.extend(change.affected);
+            result.boards.extend(change.boards);
+            result.warnings.extend(change.warnings);
+        };
+        if !metadata.is_empty() {
+            let revision = candidate.find_ticket(&key)?.revision;
+            collect(candidate.apply(Command::PatchTicket {
+                id: key.clone(),
+                base_revision: revision,
+                fields: metadata,
+            })?);
+        }
+        if structural {
+            let board_id = merge.fields["board_id"]
+                .as_str()
+                .ok_or_else(|| Error::Validation("Invalid target board".into()))?
+                .to_string();
+            let column_id: Option<String> =
+                serde_json::from_value(merge.fields["column_id"].clone())
+                    .map_err(|_| Error::Validation("Invalid target column".into()))?;
+            let revision = candidate.find_ticket(&key)?.revision;
+            collect(candidate.apply(Command::MoveTicket {
+                id: key.clone(),
+                base_revision: revision,
+                board_id,
+                column_id,
+                activate_types: false,
+                convert_types: BTreeMap::new(),
+            })?);
+        }
+        if let Some(done) = merge.fields.get("done") {
+            let done = done
+                .as_bool()
+                .ok_or_else(|| Error::Validation("done must be boolean".into()))?;
+            let revision = candidate.find_ticket(&key)?.revision;
+            collect(candidate.apply(Command::SetDone {
+                id: key.clone(),
+                base_revision: revision,
+                done,
+            })?);
+        }
+        if let Some(archived) = merge.fields.get("archived") {
+            let archived = archived
+                .as_bool()
+                .ok_or_else(|| Error::Validation("archived must be boolean".into()))?;
+            collect(candidate.apply(Command::Archive {
+                ids: vec![key],
+                archived,
+            })?);
+        }
+        commit_state(
             &tx,
-            Command::PatchTicket {
-                id: ticket.id.clone(),
-                base_revision: ticket.revision,
-                fields: merge.fields,
-            },
+            &state,
+            &candidate,
+            &result,
+            "offline reconciliation",
             true,
         )?;
         let response = Receipt {
@@ -219,6 +302,8 @@ impl Store {
             revision: revision(&tx)?,
             result,
             temp_ids: BTreeMap::new(),
+            changes: entity_changes(&state, &candidate)?,
+            epoch: identity(&tx)?.1,
         };
         save_receipt(
             &tx,

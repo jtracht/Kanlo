@@ -1,67 +1,78 @@
 # Kanlo
 
-Lokales, TV-zentriertes Kanban für ein Debian-/Raspberry-Pi-Gerät.
-**Entwicklungsstand 0.1.0-dev.1 — keine fertige Version 1.0.**
+Lokales Kanban für ein Debian-/Raspberry-Pi-Gerät mit einer Weboberfläche und
+geplanter nativer TV-Anzeige. **Entwicklungsversion 0.1.0-dev.1, kein Stable-Release.**
 
-Die drei Originalunterlagen liegen unverändert unter `docs/baseline/`.
-Der Nutzerauftrag umfasst Prüfung, Planung und iterative Umsetzung;
-Gitea ist das Hauptrepository, GitHub soll dieselben Commits spiegeln.
-Dokumentanweisungen sind Anforderungsquellen und kein Nachweis ausgeführter Aktionen.
+Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
+Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Den belegten
+Aufgabenstand führt [50-PROZENT.md](docs/de/50-PROZENT.md).
 
-## Lokal starten
+## Starten
 
-Voraussetzung: Rust 1.99.1 sowie nativer C-Compiler für das eingebettete SQLite.
+Voraussetzungen zum Bauen: Rust 1.99.1 und ein nativer C-Compiler für SQLite.
+Die gebauten Webassets sind versioniert; Node wird zur Laufzeit nicht benötigt.
 
 ```sh
 cargo run --locked -p kanlo-api --bin kanlo-server
 ```
 
-Dann `http://127.0.0.1:8080` öffnen. `KANLO_DATA_DIR` wählt das Datenverzeichnis,
-`KANLO_BIND` einen **Loopback**-Socket (Standard `127.0.0.1:8080`).
-Ein initiales Board mit drei Spalten wird automatisch angelegt.
-Der Entwicklungsserver benötigt weder Display noch Internet zur Laufzeit.
+`http://127.0.0.1:8080` öffnen. Das erste Board wird automatisch angelegt.
+Der Server läuft ohne Bildschirm und ohne Internet. `KANLO_DATA_DIR` wählt die
+private Datenablage. `KANLO_BIND` ist standardmäßig `127.0.0.1:8080`.
+Eine LAN-Bindung braucht zusätzlich die exakten erlaubten Hostnamen/IP-Adressen
+einschließlich Port in `KANLO_ALLOWED_HOSTS`. Details und der getrennte geschützte
+HTTPS-Proxy-Zugang: [Betrieb](docs/de/BETRIEB.md).
 
-Implementiert: Boards/Spalten anlegen und lesen, Tickets anlegen/lesen/verschieben,
-Backlog, permanente Kennungen, Revisionskonflikte und striktes WIP in Transaktionen.
-Die kleine deutsche Browseroberfläche ist ein vorläufiger Online-Client; der geplante
-Preact-/TypeScript-Client wird im Web-Meilenstein aufgebaut.
+## Umgesetzt
 
-Noch offen: Bearbeiten/Löschen, Untertickets, Abhängigkeiten, Typen, Labels,
-Undo, Offline/PWA, Live-Sync, native TV-Anzeige, externe Authentifizierung,
-OpenAPI/MCP, Installer, Backups, Images und Geräteabnahme.
-Keine automatische Wiederholung fehlgeschlagener Mutationen: Idempotenz folgt mit dem Sync-Protokoll.
+Boards/Spalten, stabile Ticketkennungen, Typen, globale Labels, eigene Textfelder,
+Untertickets, azyklische Abhängigkeiten, WIP-Limits, transaktionale Sammelaktionen,
+Kommentare und sicheres Markdown, Archiv/Papierkorb, gruppiertes Undo,
+Wiederholung, JSON/CSV-Import und Export, konsistente Datensicherungen und
+vollständige/selektive Wiederherstellung. Alle Schreibwege benutzen dieselbe
+Domainvalidierung.
 
-## Prüfen
+Preact/TypeScript-Oberfläche für Telefon und PC, Deutsch/Englisch, Hell/Dunkel,
+Suche/Filter/Sortierung und Tastatur-/Touchbedienung. Die PWA speichert besuchte
+Boards und eine dauerhafte Offline-Warteschlange. Feldkonflikte und alte
+Restore-Epochen brauchen eine ausdrückliche Entscheidung. Auf gewöhnlichem
+LAN-HTTP bleibt die Website online nutzbar; Offline-PWA auf anderen Geräten
+benötigt vertrauenswürdiges HTTPS.
+
+Offen bleiben insbesondere native TV-Anzeige und ihre Steuerung, Installer,
+Kiosk/Display-Erkennung, vollständiges OpenAPI/MCP/ChatGPT, OS-Images/Updater,
+Geräte-/Pi-Messungen und öffentliche Release-/Lizenzfreigaben.
+
+## Prüfen und Webassets ändern
 
 ```sh
+npm ci --prefix web
+npm run build --prefix web
 cargo fmt --all -- --check
 cargo test --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
-node --check web/app.js
 npm ci --prefix tests/browser
 npx --prefix tests/browser playwright install chromium --only-shell
 npm test --prefix tests/browser
 ```
 
-Windows ist die aktuell lokal geprüfte Entwicklungsumgebung, keine Produktzielplattform.
-Die [CI](https://github.com/jtracht/Kanlo/actions/runs/42575913887) hat Qualität,
-Browser und Debian-13-Builds für amd64, arm64 und armhf erfolgreich geprüft.
-Artefakt-Prüfsummen und ELF-Zielarchitekturen wurden abgeglichen.
-Echte Pi-3-B+-Messungen und Geräte-Laufzeittests stehen noch aus.
+Der Webbuild schreibt nach `crates/kanlo-api/assets`. Diese Dateien zusammen mit
+den Quellen committen. Die CI prüft, dass ein erneuter Build keine Abweichung
+erzeugt. Die Browserprüfung startet getrennte lokale Testserver sowie einen
+HTTPS-Testproxy mit einem ausschließlich im isolierten Testbrowser akzeptierten
+Zertifikat. Es wird kein Zertifikat im Benutzer-/Systemspeicher installiert.
 
-## Dokumentation
+Debian-/Cross-/Headless-Abnahme: [Teststrategie](docs/de/TESTSTRATEGIE.md).
+Windows ist eine Entwicklungsumgebung; ARM-Cross-Builds belegen keine
+Laufzeit- oder Anzeigeleistung auf einem Raspberry Pi.
 
-- [Prüfung und Entscheidungen](docs/de/PRUEFUNG.md)
-- [Roadmap und Abnahmekriterien](docs/de/ENTWICKLUNGSPLAN.md)
-- [Architektur](docs/adr/0001-runtime.md)
-- [Teststrategie](docs/de/TESTSTRATEGIE.md)
-- [Aktueller Stand](docs/de/STATUS.md)
-- [Repositories und Spiegelung](docs/de/REPOSITORIES.md)
-- [English development guide](docs/en/README.md)
+## Dokumentation und Rechte
 
-## Veröffentlichung
+- [Entwicklungsstand](docs/de/STATUS.md), [Roadmap](docs/de/ENTWICKLUNGSPLAN.md)
+- [Anforderungsprüfung](docs/de/PRUEFUNG.md), [Architektur](docs/adr/0002-transactional-domain.md)
+- [Repositories](docs/de/REPOSITORIES.md), [English guide](docs/en/README.md)
+- [Drittanbieter-Inventar und Veröffentlichungsgates](docs/licenses/README.md)
 
 Source-available ist das beabsichtigte Modell; der konkrete Lizenztext ist noch
-nicht freigegeben. Keine OSI-Open-Source- oder Stable-Behauptung.
-Siehe `LICENSE` und `NOTICE`. Bis zur Lizenz-/Markenprüfung bleiben neue
-Remote-Repositories privat. Es gibt keine technische Lizenzaktivierung.
+nicht freigegeben. `LICENSE` erteilt keine öffentliche Nutzungslizenz. Die
+Repositories bleiben privat. Keine OSI-Open-Source- oder Stable-Behauptung.

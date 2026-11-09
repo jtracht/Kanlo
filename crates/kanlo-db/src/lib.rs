@@ -49,6 +49,8 @@ pub struct Mutation {
     pub server_instance_id: String,
     pub base_epoch: String,
     pub command: Command,
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub base_context: Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,6 +59,17 @@ pub struct Receipt {
     pub revision: i64,
     pub result: ChangeResult,
     pub temp_ids: BTreeMap<String, String>,
+    #[serde(default)]
+    pub changes: Vec<EntityChange>,
+    #[serde(default)]
+    pub epoch: String,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EntityChange {
+    pub kind: String,
+    pub id: String,
+    pub board_id: Option<String>,
+    pub body: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +79,7 @@ pub struct Preview {
     pub result: ChangeResult,
     pub removed_dependencies: Vec<Dependency>,
     pub expires_at: String,
+    pub tickets: Vec<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -290,12 +304,19 @@ impl Store {
                 "Instance/epoch changed; explicit reconciliation required".into(),
             ));
         }
-        let result = apply_transaction(&tx, operation.command, true)?;
+        if let Some(context) = command_context(&records::load(&tx)?, &operation.command)?
+            && context != operation.base_context
+        {
+            return Err(Error::Conflict("Configuration or structure changed; compare the saved base with the current server state".into()));
+        }
+        let (result, changes) = apply_transaction_detailed(&tx, operation.command, true)?;
         let response = Receipt {
             op_id: operation.op_id.clone(),
             revision: revision(&tx)?,
             result,
             temp_ids: BTreeMap::new(),
+            changes,
+            epoch: identity(&tx)?.1,
         };
         save_receipt(
             &tx,
@@ -309,11 +330,24 @@ impl Store {
     }
 
     pub fn preview(&mut self, command: Command) -> Result<Preview> {
+        self.preview_impl(command, None)
+    }
+    pub fn preview_checked(&mut self, command: Command, base_context: Value) -> Result<Preview> {
+        self.preview_impl(command, Some(base_context))
+    }
+    fn preview_impl(&mut self, command: Command, base_context: Option<Value>) -> Result<Preview> {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let mut state = records::load(&tx)?;
+        if let (Some(expected), Some(context)) = (base_context, command_context(&state, &command)?)
+            && expected != context
+        {
+            return Err(Error::Conflict(
+                "The target changed; inspect the current state before previewing".into(),
+            ));
+        }
         let before = state.dependencies.clone();
         let result = state.apply(command.clone())?;
         let token = Uuid::new_v4().to_string();
@@ -330,12 +364,14 @@ impl Store {
         )
         .map_err(storage)?;
         tx.commit().map_err(storage)?;
+        let tickets=state.tickets.iter().filter(|t|result.affected.contains(&t.id)).map(|t|json!({"id":t.id,"public_id":t.public_id,"title":t.title,"board_id":t.board_id})).collect();
         Ok(Preview {
             token,
             revision,
             result,
             removed_dependencies: before.difference(&state.dependencies).cloned().collect(),
             expires_at: (chrono::Utc::now() + chrono::Duration::minutes(5)).to_rfc3339(),
+            tickets,
         })
     }
     pub fn confirm(&mut self, token: &str, op_id: &str, client_id: &str) -> Result<Receipt> {
@@ -368,7 +404,7 @@ impl Store {
                 "Preview expired or state changed; preview again".into(),
             ));
         }
-        let result = apply_transaction(&tx, decode(&command)?, true)?;
+        let (result, changes) = apply_transaction_detailed(&tx, decode(&command)?, true)?;
         tx.execute("DELETE FROM previews WHERE token=?1", [token])
             .map_err(storage)?;
         let response = Receipt {
@@ -376,6 +412,8 @@ impl Store {
             revision: revision(&tx)?,
             result,
             temp_ids: BTreeMap::new(),
+            changes,
+            epoch: identity(&tx)?.1,
         };
         save_receipt(&tx, op_id, client_id, &serialized, &response)?;
         tx.commit().map_err(storage)?;
@@ -476,6 +514,18 @@ impl Store {
             })
             .collect()
     }
+    pub fn lookup_receipt(&self, op_id: &str, client_id: &str) -> Result<Option<Receipt>> {
+        let row: Option<String> = self
+            .connection
+            .query_row(
+                "SELECT response FROM receipts WHERE op_id=?1 AND client_id=?2",
+                params![op_id, client_id],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(storage)?;
+        row.map(|value| decode(&value)).transpose()
+    }
     pub fn statistics(&self, board_id: Option<&str>, from: &str, to: &str) -> Result<Vec<Value>> {
         chrono::DateTime::parse_from_rfc3339(from)
             .map_err(|_| Error::Validation("Invalid from timestamp".into()))?;
@@ -569,12 +619,37 @@ pub(crate) fn apply_transaction(
     command: Command,
     history: bool,
 ) -> Result<ChangeResult> {
+    Ok(apply_transaction_detailed(tx, command, history)?.0)
+}
+pub(crate) fn apply_transaction_detailed(
+    tx: &Transaction<'_>,
+    command: Command,
+    history: bool,
+) -> Result<(ChangeResult, Vec<EntityChange>)> {
     let before = records::load(tx)?;
     let mut after = before.clone();
     let description = encode(&command)?;
     let result = after.apply(command)?;
     commit_state(tx, &before, &after, &result, &description, history)?;
-    Ok(result)
+    Ok((result, entity_changes(&before, &after)?))
+}
+pub(crate) fn entity_changes(before: &Workspace, after: &Workspace) -> Result<Vec<EntityChange>> {
+    let old = records::to_records(before)?;
+    let new = records::to_records(after)?;
+    let keys: BTreeSet<_> = old.keys().chain(new.keys()).collect();
+    Ok(keys
+        .into_iter()
+        .filter(|key| key.0 != "registry" && old.get(*key) != new.get(*key))
+        .map(|key| EntityChange {
+            kind: key.0.clone(),
+            id: key.1.clone(),
+            board_id: new
+                .get(key)
+                .or_else(|| old.get(key))
+                .and_then(|record| record.board_id.clone()),
+            body: new.get(key).map(|record| record.body.clone()),
+        })
+        .collect())
 }
 pub(crate) fn commit_state(
     tx: &Transaction<'_>,
@@ -686,6 +761,78 @@ pub(crate) fn commit_state(
         }
     }
     Ok(())
+}
+
+pub fn command_context(state: &Workspace, command: &Command) -> Result<Option<Value>> {
+    let context = match command {
+        Command::SetSettings { .. } => json!(state.settings),
+        Command::SetBoardOptions { board_id, .. } => json!(state.board_options.get(board_id)),
+        Command::UpdateColumn { id, .. } | Command::DeleteColumn { id } => {
+            json!(state.columns.iter().find(|c| &c.id == id))
+        }
+        Command::ReorderColumns { board_id, .. } => {
+            let mut columns: Vec<_> = state
+                .columns
+                .iter()
+                .filter(|c| &c.board_id == board_id)
+                .collect();
+            columns.sort_by_key(|c| c.position);
+            json!(columns)
+        }
+        Command::ReorderTickets {
+            board_id,
+            column_id,
+            ..
+        } => {
+            let mut tickets: Vec<_> = state
+                .tickets
+                .iter()
+                .filter(|t| {
+                    &t.board_id == board_id
+                        && &t.column_id == column_id
+                        && t.details.parent_id.is_none()
+                        && !t.details.archived
+                        && !t.details.trashed
+                })
+                .collect();
+            tickets.sort_by_key(|t| t.details.rank);
+            json!(
+                tickets
+                    .iter()
+                    .map(|t| (&t.id, t.details.rank))
+                    .collect::<Vec<_>>()
+            )
+        }
+        Command::UpsertType { value } => json!(state.types.iter().find(|t| t.id == value.id)),
+        Command::UpsertLabel { value } => json!(state.labels.iter().find(|l| l.id == value.id)),
+        Command::UpsertRecurrence { value } => {
+            json!(state.recurrences.iter().find(|r| r.id == value.id))
+        }
+        Command::DeleteRecurrence { id } => json!(state.recurrences.iter().find(|r| &r.id == id)),
+        Command::SetView { context, .. } => json!(state.views.get(context)),
+        Command::RemoveDependency {
+            ticket_id,
+            prerequisite_id,
+        } => json!(state.dependencies.contains(&Dependency {
+            ticket_id: ticket_id.clone(),
+            prerequisite_id: prerequisite_id.clone()
+        })),
+        Command::RemoveLink {
+            ticket_id,
+            target_id,
+        } => json!(state.links.contains(&TicketLink {
+            ticket_id: ticket_id.clone(),
+            target_id: target_id.clone()
+        })),
+        Command::Batch { commands } => json!(
+            commands
+                .iter()
+                .map(|c| command_context(state, c))
+                .collect::<Result<Vec<_>>>()?
+        ),
+        _ => return Ok(None),
+    };
+    Ok(Some(context))
 }
 
 include!("legacy_tests.rs");

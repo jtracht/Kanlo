@@ -11,6 +11,17 @@ fn invalid(message: &str) -> Error {
 fn id() -> String {
     Uuid::new_v4().to_string()
 }
+fn entity_id(value: &str) -> Result<()> {
+    if value.is_empty()
+        || value.len() > 128
+        || !value
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
+    {
+        return Err(invalid("Invalid entity ID"));
+    }
+    Ok(())
+}
 pub fn now() -> String {
     Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
@@ -22,6 +33,58 @@ pub fn color(value: &str) -> Result<()> {
         return Err(invalid("Color must be #RRGGBB"));
     }
     Ok(())
+}
+
+impl ViewState {
+    pub fn validate(&self) -> Result<()> {
+        if self.query.len() > 4096
+            || self.custom_fields.len() > 100
+            || !self.scroll_x.is_finite()
+            || !self.scroll_y.is_finite()
+            || self
+                .importance_min
+                .zip(self.importance_max)
+                .is_some_and(|(min, max)| min > max)
+        {
+            return Err(invalid("Invalid view filter"));
+        }
+        for date in [&self.deadline_from, &self.deadline_to]
+            .into_iter()
+            .flatten()
+        {
+            if NaiveDate::parse_from_str(date, "%Y-%m-%d")
+                .ok()
+                .and_then(|date| date.pred_opt())
+                .is_none()
+            {
+                return Err(invalid("Filter date must be YYYY-MM-DD"));
+            }
+        }
+        if self
+            .deadline_from
+            .as_ref()
+            .zip(self.deadline_to.as_ref())
+            .is_some_and(|(from, to)| from > to)
+        {
+            return Err(invalid("Deadline filter range is reversed"));
+        }
+        for (name, value) in &self.custom_fields {
+            text(name, 120, "custom field name")?;
+            if value.len() > 16384 {
+                return Err(invalid("Custom field filter too long"));
+            }
+        }
+        Ok(())
+    }
+}
+fn filter_start(date: &str, timezone: &str) -> Option<DateTime<Utc>> {
+    let previous = NaiveDate::parse_from_str(date, "%Y-%m-%d")
+        .ok()?
+        .pred_opt()?;
+    Some(
+        crate::sync::deadline(&Some(previous.to_string()), timezone)?
+            + chrono::Duration::nanoseconds(1),
+    )
 }
 
 impl Workspace {
@@ -424,6 +487,9 @@ impl Workspace {
                     }
                 }
                 self.columns.retain(|c| c.id != id);
+                for options in self.board_options.values_mut() {
+                    options.column_colors.remove(&id);
+                }
             }
             Command::ReorderColumns { board_id, ids } => {
                 self.board_index(&board_id)?;
@@ -1022,6 +1088,7 @@ impl Workspace {
                     ));
                 }
                 self.board_index(&view.board_id)?;
+                view.validate()?;
                 if ![
                     "manual",
                     "title",
@@ -1110,6 +1177,7 @@ impl Workspace {
         let mut public = BTreeSet::new();
         let mut prefixes = BTreeSet::new();
         for b in &self.boards {
+            entity_id(&b.id)?;
             text(&b.name, 120, "board name")?;
             board_prefix(&b.prefix)?;
             if !ids.insert(&b.id) || !prefixes.insert(&b.prefix) || b.next_ticket_number < 1 {
@@ -1119,6 +1187,7 @@ impl Workspace {
         let mut column_ids = BTreeSet::new();
         let mut positions = BTreeSet::new();
         for c in &self.columns {
+            entity_id(&c.id)?;
             self.board_index(&c.board_id)?;
             text(&c.name, 120, "column name")?;
             if !column_ids.insert(&c.id) || !positions.insert((&c.board_id, c.position)) {
@@ -1127,6 +1196,7 @@ impl Workspace {
         }
         let mut ticket_ids = BTreeSet::new();
         for t in &self.tickets {
+            entity_id(&t.id)?;
             let (prefix, number) = t
                 .public_id
                 .rsplit_once('-')
@@ -1223,7 +1293,19 @@ impl Workspace {
                 }
             }
         }
-        for options in self.board_options.values() {
+        for (board, options) in &self.board_options {
+            self.board_index(board)?;
+            color(&options.color)?;
+            for (column, tint) in &options.column_colors {
+                color(tint)?;
+                if !self
+                    .columns
+                    .iter()
+                    .any(|c| &c.id == column && &c.board_id == board)
+                {
+                    return Err(invalid("Unknown board color column"));
+                }
+            }
             if options.undo_depth > 1000 {
                 return Err(invalid("Undo limit exceeded"));
             }
@@ -1274,6 +1356,7 @@ impl Workspace {
         }
         let mut type_ids = BTreeSet::new();
         for kind in &self.types {
+            entity_id(&kind.id)?;
             text(&kind.name, 80, "type name")?;
             color(&kind.color)?;
             text(&kind.icon, 64, "icon")?;
@@ -1283,13 +1366,19 @@ impl Workspace {
         }
         let mut label_ids = BTreeSet::new();
         for label in &self.labels {
+            entity_id(&label.id)?;
             text(&label.name, 80, "label name")?;
             color(&label.color)?;
             if !label_ids.insert(&label.id) {
                 return Err(invalid("Duplicate label"));
             }
         }
+        let mut rule_ids = BTreeSet::new();
         for rule in &self.recurrences {
+            entity_id(&rule.id)?;
+            if !rule_ids.insert(&rule.id) {
+                return Err(invalid("Duplicate recurrence ID"));
+            }
             crate::sync::validate_recurrence(rule)?;
             let template = self.find_ticket(&rule.template_id)?;
             if template.details.parent_id.is_some() || template.details.trashed {
@@ -1300,7 +1389,12 @@ impl Workspace {
             self.find_ticket(&link.ticket_id)?;
             self.find_ticket(&link.target_id)?;
         }
+        let mut comment_ids = BTreeSet::new();
         for comment in &self.comments {
+            entity_id(&comment.id)?;
+            if !comment_ids.insert(&comment.id) {
+                return Err(invalid("Duplicate comment ID"));
+            }
             self.find_ticket(&comment.ticket_id)?;
             text(&comment.markdown, 65536, "comment")?;
         }
@@ -1330,6 +1424,10 @@ impl Workspace {
     pub fn ticket_fields(&self, key: &str) -> Result<BTreeMap<String, Value>> {
         let t = self.find_ticket(key)?;
         Ok(BTreeMap::from([
+            ("board_id".into(), json!(t.board_id)),
+            ("column_id".into(), json!(t.column_id)),
+            ("done".into(), json!(t.done)),
+            ("archived".into(), json!(t.details.archived)),
             ("title".into(), json!(t.title)),
             ("description".into(), json!(t.description)),
             ("importance".into(), json!(t.importance)),
@@ -1347,6 +1445,23 @@ impl Workspace {
     }
 
     pub fn search(&self, view: &ViewState, now: DateTime<Utc>) -> Result<Vec<Ticket>> {
+        view.validate()?;
+        let from = view
+            .deadline_from
+            .as_deref()
+            .map(|date| {
+                filter_start(date, &self.settings.timezone)
+                    .ok_or_else(|| invalid("Date does not exist in the configured timezone"))
+            })
+            .transpose()?;
+        let to = view
+            .deadline_to
+            .as_ref()
+            .map(|date| {
+                crate::sync::deadline(&Some(date.clone()), &self.settings.timezone)
+                    .ok_or_else(|| invalid("Date does not exist in the configured timezone"))
+            })
+            .transpose()?;
         let terms: Vec<_> = view
             .query
             .split_whitespace()
@@ -1384,6 +1499,26 @@ impl Workspace {
                     _ => !t.details.trashed && !t.details.archived,
                 };
                 if !status
+                    || view
+                        .importance_min
+                        .is_some_and(|minimum| t.importance < minimum)
+                    || view
+                        .importance_max
+                        .is_some_and(|maximum| t.importance > maximum)
+                    || !view.custom_fields.iter().all(|(name, value)| {
+                        t.details
+                            .custom_fields
+                            .get(name)
+                            .is_some_and(|text| text.to_lowercase().contains(&value.to_lowercase()))
+                    })
+                    || from.is_some_and(|from| {
+                        crate::sync::deadline(&t.details.deadline, &self.settings.timezone)
+                            .is_none_or(|deadline| deadline < from)
+                    })
+                    || to.is_some_and(|to| {
+                        crate::sync::deadline(&t.details.deadline, &self.settings.timezone)
+                            .is_none_or(|deadline| deadline > to)
+                    })
                     || !view.labels.is_subset(&t.details.labels)
                     || view
                         .type_id

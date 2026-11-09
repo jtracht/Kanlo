@@ -110,10 +110,15 @@ impl Store {
     }
 
     pub fn write_backup(&mut self, directory: &Path) -> Result<PathBuf> {
+        self.write_backup_kind(directory, false)
+    }
+    fn write_backup_kind(&mut self, directory: &Path, automatic: bool) -> Result<PathBuf> {
         private_directory(directory)?;
         let backup = self.backup()?;
         let path = directory.join(format!(
-            "kanlo-{}-{}.json",
+            "kanlo-{}-{}-{}-{}.json",
+            if automatic { "auto" } else { "backup" },
+            self.identity()?.0,
             chrono::Utc::now().format("%Y%m%dT%H%M%S"),
             Uuid::new_v4()
         ));
@@ -155,15 +160,23 @@ impl Store {
         {
             return Ok(None);
         }
-        let path = self.write_backup(directory)?;
+        let path = self.write_backup_kind(directory, true)?;
         self.connection.execute("INSERT INTO metadata(key,value) VALUES ('last_backup',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",[at.to_rfc3339()]).map_err(storage)?;
+        let prefix = format!("kanlo-auto-{}-", self.identity()?.0);
         let mut files: Vec<_> = fs::read_dir(directory)
             .map_err(|_| Error::Storage)?
             .filter_map(|e| e.ok())
             .filter(|e| {
                 e.file_type().is_ok_and(|t| t.is_file())
-                    && e.file_name().to_string_lossy().starts_with("kanlo-")
-                    && e.path().extension().is_some_and(|s| s == "json")
+                    && e.file_name()
+                        .to_str()
+                        .and_then(|name| name.strip_prefix(&prefix))
+                        .and_then(|name| name.strip_suffix(".json"))
+                        .and_then(|name| name.split_once('-'))
+                        .is_some_and(|(date, id)| {
+                            chrono::NaiveDateTime::parse_from_str(date, "%Y%m%dT%H%M%S").is_ok()
+                                && Uuid::parse_str(id).is_ok()
+                        })
             })
             .collect();
         files.sort_by_key(|e| e.file_name());

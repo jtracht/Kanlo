@@ -6,6 +6,317 @@ fn initial_domain_integrity() {
     assert_eq!(db.integrity_check().unwrap(), "ok");
 }
 
+#[test]
+fn scheduled_retention_keeps_manual_backups_exports_and_other_instances() {
+    let mut db = Store::open(":memory:").unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let mut settings = db.workspace().unwrap().settings;
+    settings.backup_every_hours = Some(1);
+    settings.backup_keep = 1;
+    db.execute(Command::SetSettings { settings }).unwrap();
+    let manual = db.write_backup(directory.path()).unwrap();
+    let export = directory.path().join("kanlo-BOARD.json");
+    std::fs::write(&export, "unrelated export").unwrap();
+    let mut other = Store::open(":memory:").unwrap();
+    let mut settings = other.workspace().unwrap().settings;
+    settings.backup_every_hours = Some(1);
+    other.execute(Command::SetSettings { settings }).unwrap();
+    let at = chrono::Utc::now();
+    let foreign = other
+        .scheduled_backup(directory.path(), at)
+        .unwrap()
+        .unwrap();
+    db.scheduled_backup(directory.path(), at).unwrap().unwrap();
+    db.scheduled_backup(directory.path(), at + chrono::Duration::hours(2))
+        .unwrap()
+        .unwrap();
+    assert!(manual.exists());
+    assert!(foreign.exists());
+    assert_eq!(std::fs::read_to_string(export).unwrap(), "unrelated export");
+    assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 4);
+}
+
+#[test]
+fn board_column_lifecycle_and_saved_views_survive_restart() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("kanlo.sqlite3");
+    let mut db = Store::open(&path).unwrap();
+    let board = db
+        .create_board(NewBoard {
+            name: "Lifecycle".into(),
+            prefix: "LIFE".into(),
+        })
+        .unwrap();
+    let column = db
+        .create_column(
+            &board.id,
+            NewColumn {
+                name: "Queue".into(),
+                is_done: false,
+                wip_limit: None,
+                wip_strict: false,
+            },
+        )
+        .unwrap();
+    db.execute(Command::UpdateColumn {
+        id: column.id.clone(),
+        name: "Review".into(),
+        is_done: true,
+        wip_limit: Some(3),
+        wip_strict: false,
+        color: "#112233".into(),
+    })
+    .unwrap();
+    db.execute(Command::UpdateBoard {
+        id: board.id.clone(),
+        name: "Renamed".into(),
+        base_revision: board.revision,
+    })
+    .unwrap();
+    let a = ticket(&mut db, &board.id, "A");
+    let b = ticket(&mut db, &board.id, "B");
+    db.execute(Command::ReorderTickets {
+        board_id: board.id.clone(),
+        column_id: None,
+        ids: vec![b.id.clone(), a.id.clone()],
+    })
+    .unwrap();
+    let view = ViewState {
+        board_id: board.id.clone(),
+        query: "A".into(),
+        sort: "importance".into(),
+        descending: true,
+        ..Default::default()
+    };
+    db.execute(Command::SetView {
+        context: "web:persistent".into(),
+        view,
+    })
+    .unwrap();
+    drop(db);
+    let mut db = Store::open(path).unwrap();
+    let state = db.workspace().unwrap();
+    assert_eq!(state.views["web:persistent"].query, "A");
+    assert_eq!(state.views["web:persistent"].sort, "importance");
+    assert!(!state.views.contains_key("tv:persistent"));
+    assert_eq!(
+        state
+            .search(
+                &ViewState {
+                    board_id: board.id.clone(),
+                    ..Default::default()
+                },
+                chrono::Utc::now()
+            )
+            .unwrap()[0]
+            .id,
+        b.id
+    );
+    confirm(&mut db, Command::DeleteColumn { id: column.id }).unwrap();
+    assert!(
+        db.workspace().unwrap().board_options[&board.id]
+            .column_colors
+            .is_empty()
+    );
+    confirm(
+        &mut db,
+        Command::Trash {
+            ids: vec![a.id.clone(), b.id.clone()],
+        },
+    )
+    .unwrap();
+    confirm(
+        &mut db,
+        Command::Purge {
+            ids: vec![a.id, b.id],
+        },
+    )
+    .unwrap();
+    let revision = db
+        .workspace()
+        .unwrap()
+        .boards
+        .iter()
+        .find(|value| value.id == board.id)
+        .unwrap()
+        .revision;
+    confirm(
+        &mut db,
+        Command::DeleteBoard {
+            id: board.id.clone(),
+            base_revision: revision,
+        },
+    )
+    .unwrap();
+    assert!(
+        db.create_board(NewBoard {
+            name: "No reuse".into(),
+            prefix: "LIFE".into()
+        })
+        .is_err()
+    );
+    assert_eq!(db.integrity_check().unwrap(), "ok");
+}
+
+#[test]
+fn multi_step_undo_is_previewed_atomic_and_rejects_a_changed_history() {
+    let mut db = Store::open(":memory:").unwrap();
+    let board = db.boards().unwrap()[0].id.clone();
+    let original = ticket(&mut db, &board, "Original");
+    patch(&mut db, &original.id, json!({"title":"Second"})).unwrap();
+    let through = db.undo_history(&board).unwrap()[0]["id"].as_i64().unwrap();
+    patch(&mut db, &original.id, json!({"importance":200})).unwrap();
+    let revision = db.revision().unwrap();
+    let preview = db.undo_through_preview(&board, through, revision).unwrap();
+    assert_eq!(preview.summary["undo_groups"], 2);
+    assert_eq!(db.ticket(&original.id).unwrap().title, "Second");
+    let op = Uuid::new_v4().to_string();
+    let receipt = db.recovery_confirm(&preview.token, &op, "test").unwrap();
+    assert_eq!(db.ticket(&original.id).unwrap().title, "Original");
+    assert_eq!(db.ticket(&original.id).unwrap().importance, 100);
+    assert_eq!(
+        db.recovery_confirm(&preview.token, &op, "test")
+            .unwrap()
+            .revision,
+        receipt.revision
+    );
+    assert!(db.undo_through_preview(&board, through, revision).is_err());
+    let through = db.undo_history(&board).unwrap()[0]["id"].as_i64().unwrap();
+    let revision = db.revision().unwrap();
+    let preview = db.undo_through_preview(&board, through, revision).unwrap();
+    patch(&mut db, &original.id, json!({"title":"Later"})).unwrap();
+    assert!(
+        db.recovery_confirm(&preview.token, &Uuid::new_v4().to_string(), "test")
+            .is_err()
+    );
+    assert_eq!(db.ticket(&original.id).unwrap().title, "Later");
+}
+
+#[test]
+fn structured_filters_cover_priority_custom_values_and_local_dst_day_boundaries() {
+    let mut db = Store::open(":memory:").unwrap();
+    let board = db.boards().unwrap()[0].id.clone();
+    let a = ticket(&mut db, &board, "Customer");
+    let b = ticket(&mut db, &board, "Other");
+    patch(&mut db,&a.id,json!({"importance":210,"custom_fields":{"Customer":"Alpha"},"deadline":"2026-03-29T00:30:00+01:00"})).unwrap();
+    patch(
+        &mut db,
+        &b.id,
+        json!({"importance":30,"custom_fields":{"Customer":"Beta"},"deadline":"2026-03-30"}),
+    )
+    .unwrap();
+    let mut view = ViewState {
+        board_id: board,
+        importance_min: Some(200),
+        deadline_from: Some("2026-03-29".into()),
+        deadline_to: Some("2026-03-29".into()),
+        custom_fields: BTreeMap::from([("Customer".into(), "ALP".into())]),
+        ..Default::default()
+    };
+    assert_eq!(
+        db.workspace()
+            .unwrap()
+            .search(&view, chrono::Utc::now())
+            .unwrap()
+            .iter()
+            .map(|t| &t.id)
+            .collect::<Vec<_>>(),
+        vec![&a.id]
+    );
+    view.importance_max = Some(100);
+    assert!(
+        db.workspace()
+            .unwrap()
+            .search(&view, chrono::Utc::now())
+            .is_err()
+    );
+}
+
+#[test]
+fn unchanged_restore_still_changes_epoch_revision_and_events() {
+    let mut db = Store::open(":memory:").unwrap();
+    let backup = db.backup().unwrap();
+    let revision = db.revision().unwrap();
+    let identity = db.identity().unwrap();
+    let preview = db.restore_preview(backup, None).unwrap();
+    let receipt = db
+        .recovery_confirm(&preview.token, &Uuid::new_v4().to_string(), "test")
+        .unwrap();
+    assert!(receipt.revision > revision);
+    assert_ne!(receipt.epoch, identity.1);
+    assert_eq!(db.identity().unwrap().0, identity.0);
+    assert!(
+        db.events(0, 100)
+            .unwrap()
+            .iter()
+            .any(|event| event["data"]["restored"] == true)
+    );
+}
+
+#[test]
+fn receipts_contain_authoritative_deltas_and_stale_configuration_cannot_overwrite() {
+    let mut db = Store::open(":memory:").unwrap();
+    let (instance, epoch) = db.identity().unwrap();
+    let state = db.workspace().unwrap();
+    let mut settings = state.settings.clone();
+    settings.theme = "dark".into();
+    let operation = Mutation {
+        op_id: Uuid::new_v4().to_string(),
+        client_id: "client".into(),
+        server_instance_id: instance,
+        base_epoch: epoch,
+        command: Command::SetSettings { settings },
+        base_context: json!(state.settings),
+    };
+    let receipt = db.mutate(operation.clone()).unwrap();
+    assert!(receipt.changes.iter().any(
+        |change| change.kind == "settings" && change.body.as_ref().unwrap()["theme"] == "dark"
+    ));
+    let mut stale = operation;
+    stale.op_id = Uuid::new_v4().to_string();
+    assert!(db.mutate(stale).is_err());
+    assert_eq!(db.workspace().unwrap().settings.theme, "dark");
+}
+
+#[test]
+fn invalid_import_identity_and_duplicate_comments_fail_before_writing() {
+    let mut db = Store::open(":memory:").unwrap();
+    let board = db.boards().unwrap()[0].id.clone();
+    let a = ticket(&mut db, &board, "Safe");
+    db.execute(Command::AddComment {
+        ticket_id: a.id.clone(),
+        markdown: "Comment".into(),
+    })
+    .unwrap();
+    let mut backup = db.backup().unwrap();
+    backup
+        .workspace
+        .comments
+        .push(backup.workspace.comments[0].clone());
+    assert!(db.restore_preview(backup, None).is_err());
+    let mut backup = db.backup().unwrap();
+    backup.workspace.tickets[0].id = "ambiguous:id".into();
+    assert!(db.restore_preview(backup, None).is_err());
+    assert_eq!(db.ticket(&a.id).unwrap().title, "Safe");
+}
+
+#[test]
+fn expired_session_is_rejected_even_with_a_valid_csrf() {
+    let mut db = Store::open(":memory:").unwrap();
+    db.set_passcode("browser session expiry fixture").unwrap();
+    let session = db.login("browser session expiry fixture").unwrap();
+    db.connection
+        .execute(
+            "UPDATE external_sessions SET expires_at='2000-01-01T00:00:00Z'",
+            [],
+        )
+        .unwrap();
+    assert!(
+        db.authorize_session(&session.token, Some(&session.csrf), true)
+            .is_err()
+    );
+}
+
 fn ticket(db: &mut Store, board: &str, title: &str) -> Ticket {
     db.create_ticket(
         board,
@@ -123,6 +434,21 @@ fn types_are_board_enabled_fields_and_global_labels_survive_moves() {
     assert_eq!(moved.public_id, t.public_id);
     assert_eq!(moved.details.custom_fields["Auftrag"], "ABC");
     assert!(moved.details.labels.contains("urgent"));
+    let state = db.workspace().unwrap();
+    assert_eq!(
+        state
+            .search(
+                &ViewState {
+                    query: "Urgent".into(),
+                    labels: BTreeSet::from(["urgent".into()]),
+                    ..Default::default()
+                },
+                chrono::Utc::now()
+            )
+            .unwrap()[0]
+            .id,
+        t.id
+    );
     assert!(
         db.preview(Command::DeleteType { id: "bug".into() })
             .is_err()
@@ -417,6 +743,7 @@ fn stale_preview_and_idempotency_payload_reuse_are_rejected() {
     );
     let (instance, epoch) = db.identity().unwrap();
     let mut operation = Mutation {
+        base_context: Value::Null,
         op_id: Uuid::new_v4().to_string(),
         client_id: "client".into(),
         server_instance_id: instance,

@@ -218,6 +218,123 @@ async fn api_keys_are_independent_and_revocation_is_immediate() {
 }
 
 #[tokio::test]
+async fn bulk_and_restore_require_authorization_and_restore_revokes_the_calling_key() {
+    let mut store = Store::open(":memory:").unwrap();
+    let board = store.boards().unwrap()[0].id.clone();
+    let ticket = store
+        .create_ticket(
+            &board,
+            kanlo_core::NewTicket {
+                title: "Protected".into(),
+                description: String::new(),
+                importance: 1,
+                column_id: None,
+            },
+        )
+        .unwrap();
+    let key = store.mint_api_key("Acceptance").unwrap();
+    let bearer = format!("Bearer {}", key["token"].as_str().unwrap());
+    let db = Arc::new(Mutex::new(store));
+    let app = router_shared(
+        db.clone(),
+        Policy::external("https://kanlo.example").unwrap(),
+    );
+    let command = json!({"kind":"batch","commands":[{"kind":"patch_ticket","id":ticket.id,"base_revision":ticket.revision,"fields":{"importance":200}}]});
+    let body = json!({"command":command,"base_context":[null]});
+    assert_eq!(
+        request(
+            app.clone(),
+            "POST",
+            "/api/v1/commands/preview",
+            &[
+                ("Host", "kanlo.example"),
+                ("Origin", "https://kanlo.example")
+            ],
+            body.clone()
+        )
+        .await
+        .status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let headers = [
+        ("Host", "kanlo.example"),
+        ("Authorization", bearer.as_str()),
+    ];
+    let preview = json_body(
+        request(
+            app.clone(),
+            "POST",
+            "/api/v1/commands/preview",
+            &headers,
+            body,
+        )
+        .await,
+    )
+    .await;
+    let response = request(
+        app.clone(),
+        "POST",
+        "/api/v1/commands/confirm",
+        &headers,
+        json!({"token":preview["token"],"op_id":uuid::Uuid::new_v4(),"client_id":"security"}),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        db.lock().unwrap().ticket(&ticket.id).unwrap().importance,
+        200
+    );
+    let backup =
+        json_body(request(app.clone(), "POST", "/api/v1/backups", &headers, json!({})).await).await;
+    assert!(!backup.to_string().contains(key["token"].as_str().unwrap()));
+    let body = json!({"backup":backup,"boards":null});
+    assert_eq!(
+        request(
+            app.clone(),
+            "POST",
+            "/api/v1/backups/restore/preview",
+            &[
+                ("Host", "kanlo.example"),
+                ("Origin", "https://kanlo.example")
+            ],
+            body.clone()
+        )
+        .await
+        .status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let preview = json_body(
+        request(
+            app.clone(),
+            "POST",
+            "/api/v1/backups/restore/preview",
+            &headers,
+            body,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        request(
+            app.clone(),
+            "POST",
+            "/api/v1/recovery/confirm",
+            &headers,
+            json!({"token":preview["token"],"op_id":uuid::Uuid::new_v4(),"client_id":"security"})
+        )
+        .await
+        .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        request(app, "GET", "/api/v1/bootstrap", &headers, Value::Null)
+            .await
+            .status(),
+        StatusCode::UNAUTHORIZED
+    );
+}
+
+#[tokio::test]
 async fn lan_peer_check_uses_socket_peer_and_login_is_rate_limited() {
     let db = Arc::new(Mutex::new(Store::open(":memory:").unwrap()));
     let app = router_shared(

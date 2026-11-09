@@ -66,6 +66,106 @@ pub fn parse_package<T: serde::de::DeserializeOwned>(input: &str) -> Result<T> {
 }
 
 impl Store {
+    pub fn undo_through_preview(
+        &mut self,
+        board: &str,
+        through: i64,
+        expected_revision: i64,
+    ) -> Result<RecoveryPreview> {
+        let history = self.undo_history(board)?;
+        let count = history
+            .iter()
+            .position(|entry| entry["id"].as_i64() == Some(through))
+            .ok_or(Error::NotFound)?
+            + 1;
+        // The revision supplied with the history prevents a newly inserted group changing this selection.
+        self.undo_preview(board, count, expected_revision)
+    }
+    pub fn undo_preview(
+        &mut self,
+        board: &str,
+        count: usize,
+        expected_revision: i64,
+    ) -> Result<RecoveryPreview> {
+        if count == 0 || count > 1000 {
+            return Err(Error::Validation("Choose 1–1000 undo groups".into()));
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(storage)?;
+        if revision(&tx)? != expected_revision {
+            return Err(Error::Conflict("State changed before undo preview".into()));
+        }
+        let before = records::load(&tx)?;
+        if before
+            .board_options
+            .get(board)
+            .is_none_or(|o| o.undo_depth == 0)
+        {
+            return Err(Error::Conflict("Undo disabled".into()));
+        }
+        let mut query=tx.prepare("SELECT g.sequence,g.changes FROM undo_groups g JOIN undo_boards b ON b.sequence=g.sequence WHERE b.board_id=?1 ORDER BY g.sequence DESC LIMIT ?2").map_err(storage)?;
+        let groups = query
+            .query_map(params![board, count as i64], |r| {
+                Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+            })
+            .map_err(storage)?
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(storage)?;
+        if groups.len() != count {
+            return Err(Error::NotFound);
+        }
+        let mut current = records::to_records(&before)?;
+        let mut affected = BTreeSet::new();
+        for (_, encoded) in &groups {
+            let changes: Vec<RecordChange> = decode(encoded)?;
+            for change in changes {
+                let key = (change.kind, change.id);
+                if !records::undo_equal(current.get(&key), change.after.as_ref()) {
+                    return Err(Error::Conflict(
+                        "A later change prevents a safe grouped undo".into(),
+                    ));
+                }
+                if key.0 == "ticket" {
+                    affected.insert(key.1.clone());
+                }
+                if let Some(record) = change.before {
+                    current.insert(key, record);
+                } else {
+                    current.remove(&key);
+                }
+            }
+        }
+        let mut after = records::from_records(&current)?;
+        preserve_registry(&before, &mut after);
+        for board in &mut after.boards {
+            if let Some(old) = before.boards.iter().find(|b| b.id == board.id) {
+                board.revision = old.revision + 1;
+            }
+        }
+        for ticket in &mut after.tickets {
+            if affected.contains(&ticket.id) {
+                ticket.revision = before
+                    .find_ticket(&ticket.id)
+                    .map_or(ticket.revision + 1, |t| t.revision + 1);
+                ticket.details.updated_at = engine::now();
+            }
+        }
+        after.validate()?;
+        let sequences: Vec<_> = groups.iter().map(|g| g.0).collect();
+        let summary = json!({"undo_groups":count,"affected_tickets":affected,"board_id":board,"through_id":sequences.last()});
+        let preview = save_preview(
+            &tx,
+            "undo",
+            &after,
+            &json!({"sequences":sequences}),
+            summary,
+        )?;
+        drop(query);
+        tx.commit().map_err(storage)?;
+        Ok(preview)
+    }
     pub fn export_board(&self, board_id: &str) -> Result<BoardExport> {
         let source = self.workspace()?;
         if !source.boards.iter().any(|b| b.id == board_id) {
@@ -226,15 +326,28 @@ impl Store {
             )
             .map_err(storage)?;
         }
+        let previous_revision = revision(&tx)?;
         commit_state(
             &tx,
             &before,
             &after,
             &result,
             &purpose,
-            purpose != "restore",
+            purpose != "restore" && purpose != "undo",
         )?;
+        if purpose == "undo" {
+            let payload: Value = decode(&payload)?;
+            let sequences: Vec<i64> =
+                serde_json::from_value(payload["sequences"].clone()).map_err(|_| Error::Storage)?;
+            for sequence in sequences {
+                tx.execute("DELETE FROM undo_groups WHERE sequence=?1", [sequence])
+                    .map_err(storage)?;
+            }
+        }
         if purpose == "restore" {
+            if revision(&tx)? == previous_revision {
+                tx.execute("UPDATE metadata SET value=CAST(CAST(value AS INTEGER)+1 AS TEXT) WHERE key='revision'",[]).map_err(storage)?;
+            }
             let payload: Value = decode(&payload)?;
             let backup: Backup =
                 serde_json::from_value(payload["backup"].clone()).map_err(|_| Error::Storage)?;
@@ -278,6 +391,7 @@ impl Store {
             tx.execute("DELETE FROM api_keys", []).map_err(storage)?;
             tx.execute("DELETE FROM temp_mappings", [])
                 .map_err(storage)?;
+            tx.execute("INSERT INTO event_stream(payload,created_at) VALUES (?1,?2)",params![encode(&json!({"revision":revision(&tx)?,"epoch":identity(&tx)?.1,"boards":after.boards.iter().map(|b|b.id.clone()).collect::<Vec<_>>(),"affected":result.affected,"restored":true}))?,engine::now()]).map_err(storage)?;
         }
         tx.execute("DELETE FROM recovery_previews WHERE token=?1", [token])
             .map_err(storage)?;
@@ -286,6 +400,8 @@ impl Store {
             revision: revision(&tx)?,
             result,
             temp_ids: BTreeMap::new(),
+            changes: entity_changes(&before, &after)?,
+            epoch: identity(&tx)?.1,
         };
         save_receipt(&tx, op_id, client_id, &request, &response)?;
         tx.commit().map_err(storage)?;

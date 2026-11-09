@@ -110,7 +110,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         listener.local_addr()?
     );
     let mut servers = tokio::task::JoinSet::new();
-    let local = kanlo_api::router_shared(db.clone(), kanlo_api::ingress::Policy::lan(hosts));
+    let local = kanlo_api::router_shared(db.clone(), kanlo_api::ingress::Policy::lan(hosts))
+        .layer(axum::Extension(since.clone()));
     let local_stop = since.clone();
     servers.spawn(async move {
         axum::serve(
@@ -126,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "Kanlo protected proxy ingress listening on {}",
             listener.local_addr()?
         );
-        let app = kanlo_api::router_shared(db, policy);
+        let app = kanlo_api::router_shared(db, policy).layer(axum::Extension(since.clone()));
         let external_stop = since.clone();
         servers.spawn(async move {
             axum::serve(

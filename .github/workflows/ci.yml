@@ -22,7 +22,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --check web/app.js
+      - run: npm ci --prefix web
+      - run: npm run build --prefix web
+      - run: git diff --exit-code -- crates/kanlo-api/assets
       - run: npm ci --prefix tests/browser
       - run: npx --prefix tests/browser playwright install --with-deps chromium --only-shell
       - run: npm test --prefix tests/browser
@@ -69,8 +71,10 @@ jobs:
               export CC="$CC_TARGET"
               export "CARGO_TARGET_${TARGET_KEY}_LINKER=$CC_TARGET"
               cargo build --workspace --locked --release --target "$TARGET"
+              cargo build --workspace --locked --target "$TARGET"
               mkdir -p artifacts
               cp "target/$TARGET/release/kanlo-server" "artifacts/kanlo-server-$TARGET"
+              cp "target/$TARGET/debug/kanlo-server" "artifacts/kanlo-server-debug-$TARGET"
               file "artifacts/kanlo-server-$TARGET"
               sha256sum "artifacts/kanlo-server-$TARGET" > "artifacts/kanlo-server-$TARGET.sha256"
               if [ "$TARGET" = x86_64-unknown-linux-gnu ]; then
@@ -81,3 +85,12 @@ jobs:
         with:
           name: kanlo-dev-${{ matrix.arch }}
           path: artifacts/*
+
+  headless:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f packaging/tests/Dockerfile -t kanlo-validation:debian13 .
+      - run: docker run --rm -v "$PWD:/src" -v kanlo-build:/build kanlo-validation:debian13 sh scripts/debian-validate.sh
+      - name: No network or display, private data, restart and event-stream shutdown
+        run: docker run --rm --network none --user kanlo --cap-drop ALL -v "$PWD/artifacts:/artifacts:ro" -v "$PWD/packaging/tests:/tests:ro" kanlo-validation:debian13 python3 /tests/headless.py

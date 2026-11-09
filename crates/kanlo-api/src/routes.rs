@@ -28,6 +28,7 @@ pub fn routes() -> Router<Database> {
         .route("/api/v1/backups/safety", get(safety))
         .route("/api/v1/backups/safety/{id}", get(safety_backup))
         .route("/api/v1/sync/handshake", get(handshake))
+        .route("/api/v1/sync/receipts/{id}", get(receipt))
         .route("/api/v1/sync/patch", post(sync_patch))
         .route("/api/v1/sync/create", post(sync_create))
         .route("/api/v1/sync/comment", post(sync_comment))
@@ -50,7 +51,7 @@ async fn snapshot(
     State(db): State<Database>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, ApiError> {
-    Ok(Json(database(db,move|db|{let export=db.export_board(&id)?;let state=db.workspace()?;Ok(json!({"workspace":export.workspace,"external_references":export.external_references,"revision":db.revision()?,"view_states":state.views,"settings":state.settings,"epoch":db.identity()?.1}))}).await?))
+    Ok(Json(database(db,move|db|{let mut export=db.export_board(&id)?;let state=db.workspace()?;export.workspace.settings=state.settings.clone();export.workspace.views=state.views.clone();export.workspace.types=state.types.clone();export.workspace.labels=state.labels.clone();let external:Vec<_>=export.external_references.iter().map(|reference|{let ticket=state.find_ticket(&reference.id)?;Ok(json!({"id":reference.id,"public_id":reference.public_id,"done":ticket.done,"trashed":ticket.details.trashed}))}).collect::<kanlo_core::Result<_>>()?;Ok(json!({"workspace":export.workspace,"external_references":external,"revision":db.revision()?,"view_states":state.views,"settings":state.settings,"epoch":db.identity()?.1}))}).await?))
 }
 async fn command(
     State(db): State<Database>,
@@ -60,9 +61,21 @@ async fn command(
 }
 async fn preview(
     State(db): State<Database>,
-    Json(body): Json<kanlo_core::Command>,
+    Json(body): Json<PreviewRequest>,
 ) -> Result<Json<kanlo_db::Preview>, ApiError> {
-    Ok(Json(database(db, move |db| db.preview(body)).await?))
+    Ok(Json(
+        database(db, move |db| {
+            db.preview_checked(body.command, body.base_context)
+        })
+        .await?,
+    ))
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PreviewRequest {
+    command: kanlo_core::Command,
+    #[serde(default)]
+    base_context: Value,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -101,6 +114,7 @@ struct EventQuery {
 async fn events(
     State(db): State<Database>,
     Query(query): Query<EventQuery>,
+    stop: Option<axum::Extension<tokio::sync::watch::Receiver<bool>>>,
     headers: axum::http::HeaderMap,
 ) -> Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>> {
     let key = headers
@@ -114,7 +128,8 @@ async fn events(
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.parse().ok())
         .unwrap_or(query.after);
-    let stream = async_stream::stream! {loop{let current=cursor;let key=key.clone();let token=token.clone();match database(db.clone(),move|db|{if let Some(key)=key{db.authorize_key(&key)?;}else if let Some(token)=token{db.authorize_session(&token,None,false)?;}db.events(current,1000)}).await{Ok(events)=>{for event in events{cursor=event["id"].as_i64().unwrap_or(cursor);yield Ok(Event::default().id(cursor.to_string()).event("change").data(event["data"].to_string()));}},Err(_)=>{yield Ok(Event::default().event("auth_expired").data("Authentication required"));break}}tokio::time::sleep(std::time::Duration::from_secs(2)).await;}};
+    let mut stop = stop.map(|extension| extension.0);
+    let stream = async_stream::stream! {loop{if stop.as_ref().is_some_and(|receiver|*receiver.borrow()){break;}let current=cursor;let key=key.clone();let token=token.clone();match database(db.clone(),move|db|{if let Some(key)=key{db.authorize_key(&key)?;}else if let Some(token)=token{db.authorize_session(&token,None,false)?;}db.events(current,1000)}).await{Ok(events)=>{for event in events{cursor=event["id"].as_i64().unwrap_or(cursor);yield Ok(Event::default().id(cursor.to_string()).event("change").data(event["data"].to_string()));}},Err(_)=>{yield Ok(Event::default().event("auth_expired").data("Authentication required"));break}}if let Some(receiver)=stop.as_mut(){tokio::select!{_=receiver.changed()=>break,_=tokio::time::sleep(std::time::Duration::from_secs(2))=>{}}}else{tokio::time::sleep(std::time::Duration::from_secs(2)).await;}}};
     Sse::new(stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
 }
 #[derive(Deserialize)]
@@ -144,14 +159,27 @@ async fn history(
 #[serde(deny_unknown_fields)]
 struct UndoRequest {
     revision: i64,
+    through_id: Option<i64>,
+    #[serde(default = "one")]
+    count: usize,
+}
+fn one() -> usize {
+    1
 }
 async fn undo(
     State(db): State<Database>,
     Path(id): Path<String>,
     Json(body): Json<UndoRequest>,
-) -> Result<Json<kanlo_core::ChangeResult>, ApiError> {
+) -> Result<Json<kanlo_db::recovery::RecoveryPreview>, ApiError> {
     Ok(Json(
-        database(db, move |db| db.undo(&id, body.revision)).await?,
+        database(db, move |db| {
+            if let Some(through) = body.through_id {
+                db.undo_through_preview(&id, through, body.revision)
+            } else {
+                db.undo_preview(&id, body.count, body.revision)
+            }
+        })
+        .await?,
     ))
 }
 async fn export_json(
@@ -259,6 +287,23 @@ async fn sync_patch(
     Json(body): Json<kanlo_core::sync::Operation>,
 ) -> Result<Json<kanlo_db::synchronization::SyncResponse>, ApiError> {
     Ok(Json(database(db, move |db| db.sync_patch(body)).await?))
+}
+#[derive(Deserialize)]
+struct ReceiptQuery {
+    client_id: String,
+}
+async fn receipt(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+    Query(query): Query<ReceiptQuery>,
+) -> Result<Json<kanlo_db::Receipt>, ApiError> {
+    Ok(Json(
+        database(db, move |db| {
+            db.lookup_receipt(&id, &query.client_id)?
+                .ok_or(Error::NotFound)
+        })
+        .await?,
+    ))
 }
 async fn sync_create(
     State(db): State<Database>,

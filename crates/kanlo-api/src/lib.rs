@@ -56,14 +56,14 @@ pub fn router_shared(db: Database, policy: ingress::Policy) -> Router {
     Router::new()
         .route(
             "/",
-            get(|| async { Html(include_str!("../../../web/index.html")) }),
+            get(|| async { Html(include_str!("../assets/index.html")) }),
         )
         .route(
             "/app.js",
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-                    include_str!("../../../web/app.js"),
+                    include_str!("../assets/app.js"),
                 )
             }),
         )
@@ -72,11 +72,44 @@ pub fn router_shared(db: Database, policy: ingress::Policy) -> Router {
             get(|| async {
                 (
                     [(header::CONTENT_TYPE, "text/css; charset=utf-8")],
-                    include_str!("../../../web/style.css"),
+                    include_str!("../assets/style.css"),
                 )
             }),
         )
         .route("/api/v1/health", get(health))
+        .route(
+            "/sw.js",
+            get(|| async {
+                (
+                    [
+                        (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
+                        (
+                            header::HeaderName::from_static("service-worker-allowed"),
+                            "/",
+                        ),
+                    ],
+                    include_str!("../assets/sw.js"),
+                )
+            }),
+        )
+        .route(
+            "/manifest.webmanifest",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "application/manifest+json")],
+                    include_str!("../assets/manifest.webmanifest"),
+                )
+            }),
+        )
+        .route(
+            "/icon.svg",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "image/svg+xml")],
+                    include_str!("../assets/icon.svg"),
+                )
+            }),
+        )
         .route("/api/v1/boards", get(boards).post(create_board))
         .route(
             "/api/v1/boards/{id}/columns",
@@ -241,6 +274,7 @@ async fn legacy_write(
             })
     };
     let operation = kanlo_db::Mutation {
+        base_context: Value::Null,
         op_id: get("idempotency-key")?,
         client_id: get("x-kanlo-client")?,
         server_instance_id: get("x-kanlo-instance")?,
