@@ -28,7 +28,10 @@ jobs:
       - run: git diff --exit-code -- crates/kanlo-api/assets
       - run: npm ci --prefix tests/browser
       - run: npx --prefix tests/browser playwright install --with-deps chromium --only-shell
-      - run: npm test --prefix tests/browser
+      - name: Desktop acceptance with a fresh service instance
+        run: npm test --prefix tests/browser -- --project=desktop
+      - name: Mobile acceptance with a fresh service instance
+        run: npm test --prefix tests/browser -- --project=mobile
 
   debian-build:
     runs-on: ubuntu-latest

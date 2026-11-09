@@ -128,9 +128,9 @@ export async function closeDialog(dialog) {
     .click();
 }
 export async function resetLocale(request) {
-  const bootstrap = await (
-    await request.get(`${origin}/api/v1/bootstrap`)
-  ).json();
+  const response = await request.get(`${origin}/api/v1/bootstrap`);
+  expect(response.ok(), await response.text()).toBeTruthy();
+  const bootstrap = await response.json();
   if (
     bootstrap.settings.language !== "de" ||
     bootstrap.settings.theme !== "light"
