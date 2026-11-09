@@ -47,6 +47,13 @@ class Appliance(unittest.TestCase):
             self.assertRegex(profile['checksum'], r'^[0-9a-f]+$')
             self.assertEqual(len(profile['checksum']), 64 if profile['hash_algorithm'] == 'sha256' else 128)
 
+    def test_native_pagination_includes_backlog_and_every_ticket(self):
+        tickets = [{'id': str(i), 'column_id': None, 'details': {'trashed': False, 'archived': False, 'rank': i}} for i in range(31)]
+        pages = display.paginate({'columns': [], 'tickets': tickets}, 3, 4)
+        shown = [t['id'] for page in pages for _, group, _ in page for t in group]
+        self.assertEqual(shown, [str(i) for i in range(31)])
+        self.assertEqual(len(pages), 8)
+
     def test_builder_refuses_block_devices_and_files_outside_work(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory) / 'work'; work.mkdir()

@@ -97,7 +97,7 @@ def mounted(image, work, expand=False):
             run('umount', root)
             number = (Path('/sys/class/block') / Path(root_part['name']).name / 'partition').read_text().strip()
             run('parted', '--script', '--fix', loop, 'resizepart', number, '100%')
-            checked = subprocess.run(['e2fsck', '-p', root_part['name']])
+            checked = subprocess.run(['e2fsck', '-pf', root_part['name']])
             if checked.returncode not in (0, 1):
                 raise ValueError('Base root filesystem check failed')
             run('resize2fs', root_part['name'])

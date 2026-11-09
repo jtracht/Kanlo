@@ -30,7 +30,19 @@ def reader(updates, stop):
 
 def visible(workspace):
     columns = sorted(workspace.get('columns', []), key=lambda c: c['position'])
+    if any(t['column_id'] is None and not t['details']['trashed'] and not t['details']['archived'] for t in workspace.get('tickets', [])):
+        columns.insert(0, {'id': None, 'name': 'Backlog', 'position': -1})
     return [(column, sorted([t for t in workspace.get('tickets', []) if t['column_id'] == column['id'] and not t['details']['trashed'] and not t['details']['archived']], key=lambda t: t['details']['rank'])) for column in columns]
+
+
+def paginate(workspace, per_screen, rows):
+    columns = visible(workspace)
+    pages = []
+    for start in range(0, len(columns), per_screen):
+        group = columns[start:start + per_screen]
+        for offset in range(0, max(1, max(len(tickets) for _, tickets in group)), rows):
+            pages.append([(column, tickets[offset:offset + rows], len(tickets)) for column, tickets in group])
+    return pages
 
 
 def main():
@@ -51,7 +63,7 @@ def main():
     updates = queue.Queue(maxsize=0)
     stop = threading.Event()
     threading.Thread(target=reader, args=(updates, stop), daemon=True).start()
-    boards, active, page, online = [], 0, 0, False
+    boards, active, page, page_count, online = [], 0, 0, 1, False
     dirty, last_rotate, last_urls = True, time.monotonic(), ''
     def text(value, position, face=font, color='#e5e7eb', max_width=None):
         value = str(value)
@@ -83,7 +95,7 @@ def main():
                 last_urls = urls; dirty = True
             if time.monotonic() - last_rotate > 20:
                 page += 1
-                if page >= 4:
+                if page >= page_count:
                     page = 0; active += 1
                 dirty = True; last_rotate = time.monotonic()
             if not dirty:
@@ -104,16 +116,16 @@ def main():
                 columns = visible(workspace)
                 if columns:
                     per_screen = max(1, min(len(columns), width // round(280 * scale)))
-                    start = ((page // 2) * per_screen) % len(columns)
-                    selected = columns[start:start + per_screen]
                     column_width = (width - margin * 2) // per_screen
                     card_height = round(100 * scale)
                     rows = max(1, (height - round(210 * scale)) // card_height)
-                    for index, (column, tickets) in enumerate(selected):
+                    pages = paginate(workspace, per_screen, rows)
+                    page_count = len(pages)
+                    selected = pages[page % page_count]
+                    for index, (column, tickets, total) in enumerate(selected):
                         x = margin + index * column_width
-                        text(f"{column['name']} · {len(tickets)}", (x, round(100 * scale)), max_width=column_width - margin)
-                        offset = (page % 2 * rows) % max(1, len(tickets))
-                        for row, ticket in enumerate(tickets[offset:offset + rows]):
+                        text(f"{column['name']} · {total}", (x, round(100 * scale)), max_width=column_width - margin)
+                        for row, ticket in enumerate(tickets):
                             y = round(150 * scale) + row * card_height
                             pygame.draw.rect(screen, '#22313d', (x, y, column_width - 12, card_height - 10), border_radius=8)
                             text(ticket['public_id'], (x + 10, y + 8), small, '#67e8c9')
