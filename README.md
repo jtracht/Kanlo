@@ -1,7 +1,7 @@
 # Kanlo
 
 Lokales Kanban für ein Debian-/Raspberry-Pi-Gerät mit einer Weboberfläche und
-geplanter nativer TV-Anzeige. **Entwicklungsversion 0.1.0-dev.1, kein Stable-Release.**
+nativer Geräteanzeige. **Entwicklungsversion 0.2.0-dev.1, kein Stable-Release.**
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Den belegten
@@ -12,6 +12,12 @@ Weboberfläche für AMD64, ARM64 und armhf. Installation:
 [Deutsch](release/INSTALL-DE.md), [English](release/INSTALL-EN.md).
 [Release-Ablauf](docs/de/RELEASES.md): Ein passender Versions-Tag startet alle
 Prüfungen und erstellt danach automatisch einen Release mit Prüfsummen.
+
+Dedizierte Geräte-Images für Raspberry Pi (ARM32/ARM64) und allgemeine UEFI-
+Geräte (AMD64/ARM64): [Einrichtung und Hardwaregrenzen](release/IMAGES-DE.md),
+[English](release/IMAGES-EN.md). Die Pipeline baut alle vier `.img.xz`-Varianten
+mit Kanlo-Autostart, lokaler Einrichtung und erster nativer Boardanzeige.
+Veröffentlichung verlangt zwei erfolgreiche Kernel-/systemd-Boots je Image.
 
 ## Starten
 

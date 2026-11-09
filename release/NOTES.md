@@ -1,6 +1,22 @@
-# Kanlo 0.1.0-dev.1
+# Kanlo 0.2.0-dev.1
 
-Erster privater Entwicklungsrelease / First private development prerelease.
+Private Geräte-Images / Private appliance development release.
+
+## Geräte-Images / Appliance images
+
+Vier flashbare `.img.xz`-Varianten: `rpi-armhf`, `rpi-arm64`, `generic-amd64`
+und `generic-arm64`. Raspberry Pi OS Lite 13 bzw. Debian 13, vollständiger
+Kanlo-Server mit eingebetteter Weboberfläche, automatischer Start, eigene
+Dienstkonten, DHCP/mDNS und native SDL/Wayland-Boardanzeige ohne Chromium.
+Ersteinrichtung lokal mit Ctrl+Alt+F2 oder `KANLO_CONFIG.json` auf der FAT-
+Bootpartition. Keine gemeinsamen Kennwörter; SSH erst nach Public-Key-Einrichtung.
+Automatische Dateisystemerweiterung, begrenzte flüchtige Logs und ZRAM.
+
+Each image must pass two QEMU kernel/systemd boots, a real ticket write, reboot
+persistence, server restart, private storage, provisioning, root expansion and
+SQLite integrity checks. `.image.json` records the pinned upstream base,
+installed OS packages, source commit, checksum and emulator evidence.
+Read `IMAGES-DE.md` / `IMAGES-EN.md` for compatible hardware and flashing/setup.
 
 ## Enthalten / Included
 
@@ -16,16 +32,18 @@ Erster privater Entwicklungsrelease / First private development prerelease.
 
 ## Grenzen / Known limits
 
-Entwicklungsversion, kein Stable 1.0. Native TV-Anzeige, Kiosk/Display-Setup,
-OS-Images/Updater, vollständiges OpenAPI/MCP/ChatGPT und physische Pi-/SSD-
-Abnahmen fehlen. ARM-Cross-Builds sind kein Hardwareleistungsnachweis.
+Entwicklungsversion, kein Stable 1.0. Die native Anzeige ist eine erste passive
+Boardansicht; vollständige TV-Detailoverlays/Markdown/Statistik/Steuerung, Updater,
+vollständiges OpenAPI/MCP/ChatGPT und physische Pi-/SSD-Abnahmen bleiben offen.
+QEMU-Boots sind kein realer Hardware-/HDMI-/WLAN-Leistungsnachweis.
 Die vorhandene Lizenzdatei erteilt keine öffentliche Nutzungslizenz; dieser
 Release bleibt im privaten Repository. Öffentliche Verteilung erfordert die
 noch ausstehende Lizenz-/Markenfreigabe.
 
-Development prerelease, not stable 1.0. Native TV/kiosk/display setup, OS images,
-updater, complete OpenAPI/MCP/ChatGPT and physical Pi/SSD acceptance remain open.
-Cross-compilation does not certify device performance. The current LICENSE does
+Development prerelease, not stable 1.0. The native display provides initial
+read-only boards; full TV overlays/Markdown/statistics/control, the updater,
+complete OpenAPI/MCP/ChatGPT and physical Pi/SSD acceptance remain open.
+Emulated boots do not certify physical device performance. The current LICENSE does
 not grant public distribution rights; this release stays private pending owner
 licensing and trademark clearance.
 

@@ -22,9 +22,16 @@ bleibt privat; die ausstehende Lizenzfreigabe wird nicht ersetzt.
 3. Der Headless-Job lädt das hochgeladene AMD64-Paket herunter und startet die
    enthaltene Release-Binärdatei ohne Netzwerk/Display, als unprivilegierter
    Nutzer. Version, Neustart, SIGTERM mit SSE und Datenintegrität werden geprüft.
+   Zusätzlich baut die Image-Matrix vier Geräte-Images und bootet pro Variante
+   eine getrennte Testkopie zweimal unter QEMU: Erstkonfiguration, Expansion,
+   Dienste, Dateirechte, ein geschriebenes Ticket nach Reboot und SQLite-
+   Integrität müssen erfolgreich sein. Native SDL/Wayland-Ausgabe wird getrennt
+   ohne Netzwerk auf einem headless Compositor geprüft. Hardwareabnahme bleibt
+   separat. Details: [Geräte-Images](../../release/IMAGES-DE.md).
 4. Erst nach allen erfolgreichen Jobs erzeugt die Veröffentlichung ein
    Quellarchiv, Manifest und `SHA256SUMS`, prüft alle Plattformpakete und lädt
-   die sechs Anhänge zunächst in einen Entwurf.
+   die 14 Anhänge zunächst in einen Entwurf: drei Serverpakete, vier Images,
+   vier Image-Nachweise mit OS-Paketlisten, Quellarchiv, Manifest und Prüfsummen.
 5. Jeder Upload wird erneut heruntergeladen und verglichen. Erst dann wird der
    Entwurf veröffentlicht. Ein Fehler lässt ihn unveröffentlicht. Wiederholung
    ergänzt passende Anhänge; abweichende vorhandene Dateien werden abgewiesen.

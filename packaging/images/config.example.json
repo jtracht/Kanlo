@@ -1,0 +1,7 @@
+{
+  "hostname": "kanlo",
+  "timezone": "Europe/Berlin",
+  "display": true,
+  "wifi": null,
+  "ssh_authorized_key": null
+}

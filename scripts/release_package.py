@@ -28,6 +28,39 @@ def git(*args):
     return subprocess.check_output(['git', *args], cwd=ROOT).decode().strip()
 
 
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(4 * 1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def image_files(output, commit):
+    profiles = json.loads((ROOT / 'packaging/images/bases.json').read_text())['profiles']
+    files, images = [], []
+    for profile, base in sorted(profiles.items()):
+        prefix = f'kanlo-{version()}-{profile}'
+        image = output / (prefix + '.img.xz')
+        evidence = output / (prefix + '.image.json')
+        if image.is_symlink() or evidence.is_symlink():
+            raise ValueError('Image inputs must be regular files')
+        report = json.loads(evidence.read_text())
+        boot = report.get('boot_test', {})
+        if report.get('source_commit') != commit or report.get('version') != version() or report.get('profile') != profile or report.get('base') != base or report.get('image') != image.name:
+            raise ValueError('Image provenance/version/base mismatch')
+        if boot.get('status') != 'passed' or [b.get('phase') for b in boot.get('boots', [])] != ['firstboot', 'reboot'] or any(b.get('sqlite_integrity') != 'ok' or not b.get('root_expanded') for b in boot['boots']):
+            raise ValueError('Two successful image boots are required')
+        with image.open('rb') as stream:
+            if stream.read(6) != b'\xfd7zXZ\x00':
+                raise ValueError('Expected an XZ-compressed raw disk image')
+        if image.stat().st_size >= 2**31 or file_sha256(image) != report.get('sha256'):
+            raise ValueError('Image checksum/asset size mismatch')
+        files.extend([image, evidence])
+        images.append({k: v for k, v in report.items() if k != 'packages'} | {'evidence': evidence.name})
+    return files, images
+
+
 def validate_tag(tag):
     match = TAG.fullmatch(tag)
     if not match or tag != f'v{version()}':
@@ -86,6 +119,7 @@ def package(binary, target, output):
     paths = {
         'LICENSE': 'LICENSE', 'NOTICE': 'NOTICE', 'CHANGELOG.md': 'CHANGELOG.md',
         'release/NOTES.md': 'RELEASE-NOTES.md', 'release/INSTALL-DE.md': 'INSTALL-DE.md', 'release/INSTALL-EN.md': 'INSTALL-EN.md',
+        'release/IMAGES-DE.md': 'IMAGES-DE.md', 'release/IMAGES-EN.md': 'IMAGES-EN.md',
         'docs/de/BETRIEB.md': 'docs/de/BETRIEB.md', 'docs/en/README.md': 'docs/en/README.md',
         'packaging/systemd/kanlo-server.service': 'systemd/kanlo-server.service', 'packaging/sysusers.d/kanlo.conf': 'sysusers.d/kanlo.conf',
     }
@@ -126,15 +160,16 @@ def bundle(output, tag):
     commit = git('rev-parse', 'HEAD')
     if len(builds) != 3 or {b['target'] for b in builds} != set(TARGETS) or any(b['source_commit'] != commit for b in builds):
         raise ValueError('Exactly three packages from this commit are required')
+    image_assets, images = image_files(output, commit)
     epoch = int(git('log', '-1', '--format=%ct'))
     source = output / f'kanlo-{version()}-source.tar.gz'
     raw = subprocess.check_output(['git', 'archive', '--format=tar', f'--prefix=kanlo-{version()}-source/', 'HEAD'], cwd=ROOT)
     with source.open('wb') as stream, gzip.GzipFile(fileobj=stream, mode='wb', filename='', mtime=epoch) as compressed:
         compressed.write(raw)
     manifest = output / 'release-manifest.json'
-    manifest.write_text(json.dumps({'schema_version': 1, 'tag': tag, 'source_commit': commit, 'prerelease': '-' in tag, 'platforms': builds}, indent=2) + '\n')
-    files = [*packages, source, manifest]
-    (output / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n' for path in sorted(files)))
+    manifest.write_text(json.dumps({'schema_version': 2, 'tag': tag, 'source_commit': commit, 'prerelease': '-' in tag, 'platforms': builds, 'images': images}, indent=2) + '\n')
+    files = [*packages, *image_assets, source, manifest]
+    (output / 'SHA256SUMS').write_text(''.join(f'{file_sha256(path)}  {path.name}\n' for path in sorted(files)))
     return files
 
 

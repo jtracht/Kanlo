@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import lzma
 import os
 from pathlib import Path
 import sys
@@ -68,8 +69,14 @@ class Packages(unittest.TestCase):
                 executable.write_bytes(binary(target))
                 package.package(executable, target, directory)
             tag = 'v' + package.version()
+            profiles = json.loads((package.ROOT / 'packaging/images/bases.json').read_text())['profiles']
+            for profile, base in profiles.items():
+                image = directory / f'kanlo-{package.version()}-{profile}.img.xz'
+                image.write_bytes(lzma.compress(b'fixture image, not boot evidence'))
+                evidence = image.with_name(f'kanlo-{package.version()}-{profile}.image.json')
+                evidence.write_text(json.dumps({'profile': profile, 'version': package.version(), 'source_commit': package.git('rev-parse', 'HEAD'), 'base': base, 'image': image.name, 'sha256': package.file_sha256(image), 'boot_test': {'status': 'passed', 'boots': [{'phase': phase, 'sqlite_integrity': 'ok', 'root_expanded': True} for phase in ['firstboot', 'reboot']]}}))
             package.bundle(directory, tag)
-            self.assertEqual(len(publisher.checked_files(directory, tag)), 6)
+            self.assertEqual(len(publisher.checked_files(directory, tag)), 14)
             archive = next(directory.glob('*-linux-amd64.tar.gz'))
             archive.write_bytes(archive.read_bytes() + b'tampered')
             with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
@@ -123,8 +130,9 @@ class FakeAPI:
         self.assets.append(asset); self.contents[asset['id']] = path.read_bytes()
         return asset
 
-    def download(self, release, asset):
-        return self.contents[asset['id']]
+    def download(self, release, asset, digest=False):
+        data = self.contents[asset['id']]
+        return hashlib.sha256(data).digest() if digest else data
 
 
 class Publication(unittest.TestCase):

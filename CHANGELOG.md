@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0-dev.1
+
+- Vier dedizierte, automatisch gebaute Geräte-Images: Raspberry Pi ARM32/ARM64
+  und allgemeine AMD64-/ARM64-UEFI-Geräte, mit gepinnten offiziellen OS-Basen.
+- Kanlo-Autostart, separate native SDL/Wayland-Boardanzeige, Headless-/Hotplug-
+  Betrieb, lokaler Einrichtungsdialog und gerätespezifische Bootkonfiguration.
+- DHCP/mDNS, exakte LAN-Hosts, keine gemeinsamen Passwörter, SSH erst mit eigenem
+  Public Key, automatische Speichererweiterung, begrenzte Logs und ZRAM.
+- Image-Veröffentlichung verlangt Erststart/Reboot, persistierte Testtickets,
+  Dienste-Neustart, private Dateirechte und SQLite-Integrität auf einer isolierten
+  Testkopie; OS-Paketlisten, Basis-/Quellstand und Prüfsummen liegen bei.
+- Große Release-Anhänge werden mit begrenztem Speicherverbrauch übertragen und
+  erneut heruntergeladen/geprüft. Alte Releases und Tags bleiben unverändert.
+
 ## 0.1.0-dev.1 — first private development prerelease
 
 - Deliver the transactional domain, editable DE/EN web app, durable offline

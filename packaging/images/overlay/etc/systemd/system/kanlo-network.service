@@ -1,0 +1,15 @@
+[Unit]
+Description=Refresh exact Kanlo LAN authorities
+After=NetworkManager.service kanlo-firstboot.service
+Before=kanlo-server.service
+Requires=kanlo-firstboot.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/lib/kanlo/appliance.py network
+RuntimeDirectory=kanlo-network
+RuntimeDirectoryMode=0755
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

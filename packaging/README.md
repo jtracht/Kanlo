@@ -14,6 +14,9 @@ user with no network or display, including restart, private storage and
 open-stream shutdown. Docker is used only for validation; the Kanlo runtime has
 no Docker dependency. See [release automation](../docs/de/RELEASES.md).
 
-Do not enable a TV service until a native renderer exists. No install.sh, flash
-image or automated update/rollback is represented as ready. Cross builds do not
-certify physical ARM devices. The release pipeline does not close those gates.
+`images/` builds dedicated Raspberry Pi ARM32/ARM64 and generic UEFI AMD64/ARM64
+appliances, including an initial native read-only SDL/Wayland board viewer.
+See [image setup and limits](../release/IMAGES-EN.md). Two real QEMU boots of an
+isolated image copy are required before release. Physical hardware acceptance,
+the complete TV feature set, install.sh and automated update/rollback remain
+open; successful image automation does not close those gates.
