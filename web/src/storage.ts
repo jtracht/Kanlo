@@ -358,6 +358,35 @@ export async function acknowledge(
   receipt: Receipt,
 ) {
   const transaction = (await db).transaction(stores, "readwrite");
+  const current = (await transaction
+    .objectStore("meta")
+    .get("server_bootstrap")) as Bootstrap | undefined;
+  const priorInstance = entry.body.server_instance_id;
+  if (
+    current &&
+    ((typeof priorInstance === "string" &&
+      priorInstance !== current.instance_id) ||
+      (receipt.epoch &&
+        receipt.epoch !== current.epoch &&
+        receipt.revision <= current.revision))
+  ) {
+    if (entry.seq !== undefined) {
+      const queued = await transaction.objectStore("queue").get(entry.seq);
+      if (queued?.op_id === entry.op_id)
+        await transaction
+          .objectStore("queue")
+          .put({
+            ...queued,
+            state: "epoch_review",
+            message:
+              "Bestätigung gehört zu einem älteren Serverstand / Acknowledgment belongs to an older server snapshot",
+          });
+    }
+    await rebuild(transaction);
+    await transaction.done;
+    changed();
+    return false;
+  }
   if (entry.seq !== undefined)
     await transaction.objectStore("queue").delete(entry.seq);
   if (Object.keys(mapping).length) {
@@ -385,9 +414,12 @@ export async function acknowledge(
     .objectStore("meta")
     .get("server_bootstrap")) as Bootstrap | undefined;
   if (metadata) {
-    for (const change of receipt.changes ?? []) applyMetadata(metadata, change);
-    metadata.revision = receipt.revision;
-    if (receipt.epoch) metadata.epoch = receipt.epoch;
+    if (receipt.revision >= metadata.revision) {
+      for (const change of receipt.changes ?? [])
+        applyMetadata(metadata, change);
+      metadata.revision = receipt.revision;
+      if (receipt.epoch) metadata.epoch = receipt.epoch;
+    }
     await transaction.objectStore("meta").put(metadata, "server_bootstrap");
     const snapshots = await transaction.objectStore("bases").getAll();
     if (
@@ -427,6 +459,7 @@ export async function acknowledge(
     for (const snapshot of snapshots) {
       const id = snapshot.workspace.boards[0]?.id;
       if (!id) continue;
+      if (snapshot.revision > receipt.revision) continue;
       for (const change of receipt.changes ?? []) applyChange(snapshot, change);
       snapshot.revision = receipt.revision;
       if (receipt.epoch) snapshot.epoch = receipt.epoch;
@@ -438,6 +471,7 @@ export async function acknowledge(
   await rebuild(transaction);
   await transaction.done;
   changed(mapping);
+  return true;
 }
 export async function claimLease(owner: string) {
   const transaction = (await db).transaction("meta", "readwrite");

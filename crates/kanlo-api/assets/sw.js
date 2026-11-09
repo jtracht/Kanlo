@@ -1,4 +1,4 @@
-const CACHE = 'kanlo-shell-fc7bcd7ae3287892';
+const CACHE = 'kanlo-shell-ed6db45c1c2b51bf';
 const SHELL = ['/', '/app.js', '/style.css', '/manifest.webmanifest', '/icon.svg'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -104,6 +104,20 @@ export async function loadBoard(id: string): Promise<Snapshot> {
     const snapshot = await api<Snapshot>(
       `/boards/${encodeURIComponent(id)}/snapshot`,
     );
+    // A lost creation response may already be represented in this snapshot.
+    // Resolve its durable receipt before projecting a second temporary card.
+    for (const entry of await storage.queue())
+      if (entry.endpoint === "/sync/create" && entry.board_id === id) {
+        try {
+          const receipt = await api<Receipt>(
+            `/sync/receipts/${entry.op_id}?client_id=${encodeURIComponent(String(entry.body.client_id))}`,
+          );
+          await storage.acknowledge(entry, receipt.temp_ids, receipt);
+        } catch (error) {
+          if (!(error instanceof HttpError && error.status === 404))
+            throw error;
+        }
+      }
     await storage.storeSnapshot(id, snapshot);
     return (await storage.boardCache(id))!;
   } catch (error) {
@@ -332,7 +346,7 @@ async function synchronize(useLease = true) {
         const mapping = { ...receipt.temp_ids };
         if (entry.action.local_id && receipt.result.entity_id)
           mapping[String(entry.action.local_id)] = receipt.result.entity_id;
-        await storage.acknowledge(entry, mapping, receipt);
+        if (!(await storage.acknowledge(entry, mapping, receipt))) break;
         acknowledged = true;
         window.dispatchEvent(
           new CustomEvent("kanlo:receipt", { detail: receipt }),
