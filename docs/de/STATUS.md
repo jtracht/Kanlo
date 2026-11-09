@@ -1,5 +1,11 @@
 # Entwicklungsstand — 9. November 2026
 
+**50 % des ursprünglichen Aufgabenbestands abgenommen: 35 von 70 Aufgaben.**
+53 Rust- und 32 Browserprüfungen sowie alle fünf Jobs der
+[Gitea-CI 787](https://git.tracht-digital.de/jtracht/Kanlo/actions/runs/787)
+sind erfolgreich. Programm-/Prüfstand: `0c1cd59a7dd8685e5605116f758ad3e5c81a4ea8`.
+Die abschließenden Dokumentationsänderungen ändern diesen Programmstand nicht.
+
 Die Umsetzung auf `feature/fifty-percent` umfasst den Domainkern, sichere
 HTTP-Zugänge, eine vollständige bearbeitbare Weboberfläche und die dauerhafte
 Offline-Warteschlange. Der abschließende Abgleich der 70 ursprünglichen Aufgaben

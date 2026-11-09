@@ -7,7 +7,8 @@ const browser=readFileSync('data/browser-tests.log','utf8');
 const debian=readFileSync('data/debian-validation.log','utf8');
 const headless=readFileSync('data/headless-validation.log','utf8');
 const sum=log=>[...log.matchAll(/test result: ok\. (\d+) passed;/g)].reduce((n,match)=>n+Number(match[1]),0);
-if(/FAILED|test result: FAILED/.test(rust)||sum(rust)!==53||!/32 passed/.test(browser)||!/0 failed/.test(debian)||!headless.includes('PASS: Debian 13 headless'))throw new Error('Acceptance logs are incomplete or failed');
+const browserCount=[...browser.replace(/\u001b\[[0-9;]*m/g,'').matchAll(/(\d+) passed\s*\(/g)].reduce((n,match)=>n+Number(match[1]),0);
+if(/FAILED|test result: FAILED/.test(rust)||sum(rust)!==53||browserCount!==32||!/0 failed/.test(debian)||!headless.includes('PASS: Debian 13 headless'))throw new Error('Acceptance logs are incomplete or failed');
 const architectures=[['x86_64-unknown-linux-gnu',62,2],['aarch64-unknown-linux-gnu',183,2],['armv7-unknown-linux-gnueabihf',40,1]].map(([target,machine,elfClass])=>{
   const path=`artifacts/kanlo-server-debug-${target}`;const data=readFileSync(path);const hash=createHash('sha256').update(data).digest('hex');
   if(!data.subarray(0,4).equals(Buffer.from([127,69,76,70]))||data[4]!==elfClass||data[5]!==1||data.readUInt16LE(18)!==machine||readFileSync(path+'.sha256','utf8').split(/\s+/)[0]!==hash)throw new Error(`Invalid architecture/checksum ${target}`);

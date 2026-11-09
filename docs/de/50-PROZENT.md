@@ -1,10 +1,10 @@
 # Abnahme des 50-Prozent-Ziels
 
-**Lokale Abnahme bestanden; endgültige Remote-Abnahme läuft. Noch keine abgeschlossene 50-Prozent-Meldung.**
+**35 von 70 Originalaufgaben erfüllt = 50 %.**
 
 Gezählt werden vollständige ursprüngliche Aufgaben, jeweils gleich gewichtet. Teilweise erledigte Aufgaben zählen null. Dies ist keine Aufwandsschätzung und keine Aussage über Produktionsreife. Die Originalkriterien bleiben unverändert; die in der Anforderungsprüfung festgehaltene Undo/Redo-Präzisierung gilt weiter.
 
-Geprüfter Programmstand: `658e171584e504eaa35b9628991f3a0568e319d6`. Baseline-SHA256 (GitHub-Issues-Dokument): `5378447b22e54b0e88a087cf615e160570c39130ee42d3e5a3d5575ca934aed2`. Maschinenlesbare Belege: [task-evidence.json](../validation/task-evidence.json) und [Abnahmeprotokoll](../validation/acceptance-50.json).
+Geprüfter Programmstand: `0c1cd59a7dd8685e5605116f758ad3e5c81a4ea8`. Baseline-SHA256 (GitHub-Issues-Dokument): `5378447b22e54b0e88a087cf615e160570c39130ee42d3e5a3d5575ca934aed2`. Maschinenlesbare Belege: [task-evidence.json](../validation/task-evidence.json) und [Abnahmeprotokoll](../validation/acceptance-50.json).
 
 ## Einzeln belegte Aufgaben
 

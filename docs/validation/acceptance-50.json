@@ -1,12 +1,46 @@
 {
   "schema_version": 1,
-  "status": "pending_remote_ci",
-  "source_commit": "658e171584e504eaa35b9628991f3a0568e319d6",
-  "gitea_ci": "https://git.tracht-digital.de/jtracht/Kanlo/actions/runs/784",
+  "status": "passed",
+  "source_commit": "0c1cd59a7dd8685e5605116f758ad3e5c81a4ea8",
+  "baseline_sha256": "5378447b22e54b0e88a087cf615e160570c39130ee42d3e5a3d5575ca934aed2",
+  "gitea_ci": "https://git.tracht-digital.de/jtracht/Kanlo/actions/runs/787",
   "gitea_pull_request": "https://git.tracht-digital.de/jtracht/Kanlo/pulls/71",
   "local_evidence": "docs/validation/local-50.json",
   "original_tasks": 70,
-  "candidate_tasks": 35,
-  "verified_percentage": null,
-  "note": "Final status is set only after local checks and all current CI jobs pass; partial tasks and untested device/release gates do not count."
+  "verified_tasks": 35,
+  "verified_percentage": 50,
+  "jobs": [
+    {
+      "id": 1171,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 1172,
+      "name": "debian-build (amd64, gcc, libc6-dev, gcc, x86_64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 1173,
+      "name": "debian-build (arm64, aarch64-linux-gnu-gcc, libc6-dev-arm64-cross, gcc-aarch64-linux-gnu, aarch64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 1174,
+      "name": "debian-build (armhf, arm-linux-gnueabihf-gcc, libc6-dev-armhf-cross, gcc-arm-linux-gnueabihf, armv7-unknown-linux-gnueabihf)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 1175,
+      "name": "headless",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "mirror_verified_source_commit": "0c1cd59a7dd8685e5605116f758ad3e5c81a4ea8",
+  "note": "Only full original task acceptance counts. Partial, native-TV, installer, physical-device and release gates remain open. Documentation-only descendants do not change the validated program tree."
 }

@@ -1,0 +1,16 @@
+import {readFileSync,writeFileSync,existsSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+const ci=JSON.parse(readFileSync('docs/validation/ci-787.json','utf8'));
+const local=JSON.parse(readFileSync('docs/validation/local-50.json','utf8'));
+const evidence=JSON.parse(readFileSync('docs/validation/task-evidence.json','utf8'));
+if(ci.conclusion!=='success'||ci.jobs.length!==5||ci.jobs.some(job=>job.status!=='completed'||job.conclusion!=='success'))throw new Error('Current CI is not entirely green');
+if(local.source_commit!==ci.source_commit||local.rust_tests!==53||local.debian_rust_tests!==53||local.browser_tests!==32||local.artifacts.length!==3)throw new Error('Local acceptance is missing or targets another revision');
+if(Object.keys(evidence.tasks).length!==35||Object.values(evidence.tasks).some(task=>task.evidence.some(path=>!existsSync(path.split('::')[0]))))throw new Error('Task evidence is incomplete');
+execFileSync('git',['merge-base','--is-ancestor',ci.source_commit,'HEAD']);
+execFileSync('git',['diff','--exit-code',ci.source_commit,'HEAD','--','crates','web','.github','Cargo.toml','Cargo.lock','tests/browser','packaging/tests','scripts/debian-validate.sh']);
+const baseline_sha256=createHash('sha256').update(execFileSync('git',['show','HEAD:docs/baseline/Kanlo_1.0_GitHub_Issues.md'])).digest('hex');
+evidence.source_commit=ci.source_commit;evidence.verification_state='verified';
+writeFileSync('docs/validation/task-evidence.json',JSON.stringify(evidence,null,2)+'\n');
+writeFileSync('docs/validation/acceptance-50.json',JSON.stringify({schema_version:1,status:'passed',source_commit:ci.source_commit,baseline_sha256,gitea_ci:ci.url,gitea_pull_request:'https://git.tracht-digital.de/jtracht/Kanlo/pulls/71',local_evidence:'docs/validation/local-50.json',original_tasks:70,verified_tasks:35,verified_percentage:50,jobs:ci.jobs,mirror_verified_source_commit:ci.source_commit,note:'Only full original task acceptance counts. Partial, native-TV, installer, physical-device and release gates remain open. Documentation-only descendants do not change the validated program tree.'},null,2)+'\n');
+execFileSync(process.execPath,['scripts/render-progress.mjs'],{stdio:'inherit'});
