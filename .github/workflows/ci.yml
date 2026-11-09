@@ -3,6 +3,7 @@ name: Quality and Debian builds
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -20,13 +21,21 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo test --workspace --locked
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: python3 -m unittest discover -s tests/release -v
+      - name: Validate version tag and release channel
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 scripts/release_package.py validate --tag "$RELEASE_TAG"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - run: npm ci --prefix web
+      - run: npm audit --prefix web --audit-level=high
       - run: npm run build --prefix web
       - run: git diff --exit-code -- crates/kanlo-api/assets
       - run: npm ci --prefix tests/browser
+      - run: npm audit --prefix tests/browser --audit-level=high
       - run: npx --prefix tests/browser playwright install --with-deps chromium --only-shell
       - name: Desktop acceptance with a fresh service instance
         run: npm test --prefix tests/browser -- --project=desktop
@@ -63,10 +72,13 @@ jobs:
           CC_PACKAGE: ${{ matrix.package }}
           LIBC_PACKAGE: ${{ matrix.libc_package }}
         run: |
+          SOURCE_COMMIT=$(git rev-parse HEAD)
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          export SOURCE_COMMIT SOURCE_DATE_EPOCH
           docker run --rm -v "$PWD:/src" -w /src \
-            -e TARGET -e CC_TARGET -e CC_PACKAGE -e LIBC_PACKAGE debian:13-slim sh -ec '
+            -e TARGET -e CC_TARGET -e CC_PACKAGE -e LIBC_PACKAGE -e SOURCE_COMMIT -e SOURCE_DATE_EPOCH debian:13-slim sh -ec '
               apt-get update
-              apt-get install -y --no-install-recommends ca-certificates curl build-essential "$CC_PACKAGE" "$LIBC_PACKAGE" file
+              apt-get install -y --no-install-recommends ca-certificates curl build-essential "$CC_PACKAGE" "$LIBC_PACKAGE" file python3
               curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup.sh
               sh /tmp/rustup.sh -y --profile minimal --default-toolchain 1.99.1
               . "$HOME/.cargo/env"
@@ -81,20 +93,56 @@ jobs:
               cp "target/$TARGET/debug/kanlo-server" "artifacts/kanlo-server-debug-$TARGET"
               file "artifacts/kanlo-server-$TARGET"
               sha256sum "artifacts/kanlo-server-$TARGET" > "artifacts/kanlo-server-$TARGET.sha256"
+              python3 scripts/release_package.py package --binary "artifacts/kanlo-server-$TARGET" --target "$TARGET" --output artifacts
               if [ "$TARGET" = x86_64-unknown-linux-gnu ]; then
                 cargo test --workspace --locked --target "$TARGET"
+                python3 packaging/tests/package_smoke.py artifacts/kanlo-*-linux-amd64.tar.gz
               fi
             '
       - uses: actions/upload-artifact@v4
         with:
           name: kanlo-dev-${{ matrix.arch }}
           path: artifacts/*
+          if-no-files-found: error
 
   headless:
+    needs: [debian-build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -f packaging/tests/Dockerfile -t kanlo-validation:debian13 .
-      - run: docker run --rm -v "$PWD:/src" -v kanlo-build:/build kanlo-validation:debian13 sh scripts/debian-validate.sh
-      - name: No network or display, private data, restart and event-stream shutdown
-        run: docker run --rm --network none --user kanlo --cap-drop ALL -v "$PWD/artifacts:/artifacts:ro" -v "$PWD/packaging/tests:/tests:ro" kanlo-validation:debian13 python3 /tests/headless.py
+      - uses: actions/download-artifact@v4
+        with:
+          name: kanlo-dev-amd64
+          path: artifacts
+      - run: docker build -f packaging/tests/Dockerfile.runtime -t kanlo-runtime-validation:debian13 .
+      - name: Downloaded package, no network/display, non-root, restart and shutdown
+        run: docker run --rm --network none --user kanlo --cap-drop ALL -v "$PWD:/src:ro" -v "$PWD/artifacts:/artifacts:ro" kanlo-runtime-validation:debian13 python3 /src/packaging/tests/package_smoke.py /artifacts
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [quality, debian-build, headless]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kanlo-dev-*
+          merge-multiple: true
+          path: artifacts
+      - name: Verify platform packages and create source bundle/checksums
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 scripts/release_package.py bundle --tag "$RELEASE_TAG" --output artifacts
+      - name: Publish only after all assets have been verified
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_SERVER_URL: ${{ github.server_url }}
+          RELEASE_API_URL: ${{ github.api_url }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_TOKEN: ${{ secrets.GITEA_TOKEN || secrets.GITHUB_TOKEN }}
+        run: python3 scripts/publish_release.py --directory artifacts

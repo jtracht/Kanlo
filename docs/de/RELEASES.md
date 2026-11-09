@@ -1,0 +1,63 @@
+# Tag-gesteuerte Releases
+
+Ein Versions-Tag startet `.github/workflows/ci.yml` auf Gitea und auf dem
+GitHub-Spiegel. Tags folgen exakt der Cargo-Version:
+
+- `vX.Y.Z-dev.N`: Entwicklungs-Vorabversion.
+- `vX.Y.Z-beta.N` oder `vX.Y.Z-rc.N`: weiterhin als Prerelease markiert.
+- `vX.Y.Z`: Stable, nur mit vollständigen Belegen in `release/readiness.json`.
+
+Der erste Release ist `v0.1.0-dev.1`. Er enthält Server/Web, keine native
+TV-Laufzeit, keinen Kiosk und kein Flash-Image. Die Repository-Sichtbarkeit
+bleibt privat; die ausstehende Lizenzfreigabe wird nicht ersetzt.
+
+## Ablauf
+
+1. Codeprüfung, Rust-Tests, TypeScript/Webbuild, Abhängigkeitsprüfung und
+   Release-Werkzeugtests. Desktop und Mobilgerät erhalten jeweils einen eigenen
+   Testserverstart, damit das produktive Rate Limit aktiv bleibt.
+2. Debian-13-Debug-/Release-Builds für AMD64, ARM64 und armhf. Die Plattform-
+   Pakete enthalten den Server, eingebettete Webassets, Versions-/Commitdaten,
+   Lizenzhinweise, Unit-/Dienstkonto-Vorlagen und DE-/EN-Installationsanleitungen.
+3. Der Headless-Job lädt das hochgeladene AMD64-Paket herunter und startet die
+   enthaltene Release-Binärdatei ohne Netzwerk/Display, als unprivilegierter
+   Nutzer. Version, Neustart, SIGTERM mit SSE und Datenintegrität werden geprüft.
+4. Erst nach allen erfolgreichen Jobs erzeugt die Veröffentlichung ein
+   Quellarchiv, Manifest und `SHA256SUMS`, prüft alle Plattformpakete und lädt
+   die sechs Anhänge zunächst in einen Entwurf.
+5. Jeder Upload wird erneut heruntergeladen und verglichen. Erst dann wird der
+   Entwurf veröffentlicht. Ein Fehler lässt ihn unveröffentlicht. Wiederholung
+   ergänzt passende Anhänge; abweichende vorhandene Dateien werden abgewiesen.
+
+Job-Tokens kommen aus dem jeweiligen Actions-System. Schreibrechte auf
+Repository-Inhalte besitzt nur der Tag-Veröffentlichungsjob. Es werden keine
+neuen dauerhaften Tokens im Repository oder auf dem Entwicklungsrechner abgelegt.
+Die Gitea-Pipeline benötigt keinen Zugriff auf GitHub-Secrets; beide Systeme
+veröffentlichen mit ihrem eigenen eingeschränkten Job-Token.
+
+## Bedienung
+
+Cargo-Version, `release/NOTES.md` und Changelog müssen zum geplanten Tag passen.
+Nach grüner Branch-/PR-Abnahme den unveränderlichen Versions-Tag setzen und
+beide Remotes abgleichen:
+
+```sh
+git tag v0.1.0-dev.1 <geprüfter-commit>
+git push origin refs/tags/v0.1.0-dev.1
+git push github refs/tags/v0.1.0-dev.1
+```
+
+Tags nicht verschieben oder erzwingen. Für eine neue Programmversion einen neuen
+Versions-Tag verwenden. Einen wegen Netzwerkproblemen abgebrochenen Lauf am
+gleichen unveränderten Tag erneut starten. Ein veröffentlichter Release wird
+nicht automatisch mit anderen Dateien überschrieben.
+
+Stable wird verweigert, solange native TV-, Geräte-, Backup/Update/Rollback-,
+Security-, Dokumentations-, Lizenz- und Markenbelege für genau diesen Commit
+fehlen. Ein Dev-Tag kann diese Freigaben nicht als erfüllt markieren.
+
+## Quellen der Schnittstellen
+
+- [Gitea-Job-Tokens und Rechte](https://docs.gitea.com/usage/actions/token-permissions/)
+- [GitHub-Tag-Trigger](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
+- [GitHub-Release-API](https://docs.github.com/en/rest/releases/releases)

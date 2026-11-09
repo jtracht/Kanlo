@@ -7,6 +7,12 @@ Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Den belegten
 Aufgabenstand führt [50-PROZENT.md](docs/de/50-PROZENT.md).
 
+Die privaten Entwicklungspakete für Debian 13 enthalten den Server und die
+Weboberfläche für AMD64, ARM64 und armhf. Installation:
+[Deutsch](release/INSTALL-DE.md), [English](release/INSTALL-EN.md).
+[Release-Ablauf](docs/de/RELEASES.md): Ein passender Versions-Tag startet alle
+Prüfungen und erstellt danach automatisch einen Release mit Prüfsummen.
+
 ## Starten
 
 Voraussetzungen zum Bauen: Rust 1.99.1 und ein nativer C-Compiler für SQLite.

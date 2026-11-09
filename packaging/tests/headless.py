@@ -28,6 +28,8 @@ with tempfile.TemporaryDirectory() as directory:
             else:
                 raise RuntimeError('Server did not become ready')
             assert health['status'] == 'ok', health
+            if os.environ.get('KANLO_EXPECT_VERSION'):
+                assert health['version'] == os.environ['KANLO_EXPECT_VERSION'], health
             assert Path(directory).stat().st_mode & 0o077 == 0
             # An open event stream must not prevent a graceful service stop.
             stream = urllib.request.urlopen('http://127.0.0.1:18080/api/v1/events', timeout=3)

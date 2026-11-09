@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "stable_gates": {
+    "native_tv": null,
+    "physical_pi3_armhf": null,
+    "arm64_runtime": null,
+    "amd64_runtime": null,
+    "backup_update_rollback": null,
+    "security_audit": null,
+    "license_approval": null,
+    "trademark_approval": null,
+    "installation_documentation": null
+  }
+}
