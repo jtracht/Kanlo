@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kanlo · Entwicklungsstand</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body><header><a href="/" class="brand">kanlo<span>Entwicklung</span></a><label>Board <select id="boards" aria-label="Board auswählen"></select></label></header>
+<main><div class="intro"><div><p class="eyebrow">DEIN ÜBERBLICK</p><h1 id="title">Kanlo wird geladen …</h1><p>Ein Platz für die nächsten Schritte.</p></div><span class="badge">Lokal · Online</span></div>
+<p class="notice">Früher Entwicklungsstand: Boards, Tickets und Spaltenwechsel. Offline-Bearbeitung, TV und externe Zugriffe folgen.</p>
+<p id="status" role="status" aria-live="polite">Verbindung wird hergestellt …</p>
+<form id="create"><label for="new-title">Neues Ticket im Backlog</label><div class="input-row"><input id="new-title" name="title" maxlength="300" required placeholder="Was steht an?"><button>Ticket anlegen</button></div></form>
+<div id="board" class="board" aria-label="Kanban-Board"></div></main></body></html>

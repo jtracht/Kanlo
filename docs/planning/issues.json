@@ -1,0 +1,1063 @@
+[
+  {
+    "planning_id": "KAN-001",
+    "title": "Repository-Struktur und Entscheidungskatalog",
+    "milestone": "M0",
+    "component": "repository/docs/ci",
+    "status": "partial",
+    "depends_on_milestone": null,
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M0 – Repo, Lizenzen, CI\n- **Umsetzung:**\n  1. Repository und Branch-Regeln prüfen.\n  2. Monorepo-Struktur für Rust/Web/TV/Packaging anlegen.\n  3. Fachentscheidungen und Nichtziele im Docs-Verzeichnis versionieren.\n- **Akzeptanz / Definition of Done:** README und Spezifikation sind im Repository; kein bestehender Code überschrieben.",
+    "validation": "Review repository documentation and outstanding gates",
+    "remote_issue": {
+      "number": 1,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/1"
+    }
+  },
+  {
+    "planning_id": "KAN-002",
+    "title": "Source-available-Lizenz und Abhängigkeitsprüfung",
+    "milestone": "M0",
+    "component": "repository/docs/ci",
+    "status": "partial",
+    "depends_on_milestone": null,
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M0 – Repo, Lizenzen, CI\n- **Umsetzung:**\n  1. Konkretes Lizenzmodell in Platzhalter-Rechtsprüfung markieren.\n  2. Drittanbieter-Lizenzen und Markenrisiken inventarisieren.\n  3. NOTICE und Veröffentlichungscheckliste erstellen.\n- **Akzeptanz / Definition of Done:** Keine fälschliche Open-Source-Behauptung; Freigabebedarf dokumentiert.",
+    "validation": "Review repository documentation and outstanding gates",
+    "remote_issue": {
+      "number": 2,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/2"
+    }
+  },
+  {
+    "planning_id": "KAN-003",
+    "title": "CI für ARM32, ARM64 und AMD64",
+    "milestone": "M0",
+    "component": "repository/docs/ci",
+    "status": "partial",
+    "depends_on_milestone": null,
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M0 – Repo, Lizenzen, CI\n- **Umsetzung:**\n  1. Format- und Lint-Jobs anlegen.\n  2. Cross-Build oder native Build-Matrix pro Zielarchitektur ergänzen.\n  3. Buildartefakte mit Plattformkennzeichnung prüfen.\n- **Akzeptanz / Definition of Done:** CI kann reproduzierbare Debug-Builds für alle Zielarchitekturen erstellen.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 3,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/3"
+    }
+  },
+  {
+    "planning_id": "KAN-004",
+    "title": "API-, Datenbank- und UI-Architektur dokumentieren",
+    "milestone": "M0",
+    "component": "repository/docs/ci",
+    "status": "partial",
+    "depends_on_milestone": null,
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M0 – Repo, Lizenzen, CI\n- **Umsetzung:**\n  1. ADR für einen Server und zwei Oberflächen verfassen.\n  2. API-/Domain-Module voneinander trennen.\n  3. Risikoregister Pi3, HTTPS/PWA, ChatGPT anlegen.\n- **Akzeptanz / Definition of Done:** Technikentscheidungen sind nachvollziehbar und testbar begründet.",
+    "validation": "Review repository documentation and outstanding gates",
+    "remote_issue": {
+      "number": 4,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/4"
+    }
+  },
+  {
+    "planning_id": "KAN-005",
+    "title": "Teststrategie und Qualitätsbudget",
+    "milestone": "M0",
+    "component": "repository/docs/ci",
+    "status": "partial",
+    "depends_on_milestone": null,
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M0 – Repo, Lizenzen, CI\n- **Umsetzung:**\n  1. Unit-/Integrations-/E2E-Ebenen definieren.\n  2. Pi-3-B+-Benchmarkfälle und Hardwarematrix spezifizieren.\n  3. Abnahmekriterien für Dev/Beta/Stable dokumentieren.\n- **Akzeptanz / Definition of Done:** Messplan ohne unbelegte Performanceversprechen vorhanden.",
+    "validation": "Review repository documentation and outstanding gates",
+    "remote_issue": {
+      "number": 5,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/5"
+    }
+  },
+  {
+    "planning_id": "KAN-006",
+    "title": "Serverstart und Konfigurationssystem",
+    "milestone": "M1",
+    "component": "runtime/packaging",
+    "status": "partial",
+    "depends_on_milestone": "M0",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M1 – Server, SQLite, Installer\n- **Umsetzung:**\n  1. Minimalen Rust-HTTP-Dienst mit Settings laden.\n  2. Fehlermeldungen und lokale Logs implementieren.\n  3. Headless-Start unter Debian 13 testen.\n- **Akzeptanz / Definition of Done:** Server startet ohne HDMI und ohne Internet.",
+    "validation": "cargo test --workspace --locked; complete remaining issue-specific acceptance before closure",
+    "remote_issue": {
+      "number": 6,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/6"
+    }
+  },
+  {
+    "planning_id": "KAN-007",
+    "title": "SQLite-Schema, Migrationen und sichere Dateirechte",
+    "milestone": "M1",
+    "component": "runtime/packaging",
+    "status": "partial",
+    "depends_on_milestone": "M0",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M1 – Server, SQLite, Installer\n- **Umsetzung:**\n  1. Schema-/Migrationrunner anlegen.\n  2. WAL, FK und Transaktionskontrolle aktivieren.\n  3. Systemnutzer und private Datenverzeichnisse konfigurieren.\n- **Akzeptanz / Definition of Done:** Schema migrationsfähig; sqlite integrity check grün.",
+    "validation": "cargo test --workspace --locked; complete remaining issue-specific acceptance before closure",
+    "remote_issue": {
+      "number": 7,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/7"
+    }
+  },
+  {
+    "planning_id": "KAN-008",
+    "title": "systemd-Units und Neustartverhalten",
+    "milestone": "M1",
+    "component": "runtime/packaging",
+    "status": "partial",
+    "depends_on_milestone": "M0",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M1 – Server, SQLite, Installer\n- **Umsetzung:**\n  1. Kanlo-Server-Unit mit Startlimit entwerfen.\n  2. TV-Unit separat und optional einrichten.\n  3. Absturz- und Neustarttests durchführen.\n- **Akzeptanz / Definition of Done:** Server und TV-Prozess werden unabhängig restartfähig.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 8,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/8"
+    }
+  },
+  {
+    "planning_id": "KAN-009",
+    "title": "Installationsskript mit Kiosk-/Integrationsmodus",
+    "milestone": "M1",
+    "component": "runtime/packaging",
+    "status": "planned",
+    "depends_on_milestone": "M0",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M1 – Server, SQLite, Installer\n- **Umsetzung:**\n  1. Distro/Architektur erkennen.\n  2. Kiosk- und Desktop-Integrationspfade implementieren.\n  3. Uninstall/Upgrade-/Rollback-Vorbereitung hinzufügen.\n- **Akzeptanz / Definition of Done:** Desktop bleibt in Integrationsmodus unverändert; Kiosk startet gezielt.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 9,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/9"
+    }
+  },
+  {
+    "planning_id": "KAN-010",
+    "title": "Display-Erkennung und Headless-Start",
+    "milestone": "M1",
+    "component": "runtime/packaging",
+    "status": "planned",
+    "depends_on_milestone": "M0",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M1 – Server, SQLite, Installer\n- **Umsetzung:**\n  1. Angeschlossene Displays zuverlässig ermitteln.\n  2. TV-Unit bedarfsabhängig aktivieren.\n  3. Nachträgliches Display und Reboot testen.\n- **Akzeptanz / Definition of Done:** Kein Display blockiert weder Backend noch Website.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 10,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/10"
+    }
+  },
+  {
+    "planning_id": "KAN-011",
+    "title": "Einrichtungsassistent und Netzwerk-Grundsetup",
+    "milestone": "M1",
+    "component": "runtime/packaging",
+    "status": "planned",
+    "depends_on_milestone": "M0",
+    "additional_dependencies": [
+      "KAN-053",
+      "KAN-054"
+    ],
+    "baseline_checklist": "- **Milestone:** M1 – Server, SQLite, Installer\n- **Umsetzung:**\n  1. Setup-URL und QR am TV beim ersten Start anzeigen.\n  2. LAN/WiFi erkennen und optional zeitlich begrenzten gesicherten Setup-Hotspot bereitstellen.\n  3. Nach Ersteinrichtung erstes Board automatisch anzeigen.\n- **Akzeptanz / Definition of Done:** Setup funktioniert auf Smartphone/PC und schaltet Hotspot wieder ab.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 11,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/11"
+    }
+  },
+  {
+    "planning_id": "KAN-012",
+    "title": "Boards und Spalten mit Backlog",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "partial",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. Board-CRUD und eindeutige Kürzel implementieren.\n  2. Spaltenreihenfolge, Farben und Done-Kennzeichnung anbieten.\n  3. Leere-Löschbedingungen inklusive versteckter Tickets testen.\n- **Akzeptanz / Definition of Done:** Nie Board/Spalte mit relevanten Tickets versehentlich löschen.",
+    "validation": "cargo test --workspace --locked; complete remaining issue-specific acceptance before closure",
+    "remote_issue": {
+      "number": 12,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/12"
+    }
+  },
+  {
+    "planning_id": "KAN-013",
+    "title": "Ticket-IDs, Kerndaten und stabile Boardwechsel",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "partial",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. Interne UUID und öffentliches Boardkürzel-Nummernschema implementieren.\n  2. IDs auch nach Boardwechsel unverändert lassen.\n  3. Kollisions-/Import-/Restorefälle testen.\n- **Akzeptanz / Definition of Done:** DEV-42 bleibt bei jedem Boardwechsel dieselbe Ticketidentität.",
+    "validation": "cargo test --workspace --locked; complete remaining issue-specific acceptance before closure",
+    "remote_issue": {
+      "number": 13,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/13"
+    }
+  },
+  {
+    "planning_id": "KAN-014",
+    "title": "Tickettypen, Aktivierung und Text-Custom-Fields",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. Globale optionale Typbibliothek entwickeln.\n  2. Typen pro Board aktivieren, Kindticket-Erlaubnis/Sortierrang abbilden.\n  3. Text-Custom-Fields strikt typunabhängig speichern.\n- **Akzeptanz / Definition of Done:** Typwechsel entfernt niemals Ticket-Custom-Fields.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 14,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/14"
+    }
+  },
+  {
+    "planning_id": "KAN-015",
+    "title": "Globale Labels und Suchgrundlage",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. Zentrale globale Labelverwaltung erstellen.\n  2. Mehrfachlabels pro Ticket abbilden.\n  3. Suche und Filter unabhängig vom Board testen.\n- **Akzeptanz / Definition of Done:** Label bleibt beim Boardwechsel ohne Sonderfreigabe bestehen.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 15,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/15"
+    }
+  },
+  {
+    "planning_id": "KAN-016",
+    "title": "Kindtickets und Elternstatus",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. Eltern-Kind-Beziehungen mit nur einer Ebene validieren.\n  2. Elternstatus erledigt öffnet/schließt Kinder gemäß Beschluss.\n  3. Eltern-/Kind-Boardwechsel als Transaktion gestalten.\n- **Akzeptanz / Definition of Done:** Keine Unterticket-Entkopplung oder zweite Hierarchieebene.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 16,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/16"
+    }
+  },
+  {
+    "planning_id": "KAN-017",
+    "title": "Azyklische Abhängigkeiten und Statuskaskaden",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. Abhängigkeitsgraph persistent abbilden.\n  2. Kreisbezüge verbieten und Abschlüsse blockieren.\n  3. Transitiven Wiederöffnungsalgorithmus mit Backlog-Fallback implementieren.\n- **Akzeptanz / Definition of Done:** Blockierte Tickets bleiben offen; Kaskade deterministisch.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 17,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/17"
+    }
+  },
+  {
+    "planning_id": "KAN-018",
+    "title": "WIP-Limits mit Warn- und Sperrmodus",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "partial",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. WIP-Limits pro Spalte speichern.\n  2. Striktes WIP vor jeder Mutation prüfen.\n  3. Automatische Wiederöffnung mit Rückfall ins Backlog testen.\n- **Akzeptanz / Definition of Done:** Auch API und Batch umgehen harte Limits nicht.",
+    "validation": "cargo test --workspace --locked; complete remaining issue-specific acceptance before closure",
+    "remote_issue": {
+      "number": 18,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/18"
+    }
+  },
+  {
+    "planning_id": "KAN-019",
+    "title": "Boardwechsel mit Zielspalte und Typkonflikt",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. Zielspaltenwahl inkl. Backlog anbieten.\n  2. Typkonflikte mit Aktivieren/Konvertieren auflösen.\n  3. Untertickets und Labels unverändert mitnehmen.\n- **Akzeptanz / Definition of Done:** Kein stiller Datenverlust oder impliziter Typwechsel.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 19,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/19"
+    }
+  },
+  {
+    "planning_id": "KAN-020",
+    "title": "Feldrevisionen, Transaktionsvalidatoren, Undo-Vorarbeit",
+    "milestone": "M2",
+    "component": "kanlo-core/kanlo-db",
+    "status": "partial",
+    "depends_on_milestone": "M1",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M2 – Kanban-Domänenkern\n- **Umsetzung:**\n  1. Einheitlichen Mutation-Service einrichten.\n  2. Basisrevision pro Entität und domänenbezogene Validierung verankern.\n  3. Logische Änderungsgruppen für Undo/Sync protokollieren.\n- **Akzeptanz / Definition of Done:** Web und API können keine unterschiedlichen Business-Regeln ausführen.",
+    "validation": "cargo test --workspace --locked; complete remaining issue-specific acceptance before closure",
+    "remote_issue": {
+      "number": 20,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/20"
+    }
+  },
+  {
+    "planning_id": "KAN-021",
+    "title": "Responsive Navigation und Boardlayout",
+    "milestone": "M3",
+    "component": "web",
+    "status": "partial",
+    "depends_on_milestone": "M2",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M3 – Responsive Weboberfläche\n- **Umsetzung:**\n  1. Boardtitel/-auswahl/Anzeigeauswahl und Einstellungsmenü integrieren.\n  2. Spalten und Ticketkarten mobil darstellen.\n  3. Touch/Tastatur und Reflow testen.\n- **Akzeptanz / Definition of Done:** Auf Telefon und PC lesbares nutzbares Board.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 21,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/21"
+    }
+  },
+  {
+    "planning_id": "KAN-022",
+    "title": "Ticketmodal, Kontextaktionen und Markdown",
+    "milestone": "M3",
+    "component": "web",
+    "status": "planned",
+    "depends_on_milestone": "M2",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M3 – Responsive Weboberfläche\n- **Umsetzung:**\n  1. Editierbares zentriertes Webmodal erstellen.\n  2. Klon-/Lösch-/TV-anzeigen-Aktionen integrieren.\n  3. Markdown sicher formatieren und Kommentare vorbereiten.\n- **Akzeptanz / Definition of Done:** Öffnen im Web verändert TV nie; Webmodal kein Autoclose.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 22,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/22"
+    }
+  },
+  {
+    "planning_id": "KAN-023",
+    "title": "Backlog-Sidebar und Drag-and-drop",
+    "milestone": "M3",
+    "component": "web",
+    "status": "planned",
+    "depends_on_milestone": "M2",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M3 – Responsive Weboberfläche\n- **Umsetzung:**\n  1. Backlog links über runden Button einblenden.\n  2. Tickets zwischen Spalten/Backlog draggen.\n  3. Tastaturalternative und WIP-Fehler anzeigen.\n- **Akzeptanz / Definition of Done:** Aktionen funktionieren mit Maus, Touch und Tastatur.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 23,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/23"
+    }
+  },
+  {
+    "planning_id": "KAN-024",
+    "title": "Priorisierung, Suche, Filter und manuelles Ordnen",
+    "milestone": "M3",
+    "component": "web",
+    "status": "planned",
+    "depends_on_milestone": "M2",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M3 – Responsive Weboberfläche\n- **Umsetzung:**\n  1. Konfigurierbaren Prioritätsscore anbinden.\n  2. Spezifische und freie Filter-/Sortierwahl bauen.\n  3. Manuellen Rang bei Sortierwechsel erhalten.\n- **Akzeptanz / Definition of Done:** Aktive Sortierungen bleiben nach Neuladen und Reboot erhalten.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 24,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/24"
+    }
+  },
+  {
+    "planning_id": "KAN-025",
+    "title": "Einstellungen, Theme und Zweisprachigkeit",
+    "milestone": "M3",
+    "component": "web",
+    "status": "planned",
+    "depends_on_milestone": "M2",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M3 – Responsive Weboberfläche\n- **Umsetzung:**\n  1. Settings-Kategorien und Detaildialoge implementieren.\n  2. DE/EN-Ausgabe, Hell/Dunkel und Farben integrieren.\n  3. Alle Einstellungswerte über API zugänglich machen.\n- **Akzeptanz / Definition of Done:** Jede freigegebene Einstellung kann auch programmatisch verändert werden.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 25,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/25"
+    }
+  },
+  {
+    "planning_id": "KAN-026",
+    "title": "Splashscreen, Ladescreen und Undo-Toast",
+    "milestone": "M3",
+    "component": "web",
+    "status": "planned",
+    "depends_on_milestone": "M2",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M3 – Responsive Weboberfläche\n- **Umsetzung:**\n  1. Branding-Splash ohne künstliche Pause ergänzen.\n  2. Laden/Synchronisieren/Fehler-Zustände sichtbar machen.\n  3. Undo-Toast nur bei aktivierter Undo-Historie und echter Änderung zeigen.\n- **Akzeptanz / Definition of Done:** Kein blockierendes Dekor und kein Toast bei Undo=0.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 26,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/26"
+    }
+  },
+  {
+    "planning_id": "KAN-027",
+    "title": "Grafik-Prototyp auf realem Raspberry Pi 3 B+",
+    "milestone": "M4",
+    "component": "kanlo-tv",
+    "status": "planned",
+    "depends_on_milestone": "M3",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. SDL2-/KMS-/Fallbacks prüfen.\n  2. Font-/Bild-/Textperformance messen.\n  3. Ausgewählte Architektur per Benchmark dokumentieren.\n- **Akzeptanz / Definition of Done:** Pi 3 B+ mit ARM32 erreicht nachweisbar nutzbare Darstellung.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 27,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/27"
+    }
+  },
+  {
+    "planning_id": "KAN-028",
+    "title": "Native TV-Boards und Displayformate",
+    "milestone": "M4",
+    "component": "kanlo-tv",
+    "status": "planned",
+    "depends_on_milestone": "M3",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. Board/Spalten/Karten nativ zeichnen.\n  2. Hoch-, Quer-, Ultrawide- und kleine Formate adaptieren.\n  3. Dirty-Region-Update und Speichergrenzen messen.\n- **Akzeptanz / Definition of Done:** Lesbare Darstellung ohne browserpflichtigen TV-Prozess.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 28,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/28"
+    }
+  },
+  {
+    "planning_id": "KAN-029",
+    "title": "Ticketdetails, Markdown und Bildlinks auf TV",
+    "milestone": "M4",
+    "component": "kanlo-tv",
+    "status": "planned",
+    "depends_on_milestone": "M3",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. Ticketoverlay mit gedimmtem Hintergrund aufbauen.\n  2. Markdown-Tabellen, Code, Kommentare, Bilder sicher anzeigen.\n  3. Timeouts und Maximal-Overlayzahl umsetzen.\n- **Akzeptanz / Definition of Done:** 0–300 min; bei Platzmangel nur ein Overlay.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 29,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/29"
+    }
+  },
+  {
+    "planning_id": "KAN-030",
+    "title": "Backlog-Overlay und Kontext-Rückkehr",
+    "milestone": "M4",
+    "component": "kanlo-tv",
+    "status": "planned",
+    "depends_on_milestone": "M3",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. Backlog als großen Overlaymodus integrieren.\n  2. Alte Ticket-Overlays zwischenspeichern/wiederherstellen.\n  3. Scrollposition bei Rückkehr aus Backlogticket erhalten.\n- **Akzeptanz / Definition of Done:** Backlog-Priorität und Timer-Reset entsprechen Spezifikation.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 30,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/30"
+    }
+  },
+  {
+    "planning_id": "KAN-031",
+    "title": "Unterticket-Overlay und Parent-Rücksprung",
+    "milestone": "M4",
+    "component": "kanlo-tv",
+    "status": "planned",
+    "depends_on_milestone": "M3",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. Unterticketansicht aus Elternoverlay erstellen.\n  2. Eltern-Rückkehrkontext/Timeout verwalten.\n  3. Kürzlich offene Kontextkette bei fremdem Ticket verwerfen.\n- **Akzeptanz / Definition of Done:** Keine falschen Rücksprünge in altes Elternoverlay.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 31,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/31"
+    }
+  },
+  {
+    "planning_id": "KAN-032",
+    "title": "Highlights, Auto-Scroll und 2D-Überlauf",
+    "milestone": "M4",
+    "component": "kanlo-tv",
+    "status": "planned",
+    "depends_on_milestone": "M3",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. Mehrfach-Highlights/Dimmen integrieren.\n  2. Spalten vertikal nacheinander, danach horizontal scrollen.\n  3. Manuelle Navigation/Timer/Loop testen.\n- **Akzeptanz / Definition of Done:** Weder überlagerte Ansichten noch Website werden automatisch gescrollt.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 32,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/32"
+    }
+  },
+  {
+    "planning_id": "KAN-033",
+    "title": "Ansichtswechsel und Anzeigerotation",
+    "milestone": "M4",
+    "component": "kanlo-tv",
+    "status": "planned",
+    "depends_on_milestone": "M3",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. TV-Board/Gesamtübersicht/Statistik als Ansichtszustände definieren.\n  2. Auswahl, Intervall und Reihenfolge speichern.\n  3. Rotation bei Overlays pausieren.\n- **Akzeptanz / Definition of Done:** Rotation standardmäßig aus, Neustart stellt gespeicherte Ansicht wieder her.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 33,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/33"
+    }
+  },
+  {
+    "planning_id": "KAN-034",
+    "title": "Animationen, Zustandsrestore und Dauerbetriebstest",
+    "milestone": "M4",
+    "component": "kanlo-tv",
+    "status": "planned",
+    "depends_on_milestone": "M3",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. Vier Animationsprofile implementieren.\n  2. Overlay-/Scroll-/Boardzustand persistent sichern.\n  3. systemd-Absturz und Langzeitbetrieb testen.\n- **Akzeptanz / Definition of Done:** TV startet nach Crash zuverlässig in vorherigem Zustand.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 34,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/34"
+    }
+  },
+  {
+    "planning_id": "KAN-035",
+    "title": "Sichere PWA-Basis und Offline-Caches",
+    "milestone": "M5",
+    "component": "web/sync/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M4",
+    "additional_dependencies": [
+      "KAN-053",
+      "KAN-054"
+    ],
+    "baseline_checklist": "- **Milestone:** M5 – Offline-PWA und Live-Sync\n- **Umsetzung:**\n  1. Service Worker für HTTPS hinzufügen.\n  2. Nur besuchte Boards und benötigte Assets lokal speichern.\n  3. LAN-HTTP-Einschränkung klar anzeigen.\n- **Akzeptanz / Definition of Done:** Offline-PWA funktioniert mit vertrauenswürdigem HTTPS, keine globale Autocache-Pflicht.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 35,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/35"
+    }
+  },
+  {
+    "planning_id": "KAN-036",
+    "title": "Offline-Operationsqueue und temporäre IDs",
+    "milestone": "M5",
+    "component": "web/sync/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M4",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M5 – Offline-PWA und Live-Sync\n- **Umsetzung:**\n  1. IndexedDB-Queue mit persistenten op_ids erzeugen.\n  2. Vorläufige Ticket-IDs beim Sync mappen.\n  3. Mehrtab-Koordination und Wiederholungstest implementieren.\n- **Akzeptanz / Definition of Done:** Kein doppeltes Ticket bei Netzwerk-Wiederholungen.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 36,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/36"
+    }
+  },
+  {
+    "planning_id": "KAN-037",
+    "title": "Drei-Wege-Merge und Konflikt-UI",
+    "milestone": "M5",
+    "component": "web/sync/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M4",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M5 – Offline-PWA und Live-Sync\n- **Umsetzung:**\n  1. Feld-/Revision-Basissnapshot führen.\n  2. Unabhängige Änderungen automatisch übernehmen.\n  3. Gleiche-Feld-Konflikte mit Basis/Server/Lokal anbieten.\n- **Akzeptanz / Definition of Done:** Keine stillen Überschreibungen bei Konkurrenzänderungen.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 37,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/37"
+    }
+  },
+  {
+    "planning_id": "KAN-038",
+    "title": "Backup-Epoche und Offline-Reconciliation",
+    "milestone": "M5",
+    "component": "web/sync/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M4",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M5 – Offline-PWA und Live-Sync\n- **Umsetzung:**\n  1. Server-Epoche bei Restore wechseln.\n  2. Alte Queue gegen wiederhergestellten Zustand prüfen.\n  3. Gelöschte IDs/inkompatible Operationen als Konflikte zeigen.\n- **Akzeptanz / Definition of Done:** Kein ungeprüftes Wiederauferstehen alter Tickets.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 38,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/38"
+    },
+    "design_dependency": "Define restore epoch contract with KAN-052 before implementing either path"
+  },
+  {
+    "planning_id": "KAN-039",
+    "title": "Sitzungsablauf und Queue-Sicherheit",
+    "milestone": "M5",
+    "component": "web/sync/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M4",
+    "additional_dependencies": [
+      "KAN-054"
+    ],
+    "baseline_checklist": "- **Milestone:** M5 – Offline-PWA und Live-Sync\n- **Umsetzung:**\n  1. Externe Auth-Abläufe an Offline-Sync koppeln.\n  2. Bei 401 auf Reauth warten.\n  3. Queue beim Verbindungsabbruch/reload erhalten.\n- **Akzeptanz / Definition of Done:** Keine Auth-Umgehung, kein lokaler Datenverlust.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 39,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/39"
+    }
+  },
+  {
+    "planning_id": "KAN-040",
+    "title": "Echtzeit Push und Reconnect",
+    "milestone": "M5",
+    "component": "web/sync/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M4",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M5 – Offline-PWA und Live-Sync\n- **Umsetzung:**\n  1. Server-Ereignisstrom bauen.\n  2. Web und TV inkrementell aktualisieren.\n  3. Nach Reconnect Server-Revisionsabgleich durchführen.\n- **Akzeptanz / Definition of Done:** Ohne manuelles Reload konsistente Anzeigen.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 40,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/40"
+    }
+  },
+  {
+    "planning_id": "KAN-041",
+    "title": "Markdown-Kommentare und Ticketlinks",
+    "milestone": "M6",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M5",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M6 – Ticketfunktionen und Automatik\n- **Umsetzung:**\n  1. Kommentarmodell/Migrationen aufbauen.\n  2. Kommentare im Web und TV einbauen.\n  3. Unabhängige Ticketlinks verwalten.\n- **Akzeptanz / Definition of Done:** Kommentar und Verknüpfung über API verfügbar.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 41,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/41"
+    }
+  },
+  {
+    "planning_id": "KAN-042",
+    "title": "Papierkorb, Kaskadenlöschung und Recovery",
+    "milestone": "M6",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M5",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M6 – Ticketfunktionen und Automatik\n- **Umsetzung:**\n  1. Eltern-Kind-Kaskade + Abhängigkeitsauflösung bauen.\n  2. Warnvorschau erstellen.\n  3. Wiederherstellung und Aufbewahrungstage testen.\n- **Akzeptanz / Definition of Done:** Keine verwaisten Datensätze, Restore prüft Konflikte.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 42,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/42"
+    }
+  },
+  {
+    "planning_id": "KAN-043",
+    "title": "Undo/Redo-Verlauf nach beschlossenen Regeln",
+    "milestone": "M6",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M5",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M6 – Ticketfunktionen und Automatik\n- **Umsetzung:**\n  1. Pro-Board Historientiefe 0–1000 umsetzen.\n  2. Gruppierte und mehrschrittige Rollbacks integrieren.\n  3. Persistenz und Undo=0 testen.\n- **Akzeptanz / Definition of Done:** Undo ausschaltbar, Papierkorb davon unabhängig.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 43,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/43"
+    }
+  },
+  {
+    "planning_id": "KAN-044",
+    "title": "Flexible Wiederholungstickets",
+    "milestone": "M6",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M5",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M6 – Ticketfunktionen und Automatik\n- **Umsetzung:**\n  1. Regelschema für Zeitintervalle entwerfen.\n  2. Scheduler idempotent implementieren.\n  3. „Erst nach Abschluss“ samt DST/Neustart prüfen.\n- **Akzeptanz / Definition of Done:** Keine doppelten Wiederholungstickets.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 44,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/44"
+    }
+  },
+  {
+    "planning_id": "KAN-045",
+    "title": "Archivierung manuell und zeitgesteuert",
+    "milestone": "M6",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M5",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M6 – Ticketfunktionen und Automatik\n- **Umsetzung:**\n  1. Archiv-Speicherzustand und Suche ergänzen.\n  2. Massenarchivierung und optionalen Frist-Scheduler bauen.\n  3. Reaktivierung/Restore testen.\n- **Akzeptanz / Definition of Done:** Archivierte Tickets bleiben vollständig erhalten.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 45,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/45"
+    }
+  },
+  {
+    "planning_id": "KAN-046",
+    "title": "Filterbasierte Massenaktionen mit Vorschau",
+    "milestone": "M6",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M5",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M6 – Ticketfunktionen und Automatik\n- **Umsetzung:**\n  1. Suchausdruck in Batch-Selektor übernehmen.\n  2. Massenupdate atomar/mit Konfliktbehandlung ausführen.\n  3. Destruktive Vorschau und Undo-Gruppierung einbauen.\n- **Akzeptanz / Definition of Done:** Kein unbeabsichtigtes Löschen ohne Bestätigung.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 46,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/46"
+    }
+  },
+  {
+    "planning_id": "KAN-047",
+    "title": "Deadline- und WIP-Warnhinweise",
+    "milestone": "M6",
+    "component": "kanlo-core/kanlo-db",
+    "status": "planned",
+    "depends_on_milestone": "M5",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M6 – Ticketfunktionen und Automatik\n- **Umsetzung:**\n  1. Datum und optionale Uhrzeit unterscheiden.\n  2. Konfigurierbare optische Deadline-Warnung bauen.\n  3. WIP-Warnungen ohne Popup implementieren.\n- **Akzeptanz / Definition of Done:** Visuelle Hinweise auf TV/Web ohne Push oder TV-Unterbrechung.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 47,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/47"
+    }
+  },
+  {
+    "planning_id": "KAN-048",
+    "title": "Globale Übersicht für Web und TV",
+    "milestone": "M7",
+    "component": "statistics/import/backup",
+    "status": "planned",
+    "depends_on_milestone": "M6",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M7 – Statistik, Backup und Datenportabilität\n- **Umsetzung:**\n  1. Boardübergreifende Statuskennzahlen aggregieren.\n  2. Web-Navigation zu Boards/Tickets integrieren.\n  3. TV-Gesamtübersicht adaptiv rendern.\n- **Akzeptanz / Definition of Done:** Kennzahlen stimmen mit SQLite und Filterkontext überein.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 48,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/48"
+    }
+  },
+  {
+    "planning_id": "KAN-049",
+    "title": "Historische Statistikdaten und Diagramme",
+    "milestone": "M7",
+    "component": "statistics/import/backup",
+    "status": "planned",
+    "depends_on_milestone": "M6",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M7 – Statistik, Backup und Datenportabilität\n- **Umsetzung:**\n  1. Ereignis-/Tagesaggregat unabhängig von Undo führen.\n  2. Web-Diagramme und Zeiträume einbauen.\n  3. Eigene TV-Statistikansicht mit ressourcenschonender Darstellung.\n- **Akzeptanz / Definition of Done:** Statistik bleibt bei Undo-Tiefe 0 verfügbar.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 49,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/49"
+    }
+  },
+  {
+    "planning_id": "KAN-050",
+    "title": "Import/Export mit vollständigem JSON-Roundtrip",
+    "milestone": "M7",
+    "component": "statistics/import/backup",
+    "status": "planned",
+    "depends_on_milestone": "M6",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M7 – Statistik, Backup und Datenportabilität\n- **Umsetzung:**\n  1. Schema- und Versionsformat festlegen.\n  2. Komplette Boardbeziehungen exportieren.\n  3. CSV-Einschränkungen und Import-Vorschau hinzufügen.\n- **Akzeptanz / Definition of Done:** Roundtrip bewahrt Links, Kommentare, Untertickets und Labels.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 50,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/50"
+    }
+  },
+  {
+    "planning_id": "KAN-051",
+    "title": "Konsistente unverschlüsselte Backups und Speicherortwechsel",
+    "milestone": "M7",
+    "component": "statistics/import/backup",
+    "status": "planned",
+    "depends_on_milestone": "M6",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M7 – Statistik, Backup und Datenportabilität\n- **Umsetzung:**\n  1. SQLite-Onlinebackup und Timer einrichten.\n  2. Secrets sicher aus Backup herausfiltern.\n  3. Datenmigration auf SSD mit Verifikation und Rollback testen.\n- **Akzeptanz / Definition of Done:** Backup auf laufendem Server bleibt wiederherstellbar; keine API-Secrets.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 51,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/51"
+    }
+  },
+  {
+    "planning_id": "KAN-052",
+    "title": "Vollständige und selektive Backup-Wiederherstellung",
+    "milestone": "M7",
+    "component": "statistics/import/backup",
+    "status": "planned",
+    "depends_on_milestone": "M6",
+    "additional_dependencies": [
+      "KAN-038"
+    ],
+    "baseline_checklist": "- **Milestone:** M7 – Statistik, Backup und Datenportabilität\n- **Umsetzung:**\n  1. Preview und Bestätigung implementieren.\n  2. Einzel-Board-Import mit ID-/Linkprüfung bauen.\n  3. Restore-Epoche erhöhen und Queue-Konflikte testen.\n- **Akzeptanz / Definition of Done:** Andere Boards bleiben beim selektiven Restore unangetastet.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 52,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/52"
+    }
+  },
+  {
+    "planning_id": "KAN-053",
+    "title": "Sichere LAN-/Proxy-Ingress-Trennung",
+    "milestone": "M8",
+    "component": "kanlo-api/integrations",
+    "status": "partial",
+    "depends_on_milestone": "M7",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. LAN-HTTP-Ingress und extern geschützten Ingress sauber separieren.\n  2. Reversproxy-Header-Bypass verhindern.\n  3. Securitytest direkt/über Proxy ausführen.\n- **Akzeptanz / Definition of Done:** Externer Zugriff kann keine LAN-Ausnahme erzwingen.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 53,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/53"
+    }
+  },
+  {
+    "planning_id": "KAN-054",
+    "title": "Externes gemeinsames Passwort und Sessions",
+    "milestone": "M8",
+    "component": "kanlo-api/integrations",
+    "status": "planned",
+    "depends_on_milestone": "M7",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. Argon2id-Passcode-Speicherung aufbauen.\n  2. Session-Cookies/CSRF/Rate-Limit implementieren.\n  3. Logout/Timeout/Widerruf E2E testen.\n- **Akzeptanz / Definition of Done:** Externe Webaktionen nur mit gültiger Sitzung.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 54,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/54"
+    }
+  },
+  {
+    "planning_id": "KAN-055",
+    "title": "API-Schlüsselverwaltung und Autorisierung",
+    "milestone": "M8",
+    "component": "kanlo-api/integrations",
+    "status": "planned",
+    "depends_on_milestone": "M7",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. Getrennte widerrufbare API-Keys entwerfen.\n  2. Hashing/Logging ohne Secrets einbauen.\n  3. Test für Revocation und Bulk-/Restore-Rechte schreiben.\n- **Akzeptanz / Definition of Done:** Weder Webpasscode noch API-Keys in Backups.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 55,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/55"
+    }
+  },
+  {
+    "planning_id": "KAN-056",
+    "title": "REST/OpenAPI-Vollständigkeit",
+    "milestone": "M8",
+    "component": "kanlo-api/integrations",
+    "status": "planned",
+    "depends_on_milestone": "M7",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. Domainfunktionen versioniert abbilden.\n  2. Alle Einstellungen les-/schreibbar exponieren.\n  3. OpenAPI-Schema konsistent testen.\n- **Akzeptanz / Definition of Done:** Web und GPT nutzen identische Business-Regeln.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 56,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/56"
+    }
+  },
+  {
+    "planning_id": "KAN-057",
+    "title": "MCP-Adapter und GPT-Actions-Schema",
+    "milestone": "M8",
+    "component": "kanlo-api/integrations",
+    "status": "planned",
+    "depends_on_milestone": "M7",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. MCP-Toolliste aus OpenAPI ableiten.\n  2. GPT-Actions-Schema und Tooloperationen erstellen.\n  3. Ambiguität, Undo, Displaysteuerung und Listenführung testen.\n- **Akzeptanz / Definition of Done:** Selbst konfigurierbare End-to-End-ChatGPT-Steuerung bereit.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 57,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/57"
+    }
+  },
+  {
+    "planning_id": "KAN-058",
+    "title": "Integrationsassistent und manuelle Anleitung",
+    "milestone": "M8",
+    "component": "kanlo-api/integrations",
+    "status": "planned",
+    "depends_on_milestone": "M7",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. MCP- und GPT-Actions-Setup als getrennte Wege bauen.\n  2. Verbindungstest ohne Schlüssel-Leak integrieren.\n  3. DE-/EN-Schritt-für-Schritt-Doku schreiben.\n- **Akzeptanz / Definition of Done:** Nutzer kann Verbindung selbständig einrichten und prüfen.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 58,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/58"
+    }
+  },
+  {
+    "planning_id": "KAN-059",
+    "title": "Sicherheits- und Datenschutz-Audit",
+    "milestone": "M8",
+    "component": "kanlo-api/integrations",
+    "status": "planned",
+    "depends_on_milestone": "M7",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. XSS/SSRF/CSRF/Injection-Testmatrix ausführen.\n  2. No-Telemetry/No-Remote-CDN nachweisen.\n  3. Auth- und Offline-Cache-Risiken dokumentieren.\n- **Akzeptanz / Definition of Done:** Bekannte kritische Sicherheitslücken geschlossen.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 59,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/59"
+    }
+  },
+  {
+    "planning_id": "KAN-060",
+    "title": "ChatGPT Sprachmodus und Public-Integration prüfen",
+    "milestone": "M8",
+    "component": "kanlo-api/integrations",
+    "status": "planned",
+    "depends_on_milestone": "M7",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. Diktat-Text und Toolaufrufe im real verfügbaren Modus testen.\n  2. Live-Voice-Unterstützung separat dokumentieren.\n  3. Öffentliche Integration vorbereiten/Einreichvoraussetzungen prüfen.\n- **Akzeptanz / Definition of Done:** Keine erfundene Live-Voice- oder Verzeichnis-Freigabe.",
+    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "remote_issue": {
+      "number": 60,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/60"
+    }
+  },
+  {
+    "planning_id": "KAN-061",
+    "title": "Manueller Updateprozess mit Backup und Rollback",
+    "milestone": "M9",
+    "component": "packaging/releases",
+    "status": "planned",
+    "depends_on_milestone": "M8",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M9 – Releasepakete und OS-Image\n- **Umsetzung:**\n  1. Update-CLI/Web/API-Aktionen integrieren.\n  2. Backup vor Migration und Recovery automatisieren.\n  3. Keine automatische Updateprüfung implementieren.\n- **Akzeptanz / Definition of Done:** Update nur auf explizite Aktion und mit getesteter Recovery.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 61,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/61"
+    }
+  },
+  {
+    "planning_id": "KAN-062",
+    "title": "Raspberry-Pi-Flash-Image",
+    "milestone": "M9",
+    "component": "packaging/releases",
+    "status": "planned",
+    "depends_on_milestone": "M8",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M9 – Releasepakete und OS-Image\n- **Umsetzung:**\n  1. Pi OS 13 Imagebau definieren.\n  2. Kiosk-Start, Setup-Assistent und Services integrieren.\n  3. Image frisch flashen und Boot/Setup testen.\n- **Akzeptanz / Definition of Done:** Erstinstallation auf realer SD-Karte funktioniert.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 62,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/62"
+    }
+  },
+  {
+    "planning_id": "KAN-063",
+    "title": "Drei Plattform-Releases mit Checksummen",
+    "milestone": "M9",
+    "component": "packaging/releases",
+    "status": "planned",
+    "depends_on_milestone": "M8",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M9 – Releasepakete und OS-Image\n- **Umsetzung:**\n  1. ARM32/ARM64/AMD64 Release-Binaries erzeugen.\n  2. install.sh und Images paketieren.\n  3. SHA256, Version, Git-Tag, Changelog zuordnen.\n- **Akzeptanz / Definition of Done:** Reproduzierbare und überprüfbare Artefakte vorhanden.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 63,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/63"
+    }
+  },
+  {
+    "planning_id": "KAN-064",
+    "title": "GitHub Actions Dev/Beta/Stable",
+    "milestone": "M9",
+    "component": "packaging/releases",
+    "status": "planned",
+    "depends_on_milestone": "M8",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M9 – Releasepakete und OS-Image\n- **Umsetzung:**\n  1. CI-Tests und Cross-Build-Gates koppeln.\n  2. Release-Workflows nach Tags erstellen.\n  3. Stable an Hardware-/Security-Abnahme binden.\n- **Akzeptanz / Definition of Done:** Fehlende Quality Gates verhindern Stable-Markierung.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 64,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/64"
+    }
+  },
+  {
+    "planning_id": "KAN-065",
+    "title": "DE-/EN-Installations- und Betriebshandbuch",
+    "milestone": "M9",
+    "component": "packaging/releases",
+    "status": "planned",
+    "depends_on_milestone": "M8",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M9 – Releasepakete und OS-Image\n- **Umsetzung:**\n  1. Setup für LAN/HTTPS/PWA dokumentieren.\n  2. Kiosk/Desktop/Headless, Backup, Sicherheit beschreiben.\n  3. Problembehebung Pi 3 B+ und Display hinzufügen.\n- **Akzeptanz / Definition of Done:** Benutzer kann ohne Chat-Hilfe installieren und warten.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 65,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/65"
+    }
+  },
+  {
+    "planning_id": "KAN-066",
+    "title": "Realgerät-Benchmark und Dauerlasttest",
+    "milestone": "M10",
+    "component": "acceptance",
+    "status": "planned",
+    "depends_on_milestone": "M9",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M10 – Abnahme und Stable 1.0\n- **Umsetzung:**\n  1. Pi 3 B+ und je einen ARM64/AMD64-Testlauf absolvieren.\n  2. TV-Scroll, mehrere Overlays, Markdown und 1000+ Tickets messen.\n  3. Regressionen und Budget dokumentieren.\n- **Akzeptanz / Definition of Done:** Messprotokolle auf realer Hardware vorhanden.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 66,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/66"
+    }
+  },
+  {
+    "planning_id": "KAN-067",
+    "title": "End-to-End-Abnahmesuite",
+    "milestone": "M10",
+    "component": "acceptance",
+    "status": "planned",
+    "depends_on_milestone": "M9",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M10 – Abnahme und Stable 1.0\n- **Umsetzung:**\n  1. Web-/Offline-/API-/TV-/Import- und Backup-Szenarien ausführen.\n  2. Zwei-Client-Konflikt und Restore-Epoche prüfen.\n  3. Kritische Regressionsfehler beheben.\n- **Akzeptanz / Definition of Done:** Sämtliche vereinbarten Kernworkflows nachweisbar funktionsfähig.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 67,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/67"
+    }
+  },
+  {
+    "planning_id": "KAN-068",
+    "title": "Sicherheits-/Lizenz-/Releaseprüfung",
+    "milestone": "M10",
+    "component": "acceptance",
+    "status": "planned",
+    "depends_on_milestone": "M9",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M10 – Abnahme und Stable 1.0\n- **Umsetzung:**\n  1. Source-available-Lizenz rechtlich freigeben.\n  2. Secrets und Remote-Zugriffe nochmals auditieren.\n  3. Third-party-Lizenzen und Markenfreigabe dokumentieren.\n- **Akzeptanz / Definition of Done:** Keine unklaren Rechte oder kritischen Leaks im Release.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 68,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/68"
+    }
+  },
+  {
+    "planning_id": "KAN-069",
+    "title": "Stable 1.0 veröffentlichen",
+    "milestone": "M10",
+    "component": "acceptance",
+    "status": "planned",
+    "depends_on_milestone": "M9",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M10 – Abnahme und Stable 1.0\n- **Umsetzung:**\n  1. Release-Gates final abhaken.\n  2. Getaggte GitHub-Artefakte samt Checksummen ausliefern.\n  3. Release Notes und bekannte Plattformgrenzen veröffentlichen.\n- **Akzeptanz / Definition of Done:** Stable-Tag entspricht tatsächlich getesteten Artefakten.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 69,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/69"
+    }
+  },
+  {
+    "planning_id": "KAN-070",
+    "title": "Offene Folgearbeiten sauber dokumentieren",
+    "milestone": "M10",
+    "component": "acceptance",
+    "status": "planned",
+    "depends_on_milestone": "M9",
+    "additional_dependencies": [],
+    "baseline_checklist": "- **Milestone:** M10 – Abnahme und Stable 1.0\n- **Umsetzung:**\n  1. Nicht implementierte optionale Details und Plattformlimits inventarisieren.\n  2. Tickets für Post-1.0 statt falscher Fertigmeldung anlegen.\n  3. Nutzer-Handbuch und Issues aktualisieren.\n- **Akzeptanz / Definition of Done:** Offene Punkte transparent, keine 100-Prozent-Behauptung ohne Belege.",
+    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "remote_issue": {
+      "number": 70,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/70"
+    }
+  }
+]

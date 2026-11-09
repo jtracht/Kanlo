@@ -1,0 +1,299 @@
+{
+  "primary": "https://git.tracht-digital.de/jtracht/Kanlo",
+  "github_mirror": "https://github.com/jtracht/Kanlo",
+  "milestones": {
+    "M0": 116,
+    "M1": 117,
+    "M2": 118,
+    "M3": 119,
+    "M4": 120,
+    "M5": 121,
+    "M6": 122,
+    "M7": 123,
+    "M8": 124,
+    "M9": 125,
+    "M10": 126
+  },
+  "issues": {
+    "KAN-001": {
+      "number": 1,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/1"
+    },
+    "KAN-002": {
+      "number": 2,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/2"
+    },
+    "KAN-003": {
+      "number": 3,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/3"
+    },
+    "KAN-004": {
+      "number": 4,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/4"
+    },
+    "KAN-005": {
+      "number": 5,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/5"
+    },
+    "KAN-006": {
+      "number": 6,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/6"
+    },
+    "KAN-007": {
+      "number": 7,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/7"
+    },
+    "KAN-008": {
+      "number": 8,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/8"
+    },
+    "KAN-009": {
+      "number": 9,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/9"
+    },
+    "KAN-010": {
+      "number": 10,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/10"
+    },
+    "KAN-011": {
+      "number": 11,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/11"
+    },
+    "KAN-012": {
+      "number": 12,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/12"
+    },
+    "KAN-013": {
+      "number": 13,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/13"
+    },
+    "KAN-014": {
+      "number": 14,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/14"
+    },
+    "KAN-015": {
+      "number": 15,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/15"
+    },
+    "KAN-016": {
+      "number": 16,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/16"
+    },
+    "KAN-017": {
+      "number": 17,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/17"
+    },
+    "KAN-018": {
+      "number": 18,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/18"
+    },
+    "KAN-019": {
+      "number": 19,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/19"
+    },
+    "KAN-020": {
+      "number": 20,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/20"
+    },
+    "KAN-021": {
+      "number": 21,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/21"
+    },
+    "KAN-022": {
+      "number": 22,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/22"
+    },
+    "KAN-023": {
+      "number": 23,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/23"
+    },
+    "KAN-024": {
+      "number": 24,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/24"
+    },
+    "KAN-025": {
+      "number": 25,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/25"
+    },
+    "KAN-026": {
+      "number": 26,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/26"
+    },
+    "KAN-027": {
+      "number": 27,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/27"
+    },
+    "KAN-028": {
+      "number": 28,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/28"
+    },
+    "KAN-029": {
+      "number": 29,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/29"
+    },
+    "KAN-030": {
+      "number": 30,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/30"
+    },
+    "KAN-031": {
+      "number": 31,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/31"
+    },
+    "KAN-032": {
+      "number": 32,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/32"
+    },
+    "KAN-033": {
+      "number": 33,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/33"
+    },
+    "KAN-034": {
+      "number": 34,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/34"
+    },
+    "KAN-035": {
+      "number": 35,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/35"
+    },
+    "KAN-036": {
+      "number": 36,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/36"
+    },
+    "KAN-037": {
+      "number": 37,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/37"
+    },
+    "KAN-038": {
+      "number": 38,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/38"
+    },
+    "KAN-039": {
+      "number": 39,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/39"
+    },
+    "KAN-040": {
+      "number": 40,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/40"
+    },
+    "KAN-041": {
+      "number": 41,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/41"
+    },
+    "KAN-042": {
+      "number": 42,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/42"
+    },
+    "KAN-043": {
+      "number": 43,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/43"
+    },
+    "KAN-044": {
+      "number": 44,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/44"
+    },
+    "KAN-045": {
+      "number": 45,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/45"
+    },
+    "KAN-046": {
+      "number": 46,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/46"
+    },
+    "KAN-047": {
+      "number": 47,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/47"
+    },
+    "KAN-048": {
+      "number": 48,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/48"
+    },
+    "KAN-049": {
+      "number": 49,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/49"
+    },
+    "KAN-050": {
+      "number": 50,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/50"
+    },
+    "KAN-051": {
+      "number": 51,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/51"
+    },
+    "KAN-052": {
+      "number": 52,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/52"
+    },
+    "KAN-053": {
+      "number": 53,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/53"
+    },
+    "KAN-054": {
+      "number": 54,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/54"
+    },
+    "KAN-055": {
+      "number": 55,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/55"
+    },
+    "KAN-056": {
+      "number": 56,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/56"
+    },
+    "KAN-057": {
+      "number": 57,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/57"
+    },
+    "KAN-058": {
+      "number": 58,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/58"
+    },
+    "KAN-059": {
+      "number": 59,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/59"
+    },
+    "KAN-060": {
+      "number": 60,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/60"
+    },
+    "KAN-061": {
+      "number": 61,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/61"
+    },
+    "KAN-062": {
+      "number": 62,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/62"
+    },
+    "KAN-063": {
+      "number": 63,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/63"
+    },
+    "KAN-064": {
+      "number": 64,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/64"
+    },
+    "KAN-065": {
+      "number": 65,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/65"
+    },
+    "KAN-066": {
+      "number": 66,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/66"
+    },
+    "KAN-067": {
+      "number": 67,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/67"
+    },
+    "KAN-068": {
+      "number": 68,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/68"
+    },
+    "KAN-069": {
+      "number": 69,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/69"
+    },
+    "KAN-070": {
+      "number": 70,
+      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/70"
+    }
+  }
+}

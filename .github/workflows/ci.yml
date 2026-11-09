@@ -1,0 +1,80 @@
+name: Quality and Debian builds
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo test --workspace --locked
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check web/app.js
+      - run: npm ci --prefix tests/browser
+      - run: npx --prefix tests/browser playwright install --with-deps chromium --only-shell
+      - run: npm test --prefix tests/browser
+
+  debian-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            arch: amd64
+            compiler: gcc
+            package: gcc
+          - target: aarch64-unknown-linux-gnu
+            arch: arm64
+            compiler: aarch64-linux-gnu-gcc
+            package: gcc-aarch64-linux-gnu
+          - target: armv7-unknown-linux-gnueabihf
+            arch: armhf
+            compiler: arm-linux-gnueabihf-gcc
+            package: gcc-arm-linux-gnueabihf
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build in Debian 13
+        env:
+          TARGET: ${{ matrix.target }}
+          CC_TARGET: ${{ matrix.compiler }}
+          CC_PACKAGE: ${{ matrix.package }}
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src \
+            -e TARGET -e CC_TARGET -e CC_PACKAGE debian:13-slim sh -ec '
+              apt-get update
+              apt-get install -y --no-install-recommends ca-certificates curl build-essential "$CC_PACKAGE" file
+              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup.sh
+              sh /tmp/rustup.sh -y --profile minimal --default-toolchain 1.99.1
+              . "$HOME/.cargo/env"
+              rustup target add "$TARGET"
+              TARGET_KEY=$(printf "%s" "$TARGET" | tr "a-z-" "A-Z_")
+              export CC="$CC_TARGET"
+              export "CARGO_TARGET_${TARGET_KEY}_LINKER=$CC_TARGET"
+              cargo build --workspace --locked --release --target "$TARGET"
+              mkdir -p artifacts
+              cp "target/$TARGET/release/kanlo-server" "artifacts/kanlo-server-$TARGET"
+              file "artifacts/kanlo-server-$TARGET"
+              sha256sum "artifacts/kanlo-server-$TARGET" > "artifacts/kanlo-server-$TARGET.sha256"
+              if [ "$TARGET" = x86_64-unknown-linux-gnu ]; then
+                cargo test --workspace --locked --target "$TARGET"
+              fi
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kanlo-dev-${{ matrix.arch }}
+          path: artifacts/*
+

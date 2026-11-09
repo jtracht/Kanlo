@@ -1,0 +1,13 @@
+Kanlo development baseline
+
+Third-party dependencies are resolved in Cargo.lock. Their respective licenses
+apply independently of Kanlo's pending source-available terms.
+
+Principal components: Rust, Axum, Tokio, rusqlite, SQLite, serde, uuid,
+thiserror; test dependencies include tower, tempfile and http-body-util.
+
+Before public release: inventory all locked transitive dependencies and bundled
+SQLite, collect license texts/notices, assess compatibility with the final Kanlo
+license, and verify the product name/trademark. None of these legal gates is
+claimed complete by this development scaffold.
+
