@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "status": "pending_remote_ci",
+  "source_commit": "658e171584e504eaa35b9628991f3a0568e319d6",
+  "gitea_ci": "https://git.tracht-digital.de/jtracht/Kanlo/actions/runs/784",
+  "gitea_pull_request": "https://git.tracht-digital.de/jtracht/Kanlo/pulls/71",
+  "local_evidence": "docs/validation/local-50.json",
+  "original_tasks": 70,
+  "candidate_tasks": 35,
+  "verified_percentage": null,
+  "note": "Final status is set only after local checks and all current CI jobs pass; partial tasks and untested device/release gates do not count."
+}

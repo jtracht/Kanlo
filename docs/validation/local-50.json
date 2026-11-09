@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "source_commit": "658e171584e504eaa35b9628991f3a0568e319d6",
+  "environment": "Windows development + Debian 13 Docker validation; not physical Pi hardware",
+  "rust_tests": 53,
+  "debian_rust_tests": 53,
+  "browser_tests": 28,
+  "browser_projects": [
+    "desktop 1440x1000",
+    "mobile 390x844 Chromium touch emulation"
+  ],
+  "https": "Isolated browser trusts only fixture SPKI; no certificate installed in user/system trust stores",
+  "headless": {
+    "debian": 13,
+    "user": "kanlo",
+    "network": "none (loopback only)",
+    "capabilities": "all dropped",
+    "display": false,
+    "checks": [
+      "startup",
+      "restart",
+      "private directory permissions",
+      "health",
+      "SIGTERM with active SSE",
+      "SQLite integrity"
+    ]
+  },
+  "artifacts": [
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "elf_machine": 62,
+      "elf_class": 2,
+      "sha256": "accd947b3292a6cf2878130e2d596433963c35ee67b33083bc7134b3459e050c",
+      "bytes": 97991304
+    },
+    {
+      "target": "aarch64-unknown-linux-gnu",
+      "elf_machine": 183,
+      "elf_class": 2,
+      "sha256": "cfae31a43cb6daba24cb15c6b23a2bafdf5860f3065edb662ac763f52ebcc3d3",
+      "bytes": 95897520
+    },
+    {
+      "target": "armv7-unknown-linux-gnueabihf",
+      "elf_machine": 40,
+      "elf_class": 1,
+      "sha256": "69f2139f0836f5d18a52e9a9f8a2807aa70ed33b1c8a416067aff1879afa75b7",
+      "bytes": 88843524
+    }
+  ],
+  "asset_sha256": {
+    "app.js": "172b171f64b5e5f051a1260bccd264e33242cb96c010bc9fbf40e2faa5ef7c07",
+    "style.css": "1865f5dc812d78f42dc16113673c5774137a88578af5935daa6be19caf9db6bd",
+    "index.html": "a46c34673fecd058d1a129aab07efd65edd65b36367cfd3fb02ebba1aafd9477",
+    "sw.js": "98263285293d797dad187bbbc9f1f426e89fad2b16ed95971493fb55b7b1838d"
+  },
+  "log_sha256": {
+    "rust-tests": "c08f1eaaec048834c646c5fc8992cd3a2c80f0884b3c257d865f37ba4929cf24",
+    "browser-tests": "be27e4302e412a78666ca4a97fa129050aa7bc99520962e9ea29cffe9eff29f0",
+    "debian-validation": "7871bd11adf954dc3e389b22465013bf4388f5550402cfdcf08055b8ee979cfd",
+    "headless-validation": "4e187725d8297e6564f8d0c30f12c08f594b91c0973250490eb63f40f4669ad4"
+  },
+  "limitations": [
+    "No native TV runtime or physical Pi/SSD acceptance",
+    "No complete installer/image/updater or full OpenAPI/MCP/ChatGPT",
+    "No stable release or final license/trademark approval"
+  ]
+}

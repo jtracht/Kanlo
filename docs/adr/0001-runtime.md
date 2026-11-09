@@ -1,6 +1,9 @@
 # ADR 0001: Single authoritative server, isolated adapters
 
-Status: accepted for the first development slice; native graphics pending hardware measurements.
+Status: historical first-slice decision; extended/superseded by ADR 0002 for
+domain persistence, web, recovery and ingress. Native graphics still requires
+hardware measurements. Descriptions below refer to the first slice, not the
+current implementation.
 Date: 2026-11-09.
 
 ## Decision
