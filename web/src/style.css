@@ -22,6 +22,7 @@
   --duration: 180ms;
   color-scheme: light;
 }
+.backlog-button { border-radius: 999px; }
 * {
   box-sizing: border-box;
 }

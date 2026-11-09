@@ -7,6 +7,55 @@ fn initial_domain_integrity() {
 }
 
 #[test]
+fn recurrence_restart_retains_occurrence_and_monthly_anchor_without_duplicates() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("kanlo.sqlite3");
+    let mut db = Store::open(&path).unwrap();
+    let board = db.boards().unwrap()[0].id.clone();
+    let template = ticket(&mut db, &board, "Monthly");
+    let rule = Recurrence {
+        id: Uuid::new_v4().to_string(),
+        template_id: template.id,
+        frequency: "monthly".into(),
+        interval: 1,
+        weekdays: BTreeSet::new(),
+        month_day: Some(31),
+        nth_weekday: None,
+        time: "09:00".into(),
+        timezone: "Europe/Berlin".into(),
+        next_at: "2026-01-31T08:00:00Z".into(),
+        anchor_at: None,
+        after_completion: false,
+        last_created: None,
+        enabled: true,
+    };
+    db.execute(Command::UpsertRecurrence { value: rule })
+        .unwrap();
+    let january = chrono::DateTime::parse_from_rfc3339("2026-01-31T09:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    db.tick(january).unwrap();
+    assert_eq!(db.workspace().unwrap().tickets.len(), 2);
+    let next = db.workspace().unwrap().recurrences[0].next_at.clone();
+    drop(db);
+    let mut db = Store::open(&path).unwrap();
+    db.tick(january).unwrap();
+    assert_eq!(db.workspace().unwrap().tickets.len(), 2);
+    assert_eq!(db.workspace().unwrap().recurrences[0].next_at, next);
+    let february = chrono::DateTime::parse_from_rfc3339("2026-02-28T09:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    db.tick(february).unwrap();
+    let state = db.workspace().unwrap();
+    assert_eq!(state.tickets.len(), 3);
+    let next = chrono::DateTime::parse_from_rfc3339(&state.recurrences[0].next_at).unwrap();
+    assert_eq!(
+        next,
+        chrono::DateTime::parse_from_rfc3339("2026-03-31T07:00:00Z").unwrap()
+    );
+}
+
+#[test]
 fn scheduled_retention_keeps_manual_backups_exports_and_other_instances() {
     let mut db = Store::open(":memory:").unwrap();
     let directory = tempfile::tempdir().unwrap();
