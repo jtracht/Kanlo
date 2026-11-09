@@ -3,7 +3,10 @@
 Angelegte private Hauptquelle: `https://git.tracht-digital.de/jtracht/Kanlo`.
 Angelegter privater Codespiegel: `https://github.com/jtracht/Kanlo`.
 Elf Meilensteine und 70 offene Aufgaben liegen in Gitea, mit echten Nummern
-unter `docs/planning/remote-state.json`. Push und CI werden separat geprüft.
+unter `docs/planning/remote-state.json`. Beide Repositories enthalten dieselben
+Commits; der geprüfte Implementierungsstand ist `96c8c3811d77fc0e45a6b5e7932da0ef469fdf87`.
+GitHub-Qualitätsjob und alle drei Debian-Buildjobs sind erfolgreich:
+https://github.com/jtracht/Kanlo/actions/runs/42575913887.
 
 Gitea-Connector verbunden und für Repository-/Meilenstein-/Issue-Erstellung genutzt.
 Die konkreten Aufrufe wurden ohne zusätzlichen Freigabeschritt erfolgreich ausgeführt.

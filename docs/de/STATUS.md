@@ -35,7 +35,7 @@ Vorhandene DB-Tests belegen Neustartpersistenz zusätzlich zum Browser-Neuladen.
 
 ## Offen
 
-M0 ist vorbereitet; CI/Branchregeln/Lizenzfreigabe noch separat abzunehmen.
+M0 ist vorbereitet und die CI ist grün; Branchregeln/Lizenzfreigabe noch separat abzunehmen.
 M1/M2/M3 sind begonnen, keine dieser Gesamtphasen ist fertig. Alle 70 Issues
 bleiben offen. Vollständiger Domainkern, Editieren/Löschen, Offline/Sync,
 TV-Renderer, Preact/TypeScript und DE/EN, Auth/MCP/OpenAPI, Backup/Restore,
@@ -49,4 +49,17 @@ auf Gitea und GitHub gepusht; beide Branch-IDs per `git ls-remote` abgeglichen.
 GitHub-Lauf: https://github.com/jtracht/Kanlo/actions/runs/42575662919.
 Qualitätsjob inklusive Rust- und Browsertests erfolgreich. ARM32/ARM64-Builds
 meldeten fehlende Cross-libc-Header beim SQLite-Build. Die Matrix wurde um
-`libc6-dev-armhf-cross`/`libc6-dev-arm64-cross` ergänzt; erneute Abnahme steht aus.
+`libc6-dev-armhf-cross`/`libc6-dev-arm64-cross` ergänzt.
+
+**Erfolgreiche erneute Abnahme:** Commit
+`96c8c3811d77fc0e45a6b5e7932da0ef469fdf87`, GitHub-Lauf
+https://github.com/jtracht/Kanlo/actions/runs/42575913887.
+Alle vier Jobs erfolgreich: Qualität sowie Debian-13-Release-Builds für
+amd64, arm64 und armhf. Der amd64-Container führte zusätzlich die Rust-Tests aus.
+Drei Artefakte heruntergeladen und SHA256 sowie ELF-Zielarchitektur geprüft
+(x86-64: 62, AArch64: 183, ARM: 40); alle Prüfungen erfolgreich.
+Maschinenlesbarer Nachweis: `docs/validation/ci-42575913887.json`.
+Diese Buildabnahme ersetzt keine Tests auf physischer Pi-Hardware.
+
+Die anschließende reine Dokumentationsaktualisierung verwendet `[skip ci]`;
+der oben genannte geprüfte Programm-/CI-Stand bleibt unverändert.

@@ -44,8 +44,10 @@ npm test --prefix tests/browser
 ```
 
 Windows ist die aktuell lokal geprüfte Entwicklungsumgebung, keine Produktzielplattform.
-Die CI definiert Debian-13-Builds für amd64, arm64 und armhf; deren Ergebnis
-und die echten Pi-3-B+-Messungen müssen gesondert nachgewiesen werden.
+Die [CI](https://github.com/jtracht/Kanlo/actions/runs/42575913887) hat Qualität,
+Browser und Debian-13-Builds für amd64, arm64 und armhf erfolgreich geprüft.
+Artefakt-Prüfsummen und ELF-Zielarchitekturen wurden abgeglichen.
+Echte Pi-3-B+-Messungen und Geräte-Laufzeittests stehen noch aus.
 
 ## Dokumentation
 

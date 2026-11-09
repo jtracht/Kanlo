@@ -1,0 +1,49 @@
+{
+  "run_url": "https://github.com/jtracht/Kanlo/actions/runs/42575913887",
+  "source_commit": "96c8c3811d77fc0e45a6b5e7932da0ef469fdf87",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "debian-build (armv7-unknown-linux-gnueabihf, armhf, arm-linux-gnueabihf-gcc, gcc-arm-linux-gnueab...",
+      "conclusion": "success",
+      "url": "https://github.com/jtracht/Kanlo/actions/runs/42575913887/job/129023469294"
+    },
+    {
+      "name": "quality",
+      "conclusion": "success",
+      "url": "https://github.com/jtracht/Kanlo/actions/runs/42575913887/job/129023469529"
+    },
+    {
+      "name": "debian-build (x86_64-unknown-linux-gnu, amd64, gcc, gcc, libc6-dev)",
+      "conclusion": "success",
+      "url": "https://github.com/jtracht/Kanlo/actions/runs/42575913887/job/129023469567"
+    },
+    {
+      "name": "debian-build (aarch64-unknown-linux-gnu, arm64, aarch64-linux-gnu-gcc, gcc-aarch64-linux-gnu, lib...",
+      "conclusion": "success",
+      "url": "https://github.com/jtracht/Kanlo/actions/runs/42575913887/job/129023469649"
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "kanlo-server-x86_64-unknown-linux-gnu",
+      "sha256": "2871b85496e54550e24eec57a6aacd0ee5777228e381221d79bd56af14c5d155",
+      "elf_machine": 62,
+      "checksum_verified": true
+    },
+    {
+      "name": "kanlo-server-aarch64-unknown-linux-gnu",
+      "sha256": "aef1c58b5bbd71cbd791f320dde4f88586a7c5fe7591c845956776dbb82f07ac",
+      "elf_machine": 183,
+      "checksum_verified": true
+    },
+    {
+      "name": "kanlo-server-armv7-unknown-linux-gnueabihf",
+      "sha256": "fb0af434d14ba1e86627b50e9fe495da13f0a041557b43b3ee48736ce2293c8f",
+      "elf_machine": 40,
+      "checksum_verified": true
+    }
+  ],
+  "hardware_runtime_tested": false
+}
