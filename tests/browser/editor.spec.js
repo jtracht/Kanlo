@@ -17,9 +17,19 @@ test.beforeEach(async ({ request }) => resetLocale(request));
 
 test("ticket fields, type-independent custom fields, labels, sanitized Markdown and comments", async ({
   page,
+  context,
   request,
 }) => {
   const board = await fixture(request, "Editor");
+  const imageRequests = [];
+  await context.route("https://kanlo-privacy.invalid/**", async (route) => {
+    imageRequests.push(route.request().url());
+    await route.fulfill({
+      status: 200,
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>',
+    });
+  });
   const type = {
     id: randomUUID(),
     name: `Bug ${board.prefix}`,
@@ -69,11 +79,26 @@ test("ticket fields, type-independent custom fields, labels, sanitized Markdown 
   await dialog
     .getByLabel("Beschreibung (Markdown)", { exact: true })
     .fill(
-      '# Sicher\n\n**Markdown**\n\n<script>window.__kanlo_xss=1</script><img src=x onerror="window.__kanlo_xss=2">',
+      '# Sicher\n\n**Markdown**\n\n<script>window.__kanlo_xss=1</script><img src="https://kanlo-privacy.invalid/image.svg" onerror="window.__kanlo_xss=2"><svg><image href="https://kanlo-privacy.invalid/hidden.svg"/></svg><video poster="https://kanlo-privacy.invalid/poster.svg"></video>',
     );
   await dialog.getByRole("button", { name: "Vorschau", exact: true }).click();
   await expect(dialog.locator(".markdown script")).toHaveCount(0);
   await expect(dialog.locator(".markdown img")).toHaveCount(0);
+  await expect(dialog.locator(".markdown svg,.markdown video")).toHaveCount(0);
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
+  expect(imageRequests).toHaveLength(0);
+  await dialog
+    .getByRole("checkbox", {
+      name: "Externe Bilder laden (Verbindung zum Bildanbieter)",
+      exact: true,
+    })
+    .check();
+  await expect.poll(() => imageRequests.length).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.__kanlo_xss)).toBeUndefined();
   await dialog.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect

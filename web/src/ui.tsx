@@ -75,12 +75,73 @@ export function Markdown({ text }: { text: string }) {
   const html = DOMPurify.sanitize(
     marked.parse(text, { async: false }) as string,
     {
-      FORBID_TAGS: ["style", "iframe", "object", "form"],
+      ALLOWED_TAGS: [
+        "p",
+        "div",
+        "span",
+        "br",
+        "hr",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "strong",
+        "b",
+        "em",
+        "i",
+        "del",
+        "s",
+        "ins",
+        "mark",
+        "small",
+        "sup",
+        "sub",
+        "blockquote",
+        "pre",
+        "code",
+        "kbd",
+        "var",
+        "ul",
+        "ol",
+        "li",
+        "dl",
+        "dt",
+        "dd",
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "th",
+        "td",
+        "a",
+        "img",
+        "details",
+        "summary",
+      ],
+      ALLOWED_ATTR: [
+        "href",
+        "title",
+        "src",
+        "alt",
+        "width",
+        "height",
+        "class",
+        "align",
+        "start",
+        "colspan",
+        "rowspan",
+      ],
       FORBID_ATTR: ["style"],
       ALLOW_DATA_ATTR: false,
     },
   );
-  const fragment = new DOMParser().parseFromString(html, "text/html");
+  // Template content is inert: parsing must not fetch images before consent.
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const fragment = template.content;
   fragment.querySelectorAll("a").forEach((link) => {
     link.rel = "noopener noreferrer";
     link.target = "_blank";
@@ -88,7 +149,7 @@ export function Markdown({ text }: { text: string }) {
   const hasImages = !!fragment.querySelector("img");
   if (!images)
     fragment.querySelectorAll("img").forEach((image) => {
-      const placeholder = fragment.createElement("span");
+      const placeholder = document.createElement("span");
       placeholder.textContent = `[${image.alt || t("Bild", "Image")}]`;
       image.replaceWith(placeholder);
     });
@@ -109,7 +170,7 @@ export function Markdown({ text }: { text: string }) {
       )}
       <div
         class="markdown"
-        dangerouslySetInnerHTML={{ __html: fragment.body.innerHTML }}
+        dangerouslySetInnerHTML={{ __html: template.innerHTML }}
       />
     </div>
   );
