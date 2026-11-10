@@ -74,3 +74,8 @@ Both Pi profiles are tested on the Pi 3 model with the vendor 64-bit kernel;
 the ARMHF profile executes its actual 32-bit userspace/server through the
 kernel's compatibility support. Native 32-bit kernel boot remains a physical
 hardware acceptance item. Reports identify both kernel and userspace architecture.
+WPA-Supplicant and wireless regulatory data are preinstalled. Generic images
+also include common Intel, Realtek, Broadcom, Qualcomm and Intel/AMD graphics
+firmware from Debian's signed firmware repository. Tests exercise the private
+Wi-Fi configuration with a nonexistent fixture network; real radio association
+remains a physical hardware acceptance item.

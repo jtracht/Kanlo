@@ -157,6 +157,9 @@ def install_overlay(root):
 
 
 def build(profile, package, cache, work, output):
+    commit = git('rev-parse', 'HEAD')
+    if git('status', '--porcelain', '--untracked-files=no'):
+        raise ValueError('Commit source changes before building an image')
     base = PROFILES[profile]
     metadata = inspect(package)
     if metadata['arch'] != base['arch'] or metadata['source_commit'] != git('rev-parse', 'HEAD'):
@@ -192,7 +195,7 @@ def build(profile, package, cache, work, output):
             shutil.copyfile('/etc/resolv.conf', root / 'etc/resolv.conf')
             # Empty unused data sectors are compressed, while ext4 itself expands on-device.
             with chroot_mounts(root):
-                run('chroot', root, '/bin/sh', '/usr/lib/kanlo/customize.sh')
+                run('chroot', root, '/usr/bin/env', 'KANLO_IMAGE_FAMILY=' + base['family'], '/bin/sh', '/usr/lib/kanlo/customize.sh')
             # Raspberry Pi uses its original firmware, DTBs, kernel and auto-initramfs.
             boot = root / 'boot/firmware'
             if base['family'] == 'rpi':
@@ -217,6 +220,8 @@ def build(profile, package, cache, work, output):
         # Boot tests operate on an isolated copy and never leave test data in the release.
         from boot_test import verify
         report['boot_test'] = verify(image, profile, directory)
+        if git('rev-parse', 'HEAD') != commit or git('status', '--porcelain', '--untracked-files=no'):
+            raise ValueError('Source changed during image validation; rebuild from a clean commit')
         destination = output / f'kanlo-{version()}-{profile}.img.xz'
         with destination.open('wb') as stream:
             run('xz', '--compress', '--stdout', '-T2', '-6', image, stdout=stream)

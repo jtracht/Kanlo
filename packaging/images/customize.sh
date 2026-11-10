@@ -3,10 +3,30 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
 chmod 755 /usr/sbin/policy-rc.d
+set --
+if [ "${KANLO_IMAGE_FAMILY:-}" = generic ]; then
+    # Device firmware is installed now, so first Wi-Fi/display use needs no download.
+    cat > /etc/apt/sources.list.d/kanlo-firmware.sources <<'SOURCES'
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie trixie-updates
+Components: non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: https://deb.debian.org/debian-security
+Suites: trixie-security
+Components: non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+SOURCES
+    set -- firmware-linux-free firmware-iwlwifi firmware-realtek firmware-brcm80211 \
+        firmware-atheros firmware-misc-nonfree firmware-amd-graphics firmware-intel-graphics
+fi
 apt-get update
 apt-get install -y --no-install-recommends python3 python3-pygame cage seatd \
     fonts-dejavu-core network-manager avahi-daemon systemd-resolved \
-    cloud-guest-utils parted systemd-zram-generator sudo openssh-server iw curl ca-certificates
+    cloud-guest-utils parted systemd-zram-generator sudo openssh-server iw \
+    wpasupplicant wireless-regdb curl ca-certificates "$@"
 # No cloud-provider startup or first-user wizard in the dedicated appliance.
 install -d -m 0755 /etc/cloud
 : > /etc/cloud/cloud-init.disabled

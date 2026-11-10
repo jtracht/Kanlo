@@ -21,7 +21,7 @@ def verify(image, profile, directory):
         (wants / unit.name).symlink_to('../' + unit.name)
         family, arch = profile.split('-')
         provision = root / ('boot/firmware' if family == 'rpi' else 'boot/efi')
-        (provision / 'KANLO_CONFIG.json').write_text(json.dumps({'hostname': 'kanlo-image-test', 'display': False}))
+        (provision / 'KANLO_CONFIG.json').write_text(json.dumps({'hostname': 'kanlo-image-test', 'display': False, 'wifi': {'ssid': 'Kanlo fixture offline', 'password': 'fixture-only-no-real-secret', 'country': 'DE'}}))
         root_id = root_part['partuuid']
         firmware = directory / 'firmware'; firmware.mkdir(exist_ok=True)
         if family == 'rpi':

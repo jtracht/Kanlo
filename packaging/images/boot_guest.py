@@ -43,6 +43,10 @@ def main():
     mode = stat.S_IMODE(Path('/var/lib/kanlo').stat().st_mode)
     assert mode == 0o700
     assert Path('/etc/cloud/cloud-init.disabled').is_file()
+    assert Path('/usr/sbin/wpa_supplicant').is_file()
+    assert Path('/lib/firmware/regulatory.db').is_file()
+    wifi = Path('/etc/NetworkManager/system-connections/kanlo-wifi.nmconnection')
+    assert wifi.is_file() and stat.S_IMODE(wifi.stat().st_mode) == 0o600
     assert 'noatime' in subprocess.check_output(['findmnt', '-n', '-o', 'OPTIONS', '/'], text=True).strip().split(',')
     swaps = [line.split() for line in Path('/proc/swaps').read_text().splitlines()[1:]]
     assert swaps and all(swap[0].startswith('/dev/zram') and 0 < int(swap[2]) <= 512 * 1024 for swap in swaps)

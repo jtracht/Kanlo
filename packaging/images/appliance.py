@@ -78,6 +78,8 @@ def apply(config):
                '[ipv4]\nmethod=auto\n[ipv6]\nmethod=auto\n')
         atomic(Path('/etc/modprobe.d/kanlo-wifi-country.conf'), 'options cfg80211 ieee80211_regdom=' + wifi['country'] + '\n', 0o644)
         if Path('/usr/sbin/iw').exists():
+            # The radio may appear later; initialize nl80211 before setting its domain.
+            run('modprobe', 'cfg80211')
             run('iw', 'reg', 'set', wifi['country'])
     key = config['ssh_authorized_key']
     if key:

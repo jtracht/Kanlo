@@ -116,6 +116,11 @@ ARMHF führt dabei den tatsächlichen 32-Bit-Userspace und Kanlo-Server über di
 Kompatibilitätsunterstützung des Kernels aus. Der native 32-Bit-Kernelstart bleibt
 Teil der offenen physischen Hardwareabnahme. Beide Architekturen stehen im Nachweis.
 Beide Bootdurchläufe prüfen außerdem DHCP/LAN-HTTP und begrenzten RAM-Swap.
+WPA-Supplicant und WLAN-Länderregeln werden vorinstalliert; die generischen
+Images enthalten außerdem gängige Intel-, Realtek-, Broadcom-, Qualcomm- und
+Intel-/AMD-Grafikfirmware aus Debians signiertem Firmware-Repository. Die
+geschützte WLAN-Konfigurationsdatei wird im Emulator mit einem nicht vorhandenen
+Testnetz geprüft; eine echte Funkverbindung bleibt Teil der Hardwareabnahme.
 
 Die Pipeline baut alle vier Varianten automatisch. Jeder Versions-Tag verlangt
 alle erfolgreichen Qualitäts-, Plattform-, Image- und Bootprüfungen; erst dann
