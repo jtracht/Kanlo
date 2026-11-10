@@ -35,15 +35,16 @@ def main():
     identity = Path('/etc/machine-id').read_text().strip()
     assert len(identity) == 32
     provisioned = json.loads(Path('/var/lib/kanlo-appliance/provisioned.json').read_text())
-    assert provisioned['hostname'].startswith('kanlo-')
+    assert provisioned['hostname'] == 'kanlo-image-test'
+    assert Path('/etc/hostname').read_text().strip() == 'kanlo-image-test'
     assert not provisioned['ssh_enabled']
     assert not Path('/etc/ssh/ssh_host_ed25519_key').exists()
     assert not Path('/boot/firmware/KANLO_CONFIG.json').exists()
     mode = stat.S_IMODE(Path('/var/lib/kanlo').stat().st_mode)
     assert mode == 0o700
     assert 'noatime' in subprocess.check_output(['findmnt', '-n', '-o', 'OPTIONS', '/'], text=True).strip().split(',')
-    swaps = json.loads(subprocess.check_output(['swapon', '--show', '--json', '--bytes'], text=True))['swapdevices']
-    assert swaps and all(swap['name'].startswith('/dev/zram') and 0 < swap['size'] <= 512 * 1024**2 for swap in swaps)
+    swaps = [line.split() for line in Path('/proc/swaps').read_text().splitlines()[1:]]
+    assert swaps and all(swap[0].startswith('/dev/zram') and 0 < int(swap[2]) <= 512 * 1024 for swap in swaps)
     for path in ['/etc', '/etc/systemd/system/kanlo-server.service', '/usr/lib/kanlo/appliance.py', '/usr/lib/kanlo/display.py']:
         assert stat.S_IMODE(Path(path).stat().st_mode) & 0o022 == 0
     assert os.statvfs('/').f_blocks * os.statvfs('/').f_frsize > 10 * 1024**3

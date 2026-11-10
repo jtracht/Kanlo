@@ -65,7 +65,8 @@ pass. Each image's JSON report and release checksums accompany the download.
 ARM boot tests use a pinned upstream QEMU build with the proper BCM2835 watchdog
 model, retaining the original Pi watchdog configuration. Reports record emulator
 version, source commit and binary hash. The emulator fix does not enter the OS image.
-The Pi test-only device tree uses SD PIO and the test command line uses ordinary
-USB interrupts because the emulator does not faithfully implement those DMA/FIQ
-paths. Shipping firmware/configuration retains the vendor defaults. These tests
+Pi tests attach the isolated disk through emulated USB storage and use ordinary
+USB interrupts because the emulator does not faithfully implement SD DMA/FIQ
+paths. Direct ARM64 kernel boot decompresses the vendor gzip kernel as real Pi
+firmware would. Shipping firmware/configuration retains the vendor defaults. These tests
 do not certify real-device storage/network performance or HDMI/Wi-Fi hardware.

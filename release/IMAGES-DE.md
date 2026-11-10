@@ -105,9 +105,10 @@ Für ARM-Boots wird ein gepinnter QEMU-Upstream-Stand mit vollständigem BCM2835
 Watchdog-Modell gebaut und zwischengespeichert. Die unveränderten Pi-Watchdog-
 Einstellungen bleiben auch im Boot-Test aktiv. Emulatorversion, Quellstand und
 Binärhash stehen im Nachweis; die Korrektur ist kein Bestandteil des Geräte-OS.
-Der ausschließlich für den Pi-Test kopierte Gerätebaum verwendet SD-PIO; die
-Test-Kommandozeile nutzt reguläre USB-Interrupts. Die entsprechenden DMA-/FIQ-
-Pfade sind im Emulator nicht originalgetreu abgebildet. Ausgelieferte Firmware
+Pi-Tests binden die isolierte Disk über emulierten USB-Speicher ein; die
+Test-Kommandozeile nutzt reguläre USB-Interrupts. SD-DMA und FIQ-Beschleunigung
+sind im Emulator nicht originalgetreu abgebildet. Beim direkten ARM64-Kernelstart
+wird die gzip-Datei wie durch die echte Pi-Firmware entpackt. Ausgelieferte Firmware
 und Konfiguration behalten die Herstellervorgaben. Damit werden keine reale
 Speicher-/Netzwerkleistung und keine HDMI-/WLAN-Hardware zertifiziert.
 Beide Bootdurchläufe prüfen außerdem DHCP/LAN-HTTP und begrenzten RAM-Swap.

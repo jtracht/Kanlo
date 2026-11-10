@@ -192,7 +192,7 @@ jobs:
           PACKAGE=$(find artifacts -maxdepth 1 -name "kanlo-*-linux-$ARCH.tar.gz" -print -quit)
           test -n "$PACKAGE"
           docker run --rm --privileged -v "$PWD:/src" -v "$PWD/image-cache:/cache" \
-            -v kanlo-image-work:/work kanlo-image-builder:debian13 \
+            -v /work kanlo-image-builder:debian13 \
             python3 packaging/images/build.py --profile "$PROFILE" --package "$PACKAGE" --output image-output
       - uses: actions/upload-artifact@v4
         with:
