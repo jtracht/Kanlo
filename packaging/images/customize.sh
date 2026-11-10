@@ -12,7 +12,9 @@ for unit in cloud-init-local.service cloud-init.service cloud-config.service clo
     cloud-init-network.service userconfig.service userconf-pi.service \
     getty@tty1.service getty@tty2.service serial-getty@ttyS0.service \
     serial-getty@ttyAMA0.service ssh.service ssh.socket dphys-swapfile.service \
-    rpi-connect.service rpi-connect-lite.service ModemManager.service; do
+    rpi-connect.service rpi-connect-lite.service ModemManager.service \
+    rpi-resize-swap-file.service rpi-zram-writeback.service \
+    systemd-networkd.service systemd-networkd-wait-online.service networking.service dhcpcd.service; do
     systemctl mask "$unit"
 done
 # SSH is disabled, but can be explicitly enabled by first-boot provisioning.
@@ -21,6 +23,7 @@ systemctl disable ssh.service
 systemctl enable NetworkManager.service avahi-daemon.service systemd-resolved.service seatd.service
 systemctl disable systemd-networkd.service systemd-networkd-wait-online.service 2>/dev/null || true
 systemctl enable kanlo-firstboot.service kanlo-network.service kanlo-network.timer kanlo-server.service kanlo-tv.service kanlo-setup.service
+systemctl set-default multi-user.target
 id kanlo >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin kanlo
 id kanlo-display >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin kanlo-display
 getent group render >/dev/null || groupadd --system render
@@ -36,15 +39,29 @@ install -d -m 0755 /boot/firmware /etc/kanlo
 # No shared machine identity, SSH host keys, random seed or DHCP leases.
 truncate -s 0 /etc/machine-id
 rm -f /var/lib/dbus/machine-id /var/lib/systemd/random-seed /etc/ssh/ssh_host_* \
-    /var/lib/NetworkManager/*lease* /var/lib/kanlo-appliance/provisioned.json
+    /var/lib/NetworkManager/*lease* /var/lib/NetworkManager/secret_key /var/lib/kanlo-appliance/provisioned.json
 ln -s /etc/machine-id /var/lib/dbus/machine-id
 printf '[connection]\nid=kanlo-ethernet\ntype=ethernet\nautoconnect=true\n[ipv4]\nmethod=auto\n[ipv6]\nmethod=auto\n' > /etc/NetworkManager/system-connections/kanlo-ethernet.nmconnection
 chmod 600 /etc/NetworkManager/system-connections/kanlo-ethernet.nmconnection
 rm -f /etc/resolv.conf
 ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+rm -f /var/swap
 # Prevent persistent SD-card swap; use bounded compressed RAM instead.
 sed -i '/^[^#].*[[:space:]]swap[[:space:]]/s/^/# Kanlo: /' /etc/fstab
-sed -i 's/\(\/[^ ]*[[:space:]]\+ext4[[:space:]]\+\)defaults/\1defaults,noatime/' /etc/fstab
+printf 'auto lo\niface lo inet loopback\n' > /etc/network/interfaces
+python3 - <<'PY'
+from pathlib import Path
+path = Path('/etc/fstab')
+lines = []
+for line in path.read_text().splitlines():
+    fields = line.split()
+    if fields and not fields[0].startswith('#') and len(fields) >= 4 and fields[1] == '/' and fields[2] == 'ext4':
+        options = [option for option in fields[3].split(',') if option not in ('atime', 'relatime', 'strictatime', 'noatime')]
+        fields[3] = ','.join(options + ['noatime'])
+        line = '\t'.join(fields)
+    lines.append(line)
+path.write_text('\n'.join(lines) + '\n')
+PY
 dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\n' > /usr/share/kanlo/image-packages.tsv
 apt-get clean
 rm -rf /var/lib/apt/lists/* /var/log/journal/*

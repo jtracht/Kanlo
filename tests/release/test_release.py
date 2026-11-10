@@ -77,6 +77,8 @@ class Packages(unittest.TestCase):
                 evidence.write_text(json.dumps({'profile': profile, 'version': package.version(), 'source_commit': package.git('rev-parse', 'HEAD'), 'base': base, 'image': image.name, 'sha256': package.file_sha256(image), 'boot_test': {'status': 'passed', 'boots': [{'phase': phase, 'sqlite_integrity': 'ok', 'root_expanded': True} for phase in ['firstboot', 'reboot']]}}))
                 fixture = json.loads(evidence.read_text())
                 fixture['boot_test'].update(emulator_binary_sha256='0' * 64, emulator_source_commit=None if base['arch'] == 'amd64' else '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5')
+                for boot in fixture['boot_test']['boots']:
+                    boot.update(lan_http_verified=True, ram_swap_verified=True)
                 evidence.write_text(json.dumps(fixture))
             original = evidence.read_text()
             rejected = json.loads(original)

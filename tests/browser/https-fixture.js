@@ -60,6 +60,8 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
       },
       (response) => {
         outgoing.writeHead(response.statusCode, response.headers);
+        // SSE headers must reach the browser before the first event/keepalive.
+        outgoing.flushHeaders();
         response.pipe(outgoing);
       },
     );

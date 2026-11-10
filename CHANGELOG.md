@@ -2,6 +2,8 @@
 
 ## 0.2.0-dev.1
 
+- Eine bereits vor dem ersten Ereignisstrom widerrufene externe Sitzung fordert
+  auch ohne ausstehende Offline-Änderungen zuverlässig zur Anmeldung auf.
 - Vier dedizierte, automatisch gebaute Geräte-Images: Raspberry Pi ARM32/ARM64
   und allgemeine AMD64-/ARM64-UEFI-Geräte, mit gepinnten offiziellen OS-Basen.
 - Kanlo-Autostart, separate native SDL/Wayland-Boardanzeige, Headless-/Hotplug-

@@ -136,6 +136,26 @@ def chroot_mounts(root):
             run('umount', '-R', root / source.lstrip('/'))
 
 
+def install_overlay(root):
+    # Do not copy Windows directory modes onto the guest's /etc or root.
+    overlay = ROOT / 'packaging/images/overlay'
+    for source_path in sorted(overlay.rglob('*')):
+        target_path = root / source_path.relative_to(overlay)
+        if source_path.is_dir():
+            target_path.mkdir(parents=True, exist_ok=True)
+            target_path.chmod(0o755)
+        else:
+            shutil.copyfile(source_path, target_path)
+            target_path.chmod(0o644)
+    shutil.copy2(ROOT / 'packaging/systemd/kanlo-server.service', root / 'etc/systemd/system/kanlo-server.service')
+    (root / 'etc/systemd/system/kanlo-server.service').chmod(0o644)
+    (root / 'usr/lib/kanlo').mkdir(parents=True, exist_ok=True)
+    for name in ['appliance.py', 'display.py', 'customize.sh']:
+        shutil.copy2(ROOT / 'packaging/images' / name, root / 'usr/lib/kanlo' / name)
+        (root / 'usr/lib/kanlo' / name).chmod(0o644)
+    os.chmod(root / 'etc/NetworkManager/dispatcher.d/90-kanlo', 0o755)
+
+
 def build(profile, package, cache, work, output):
     base = PROFILES[profile]
     metadata = inspect(package)
@@ -166,23 +186,7 @@ def build(profile, package, cache, work, output):
             shutil.copytree(extracted, root / 'usr/share/kanlo', dirs_exist_ok=True)
             # Keep exactly one installed server binary, not a second distribution copy.
             shutil.rmtree(root / 'usr/share/kanlo/bin')
-            # Do not copy Windows directory modes onto the guest's /etc or root.
-            overlay = ROOT / 'packaging/images/overlay'
-            for source_path in sorted(overlay.rglob('*')):
-                target_path = root / source_path.relative_to(overlay)
-                if source_path.is_dir():
-                    target_path.mkdir(parents=True, exist_ok=True)
-                    target_path.chmod(0o755)
-                else:
-                    shutil.copyfile(source_path, target_path)
-                    target_path.chmod(0o644)
-            shutil.copy2(ROOT / 'packaging/systemd/kanlo-server.service', root / 'etc/systemd/system/kanlo-server.service')
-            (root / 'etc/systemd/system/kanlo-server.service').chmod(0o644)
-            (root / 'usr/lib/kanlo').mkdir(parents=True, exist_ok=True)
-            for name in ['appliance.py', 'display.py', 'customize.sh']:
-                shutil.copy2(ROOT / 'packaging/images' / name, root / 'usr/lib/kanlo' / name)
-                (root / 'usr/lib/kanlo' / name).chmod(0o644)
-            os.chmod(root / 'etc/NetworkManager/dispatcher.d/90-kanlo', 0o755)
+            install_overlay(root)
             # Chroot needs a real resolver until NetworkManager starts on the device.
             (root / 'etc/resolv.conf').unlink(missing_ok=True)
             shutil.copyfile('/etc/resolv.conf', root / 'etc/resolv.conf')

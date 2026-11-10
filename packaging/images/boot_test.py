@@ -28,9 +28,17 @@ def verify(image, profile, directory):
             names = ['kernel8.img', 'bcm2710-rpi-3-b.dtb', 'initramfs8'] if arch == 'arm64' else ['kernel7.img', 'bcm2709-rpi-2-b.dtb', 'initramfs7']
             for name in names:
                 shutil.copy2(boot / name, firmware / name)
+            # The emulated SD controller has no reliable DMA path. Describe that
+            # capability in the test-only DTB; the shipped DTB and fast real-device
+            # DMA configuration are untouched. Exercise real SD I/O through PIO.
+            run('fdtput', '-t', 'x', firmware / names[1], '/soc/mmc@7e202000', 'brcm,pio-limit', '7fffffff')
             machine = 'raspi3b' if arch == 'arm64' else 'raspi2b'
             executable = 'qemu-system-aarch64' if arch == 'arm64' else 'qemu-system-arm'
             command = [executable, '-M', machine, '-m', '1024', '-kernel', str(firmware / names[0]), '-dtb', str(firmware / names[1]), '-initrd', str(firmware / names[2]), '-append', f'root=PARTUUID={root_id} rootfstype=ext4 rootwait console=ttyAMA0,115200 systemd.show_status=1', '-drive', f'file={test},if=sd,format=raw']
+            # QEMU's USB model uses ordinary interrupts, not the Pi firmware's
+            # optional FIQ acceleration. This command line is test-only.
+            command[command.index('-append') + 1] += ' dwc_otg.fiq_enable=0 dwc_otg.fiq_fsm_enable=0'
+            command.extend(['-netdev', 'user,id=kanlo', '-device', 'usb-net,netdev=kanlo'])
         elif arch == 'amd64':
             code = Path('/usr/share/OVMF/OVMF_CODE_4M.fd')
             variables = firmware / 'vars.fd'
@@ -67,4 +75,4 @@ def verify(image, profile, directory):
     emulator = run(command[0], '--version', capture_output=True).stdout.splitlines()[0]
     source = Path('/usr/local/share/kanlo-emulator-commit')
     emulator_commit = source.read_text().strip() if arch != 'amd64' and source.exists() else None
-    return {'status': 'passed', 'emulator': emulator + ' (TCG)', 'emulator_source_commit': emulator_commit, 'emulator_binary_sha256': checksum(Path(shutil.which(command[0]))), 'boots': results, 'physical_device_certified': False}
+    return {'status': 'passed', 'emulator': emulator + ' (TCG)', 'emulator_source_commit': emulator_commit, 'emulator_binary_sha256': checksum(Path(shutil.which(command[0]))), 'machine': command[command.index('-M') + 1], 'disk_bus': 'sd-pio' if family == 'rpi' else 'virtio', 'boots': results, 'physical_device_certified': False}

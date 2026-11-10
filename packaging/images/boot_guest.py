@@ -9,8 +9,8 @@ import urllib.request
 import uuid
 
 
-def get(path):
-    with urllib.request.urlopen('http://127.0.0.1:8080' + path, timeout=5) as response:
+def get(path, origin='http://127.0.0.1:8080'):
+    with urllib.request.urlopen(origin + path, timeout=5) as response:
         return json.load(response)
 
 
@@ -41,6 +41,9 @@ def main():
     assert not Path('/boot/firmware/KANLO_CONFIG.json').exists()
     mode = stat.S_IMODE(Path('/var/lib/kanlo').stat().st_mode)
     assert mode == 0o700
+    assert 'noatime' in subprocess.check_output(['findmnt', '-n', '-o', 'OPTIONS', '/'], text=True).strip().split(',')
+    swaps = json.loads(subprocess.check_output(['swapon', '--show', '--json', '--bytes'], text=True))['swapdevices']
+    assert swaps and all(swap['name'].startswith('/dev/zram') and 0 < swap['size'] <= 512 * 1024**2 for swap in swaps)
     for path in ['/etc', '/etc/systemd/system/kanlo-server.service', '/usr/lib/kanlo/appliance.py', '/usr/lib/kanlo/display.py']:
         assert stat.S_IMODE(Path(path).stat().st_mode) & 0o022 == 0
     assert os.statvfs('/').f_blocks * os.statvfs('/').f_frsize > 10 * 1024**3
@@ -49,6 +52,21 @@ def main():
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'kanlo-setup.service']).returncode == 0
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'NetworkManager.service']).returncode == 0
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'seatd.service']).returncode == 0
+    lan_verified = False
+    for _ in range(60):
+        interfaces = json.loads(subprocess.check_output(['ip', '-j', '-4', 'address', 'show'], text=True))
+        addresses = [address['local'] for interface in interfaces if interface['ifname'] != 'lo' for address in interface.get('addr_info', []) if address.get('family') == 'inet']
+        for address in addresses:
+            try:
+                if get('/api/v1/bootstrap', 'http://' + address + ':8080')['instance_id'] == state['instance_id']:
+                    lan_verified = True
+                    break
+            except OSError:
+                pass
+        if lan_verified:
+            break
+        time.sleep(1)
+    assert lan_verified, 'DHCP LAN address must reach the real Kanlo listener'
     marker = Path('/var/lib/kanlo-appliance/test-identity.json')
     if marker.exists():
         before = json.loads(marker.read_text())
@@ -76,7 +94,7 @@ def main():
     subprocess.run(['systemctl', 'stop', 'kanlo-server.service'], check=True)
     checked = subprocess.run(['runuser', '-u', 'kanlo', '--', 'env', 'KANLO_DATA_DIR=/var/lib/kanlo', '/usr/local/lib/kanlo/kanlo-server', '--check'], check=True, capture_output=True, text=True)
     assert checked.stdout.strip() == 'ok'
-    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'root_expanded': True, 'sqlite_integrity': 'ok'}), flush=True)
+    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True}), flush=True)
 
 
 try:

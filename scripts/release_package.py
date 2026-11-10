@@ -49,7 +49,7 @@ def image_files(output, commit):
         boot = report.get('boot_test', {})
         if report.get('source_commit') != commit or report.get('version') != version() or report.get('profile') != profile or report.get('base') != base or report.get('image') != image.name:
             raise ValueError('Image provenance/version/base mismatch')
-        if boot.get('status') != 'passed' or [b.get('phase') for b in boot.get('boots', [])] != ['firstboot', 'reboot'] or any(b.get('sqlite_integrity') != 'ok' or not b.get('root_expanded') for b in boot['boots']):
+        if boot.get('status') != 'passed' or [b.get('phase') for b in boot.get('boots', [])] != ['firstboot', 'reboot'] or any(b.get('sqlite_integrity') != 'ok' or not b.get('root_expanded') or not b.get('lan_http_verified') or not b.get('ram_swap_verified') for b in boot['boots']):
             raise ValueError('Two successful image boots are required')
         if not re.fullmatch(r'[0-9a-f]{64}', boot.get('emulator_binary_sha256', '')) or base['arch'] != 'amd64' and boot.get('emulator_source_commit') != '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5':
             raise ValueError('Pinned emulator provenance is required')
