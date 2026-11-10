@@ -111,6 +111,10 @@ sind im Emulator nicht originalgetreu abgebildet. Beim direkten ARM64-Kernelstar
 wird die gzip-Datei wie durch die echte Pi-Firmware entpackt. Ausgelieferte Firmware
 und Konfiguration behalten die Herstellervorgaben. Damit werden keine reale
 Speicher-/Netzwerkleistung und keine HDMI-/WLAN-Hardware zertifiziert.
+Beide Pi-Profile werden am Pi-3-Modell mit dem 64-Bit-Herstellerkernel geprüft;
+ARMHF führt dabei den tatsächlichen 32-Bit-Userspace und Kanlo-Server über die
+Kompatibilitätsunterstützung des Kernels aus. Der native 32-Bit-Kernelstart bleibt
+Teil der offenen physischen Hardwareabnahme. Beide Architekturen stehen im Nachweis.
 Beide Bootdurchläufe prüfen außerdem DHCP/LAN-HTTP und begrenzten RAM-Swap.
 
 Die Pipeline baut alle vier Varianten automatisch. Jeder Versions-Tag verlangt

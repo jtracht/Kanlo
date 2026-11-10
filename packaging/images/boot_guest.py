@@ -42,6 +42,7 @@ def main():
     assert not Path('/boot/firmware/KANLO_CONFIG.json').exists()
     mode = stat.S_IMODE(Path('/var/lib/kanlo').stat().st_mode)
     assert mode == 0o700
+    assert Path('/etc/cloud/cloud-init.disabled').is_file()
     assert 'noatime' in subprocess.check_output(['findmnt', '-n', '-o', 'OPTIONS', '/'], text=True).strip().split(',')
     swaps = [line.split() for line in Path('/proc/swaps').read_text().splitlines()[1:]]
     assert swaps and all(swap[0].startswith('/dev/zram') and 0 < int(swap[2]) <= 512 * 1024 for swap in swaps)
@@ -95,7 +96,7 @@ def main():
     subprocess.run(['systemctl', 'stop', 'kanlo-server.service'], check=True)
     checked = subprocess.run(['runuser', '-u', 'kanlo', '--', 'env', 'KANLO_DATA_DIR=/var/lib/kanlo', '/usr/local/lib/kanlo/kanlo-server', '--check'], check=True, capture_output=True, text=True)
     assert checked.stdout.strip() == 'ok'
-    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True}), flush=True)
+    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'kernel_machine': os.uname().machine, 'kernel_release': os.uname().release, 'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(), 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True}), flush=True)
 
 
 try:

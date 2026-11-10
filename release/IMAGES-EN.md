@@ -70,3 +70,7 @@ USB interrupts because the emulator does not faithfully implement SD DMA/FIQ
 paths. Direct ARM64 kernel boot decompresses the vendor gzip kernel as real Pi
 firmware would. Shipping firmware/configuration retains the vendor defaults. These tests
 do not certify real-device storage/network performance or HDMI/Wi-Fi hardware.
+Both Pi profiles are tested on the Pi 3 model with the vendor 64-bit kernel;
+the ARMHF profile executes its actual 32-bit userspace/server through the
+kernel's compatibility support. Native 32-bit kernel boot remains a physical
+hardware acceptance item. Reports identify both kernel and userspace architecture.

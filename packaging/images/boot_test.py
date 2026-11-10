@@ -26,29 +26,28 @@ def verify(image, profile, directory):
         firmware = directory / 'firmware'; firmware.mkdir(exist_ok=True)
         if family == 'rpi':
             boot = root / 'boot/firmware'
-            names = ['kernel8.img', 'bcm2710-rpi-3-b.dtb', 'initramfs8'] if arch == 'arm64' else ['kernel7.img', 'bcm2709-rpi-2-b.dtb', 'initramfs7']
+            # Pi 3 is a supported target for both userspaces. The vendor's
+            # 64-bit kernel also runs ARMHF userspace (as on 32-bit Pi OS/Pi 4).
+            names = ['kernel8.img', 'bcm2710-rpi-3-b.dtb', 'initramfs8']
             for name in names:
                 shutil.copy2(boot / name, firmware / name)
             # Direct -kernel boot bypasses the Pi firmware's gzip decompression.
             # The minimal pinned emulator has no optional gzip loader. Preserve
             # the vendor kernel and decompress only its isolated test copy.
-            if arch == 'arm64':
-                kernel = firmware / names[0]
-                with kernel.open('rb') as stream:
-                    compressed = stream.read(2) == b'\x1f\x8b'
-                if compressed:
-                    unpacked = firmware / 'kernel8-uncompressed.img'
-                    with gzip.open(kernel, 'rb') as source, unpacked.open('wb') as target:
-                        shutil.copyfileobj(source, target)
-                    unpacked.replace(kernel)
-            machine = 'raspi3b' if arch == 'arm64' else 'raspi2b'
-            executable = 'qemu-system-aarch64' if arch == 'arm64' else 'qemu-system-arm'
-            command = [executable, '-M', machine, '-m', '1024', '-kernel', str(firmware / names[0]), '-dtb', str(firmware / names[1]), '-initrd', str(firmware / names[2]), '-append', f'root=PARTUUID={root_id} rootfstype=ext4 rootwait console=ttyAMA0,115200 systemd.show_status=1', '-drive', f'file={test},if=none,id=disk,format=raw', '-device', 'usb-hub', '-device', 'usb-storage,drive=disk']
+            kernel = firmware / names[0]
+            with kernel.open('rb') as stream:
+                compressed = stream.read(2) == b'\x1f\x8b'
+            if compressed:
+                unpacked = firmware / 'kernel8-uncompressed.img'
+                with gzip.open(kernel, 'rb') as source, unpacked.open('wb') as target:
+                    shutil.copyfileobj(source, target)
+                unpacked.replace(kernel)
+            machine = 'raspi3b'
+            executable = 'qemu-system-aarch64'
+            command = [executable, '-M', machine, '-m', '1024', '-kernel', str(firmware / names[0]), '-dtb', str(firmware / names[1]), '-initrd', str(firmware / names[2]), '-append', f'root=PARTUUID={root_id} rootfstype=ext4 rootwait earlycon=pl011,mmio32,0x3f201000 console=ttyAMA1,115200 systemd.show_status=1', '-drive', f'file={test},if=none,id=disk,format=raw', '-device', 'usb-hub', '-device', 'usb-storage,drive=disk']
             # QEMU's USB model uses ordinary interrupts, not the Pi firmware's
             # optional FIQ acceleration. This command line is test-only.
             command[command.index('-append') + 1] += ' dwc_otg.fiq_enable=0 dwc_otg.fiq_fsm_enable=0'
-            if arch == 'armhf':
-                command.extend(['-accel', 'tcg,thread=single'])
             command.extend(['-netdev', 'user,id=kanlo', '-device', 'usb-net,netdev=kanlo'])
         elif arch == 'amd64':
             code = Path('/usr/share/OVMF/OVMF_CODE_4M.fd')
@@ -80,10 +79,12 @@ def verify(image, profile, directory):
         report = json.loads(reports[-1])
         if report['phase'] != phase:
             raise ValueError('Reboot did not retain the first boot identity/database')
+        if report['userspace_arch'] != arch:
+            raise ValueError('Booted userspace architecture does not match the profile')
         results.append(report)
         print('PASS: QEMU', profile, phase, flush=True)
     test.unlink()
     emulator = run(command[0], '--version', capture_output=True).stdout.splitlines()[0]
     source = Path('/usr/local/share/kanlo-emulator-commit')
     emulator_commit = source.read_text().strip() if arch != 'amd64' and source.exists() else None
-    return {'status': 'passed', 'emulator': emulator + ' (TCG)', 'emulator_source_commit': emulator_commit, 'emulator_binary_sha256': checksum(Path(shutil.which(command[0]))), 'machine': command[command.index('-M') + 1], 'disk_bus': 'usb-storage' if family == 'rpi' else 'virtio', 'boots': results, 'physical_device_certified': False}
+    return {'status': 'passed', 'emulator': emulator + ' (TCG)', 'emulator_source_commit': emulator_commit, 'emulator_binary_sha256': checksum(Path(shutil.which(command[0]))), 'machine': command[command.index('-M') + 1], 'kernel_arch': 'arm64' if family == 'rpi' else arch, 'userspace_arch': arch, 'disk_bus': 'usb-storage' if family == 'rpi' else 'virtio', 'boots': results, 'physical_device_certified': False}

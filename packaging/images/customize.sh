@@ -8,8 +8,10 @@ apt-get install -y --no-install-recommends python3 python3-pygame cage seatd \
     fonts-dejavu-core network-manager avahi-daemon systemd-resolved \
     cloud-guest-utils parted systemd-zram-generator sudo openssh-server iw curl ca-certificates
 # No cloud-provider startup or first-user wizard in the dedicated appliance.
+install -d -m 0755 /etc/cloud
+: > /etc/cloud/cloud-init.disabled
 for unit in cloud-init-local.service cloud-init.service cloud-config.service cloud-final.service \
-    cloud-init-network.service userconfig.service userconf-pi.service \
+    cloud-init-network.service cloud-init-main.service sshswitch.service userconfig.service userconf-pi.service \
     getty@tty1.service getty@tty2.service serial-getty@ttyS0.service \
     serial-getty@ttyAMA0.service ssh.service ssh.socket dphys-swapfile.service \
     rpi-connect.service rpi-connect-lite.service ModemManager.service \
