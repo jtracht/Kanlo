@@ -75,6 +75,9 @@ class Packages(unittest.TestCase):
                 image.write_bytes(lzma.compress(b'fixture image, not boot evidence'))
                 evidence = image.with_name(f'kanlo-{package.version()}-{profile}.image.json')
                 evidence.write_text(json.dumps({'profile': profile, 'version': package.version(), 'source_commit': package.git('rev-parse', 'HEAD'), 'base': base, 'image': image.name, 'sha256': package.file_sha256(image), 'boot_test': {'status': 'passed', 'boots': [{'phase': phase, 'sqlite_integrity': 'ok', 'root_expanded': True} for phase in ['firstboot', 'reboot']]}}))
+                fixture = json.loads(evidence.read_text())
+                fixture['boot_test'].update(emulator_binary_sha256='0' * 64, emulator_source_commit=None if base['arch'] == 'amd64' else '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5')
+                evidence.write_text(json.dumps(fixture))
             original = evidence.read_text()
             rejected = json.loads(original)
             rejected['boot_test']['status'] = 'failed'

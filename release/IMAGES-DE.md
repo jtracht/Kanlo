@@ -101,6 +101,10 @@ Downloads; normale OS-Updatefunktionen bleiben davon getrennt. Die native Anzeig
 headless Wayland-Compositor getestet. Das zu veröffentlichende Image bleibt
 unberührt: Zwei Bootprüfungen laufen auf einer separaten Kopie, prüfen ein
 geschriebenes Ticket nach Reboot und kontrollieren SQLite abschließend.
+Für ARM-Boots wird ein gepinnter QEMU-Upstream-Stand mit vollständigem BCM2835-
+Watchdog-Modell gebaut und zwischengespeichert. Die unveränderten Pi-Watchdog-
+Einstellungen bleiben auch im Boot-Test aktiv. Emulatorversion, Quellstand und
+Binärhash stehen im Nachweis; die Korrektur ist kein Bestandteil des Geräte-OS.
 
 Die Pipeline baut alle vier Varianten automatisch. Jeder Versions-Tag verlangt
 alle erfolgreichen Qualitäts-, Plattform-, Image- und Bootprüfungen; erst dann
@@ -110,3 +114,4 @@ Quellen: [Raspberry Pi OS](https://www.raspberrypi.com/software/operating-system
 [Debian-Images](https://cloud.debian.org/images/cloud/trixie/),
 [Cage](https://github.com/cage-kiosk/cage),
 [NetworkManager-Keyfiles](https://networkmanager.dev/docs/api/latest/nm-settings-keyfile.html).
+Emulator-Korrektur: [QEMU-Quellstand](https://github.com/qemu/qemu/commit/7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5).

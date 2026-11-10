@@ -1,0 +1,24 @@
+FROM debian:13-slim
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git build-essential python3 python3-venv python3-packaging python3-wheel python3-setuptools \
+    meson ninja-build pkg-config libglib2.0-dev libpixman-1-dev zlib1g-dev \
+    libfdt-dev libslirp-dev && rm -rf /var/lib/apt/lists/*
+# Includes the upstream BCM2835 watchdog timer implementation and lifetime fix.
+# QEMU 9.2 through 11.1 incorrectly reset immediately on a watchdog register write.
+ARG QEMU_COMMIT=7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5
+RUN git init /qemu && git -C /qemu remote add origin https://github.com/qemu/qemu.git && \
+    git -C /qemu fetch --depth=1 origin "$QEMU_COMMIT" && git -C /qemu checkout --detach FETCH_HEAD && \
+    git init /qemu/subprojects/keycodemapdb && \
+    git -C /qemu/subprojects/keycodemapdb remote add origin https://github.com/qemu/keycodemapdb.git && \
+    git -C /qemu/subprojects/keycodemapdb fetch --depth=1 origin f5772a62ec52591ff6870b7e8ef32482371f22c6 && \
+    git -C /qemu/subprojects/keycodemapdb checkout --detach FETCH_HEAD
+WORKDIR /qemu
+RUN python3 -m venv --system-site-packages /buildenv && \
+    /buildenv/bin/pip install --no-cache-dir qemu.qmp==0.0.6 pycotap==1.3.1
+RUN ./configure --python=/buildenv/bin/python3 --target-list=arm-softmmu,aarch64-softmmu --without-default-features \
+    --disable-docs --disable-tools --disable-guest-agent --disable-werror \
+    --disable-download --enable-slirp --enable-tcg && \
+    ninja -C build -j2 qemu-system-arm qemu-system-aarch64 && \
+    strip --strip-unneeded build/qemu-system-arm build/qemu-system-aarch64
+CMD ["sh", "-ec", "cp /qemu/build/qemu-system-arm /qemu/build/qemu-system-aarch64 /out/; git -C /qemu rev-parse HEAD > /out/SOURCE_COMMIT"]

@@ -7,3 +7,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 RUN git config --system --add safe.directory /src
+COPY --chmod=0755 image-tools/qemu-system-arm image-tools/qemu-system-aarch64 /usr/local/bin/
+COPY image-tools/SOURCE_COMMIT /usr/local/share/kanlo-emulator-commit

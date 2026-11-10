@@ -7,7 +7,7 @@ import time
 
 
 def verify(image, profile, directory):
-    from build import ROOT, mounted, run
+    from build import ROOT, checksum, mounted, run
     test = directory / 'boot-test.img'
     run('cp', '--sparse=always', image, test)
     run('truncate', '-s', '16G', test)
@@ -45,7 +45,7 @@ def verify(image, profile, directory):
     for phase in ['firstboot', 'reboot']:
         log_path = directory / f'{phase}.log'
         with log_path.open('w') as log:
-            process = subprocess.Popen([*command, '-display', 'none', '-serial', 'stdio', '-monitor', 'none', '-no-reboot'], stdout=log, stderr=subprocess.STDOUT, text=True)
+            process = subprocess.Popen([*command, '-L', '/usr/share/qemu', '-display', 'none', '-serial', 'stdio', '-monitor', 'none', '-no-reboot'], stdout=log, stderr=subprocess.STDOUT, text=True)
             try:
                 process.wait(timeout=600)
             except subprocess.TimeoutExpired:
@@ -57,11 +57,14 @@ def verify(image, profile, directory):
         reports = [line.split(marker, 1)[1] for line in log.splitlines() if marker in line]
         if process.returncode != 0 or not reports or 'KANLO_IMAGE_BOOT_FAILED ' in log:
             print(log[-15000:], flush=True)
-            raise RuntimeError(f'{profile} {phase} failed')
+            raise RuntimeError(f'{profile} {phase} failed (QEMU exit {process.returncode})')
         report = json.loads(reports[-1])
         if report['phase'] != phase:
             raise ValueError('Reboot did not retain the first boot identity/database')
         results.append(report)
         print('PASS: QEMU', profile, phase, flush=True)
     test.unlink()
-    return {'status': 'passed', 'emulator': 'QEMU TCG', 'boots': results, 'physical_device_certified': False}
+    emulator = run(command[0], '--version', capture_output=True).stdout.splitlines()[0]
+    source = Path('/usr/local/share/kanlo-emulator-commit')
+    emulator_commit = source.read_text().strip() if arch != 'amd64' and source.exists() else None
+    return {'status': 'passed', 'emulator': emulator + ' (TCG)', 'emulator_source_commit': emulator_commit, 'emulator_binary_sha256': checksum(Path(shutil.which(command[0]))), 'boots': results, 'physical_device_certified': False}

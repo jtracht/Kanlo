@@ -119,8 +119,31 @@ jobs:
       - name: Downloaded package, no network/display, non-root, restart and shutdown
         run: docker run --rm --network none --user kanlo --cap-drop ALL -v "$PWD:/src:ro" -v "$PWD/artifacts:/artifacts:ro" kanlo-runtime-validation:debian13 python3 /src/packaging/tests/package_smoke.py /artifacts
 
+  image-emulator:
+    needs: [quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        id: emulator-cache
+        with:
+          path: image-tools
+          key: kanlo-qemu-${{ runner.os }}-${{ hashFiles('packaging/images/Dockerfile.emulator') }}
+      - name: Build pinned upstream emulator with correct Pi watchdog behavior
+        if: steps.emulator-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p image-tools
+          docker build -f packaging/images/Dockerfile.emulator -t kanlo-image-emulator .
+          docker run --rm -v "$PWD/image-tools:/out" kanlo-image-emulator
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kanlo-emulator-tools
+          path: image-tools/*
+          if-no-files-found: error
+
   appliance-images:
-    needs: [quality, debian-build]
+    needs: [quality, debian-build, image-emulator]
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
@@ -142,6 +165,10 @@ jobs:
         with:
           name: kanlo-dev-${{ matrix.arch }}
           path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: kanlo-emulator-tools
+          path: image-tools
       - name: Enable cross-architecture package configuration
         run: docker run --privileged --rm tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0 --install arm,arm64
       - uses: actions/cache@v4

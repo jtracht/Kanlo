@@ -51,6 +51,8 @@ def image_files(output, commit):
             raise ValueError('Image provenance/version/base mismatch')
         if boot.get('status') != 'passed' or [b.get('phase') for b in boot.get('boots', [])] != ['firstboot', 'reboot'] or any(b.get('sqlite_integrity') != 'ok' or not b.get('root_expanded') for b in boot['boots']):
             raise ValueError('Two successful image boots are required')
+        if not re.fullmatch(r'[0-9a-f]{64}', boot.get('emulator_binary_sha256', '')) or base['arch'] != 'amd64' and boot.get('emulator_source_commit') != '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5':
+            raise ValueError('Pinned emulator provenance is required')
         with image.open('rb') as stream:
             if stream.read(6) != b'\xfd7zXZ\x00':
                 raise ValueError('Expected an XZ-compressed raw disk image')
