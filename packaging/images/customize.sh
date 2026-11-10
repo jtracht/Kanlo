@@ -20,7 +20,7 @@ systemctl unmask ssh.service
 systemctl disable ssh.service
 systemctl enable NetworkManager.service avahi-daemon.service systemd-resolved.service seatd.service
 systemctl disable systemd-networkd.service systemd-networkd-wait-online.service 2>/dev/null || true
-systemctl enable kanlo-firstboot.service kanlo-network.service kanlo-server.service kanlo-tv.service kanlo-setup.service
+systemctl enable kanlo-firstboot.service kanlo-network.service kanlo-network.timer kanlo-server.service kanlo-tv.service kanlo-setup.service
 id kanlo >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin kanlo
 id kanlo-display >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin kanlo-display
 getent group render >/dev/null || groupadd --system render

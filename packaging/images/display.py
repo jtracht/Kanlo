@@ -18,10 +18,11 @@ def reader(updates, stop):
     while not stop.is_set():
         try:
             bootstrap = fetch('bootstrap')
-            if revision != bootstrap['revision']:
+            identity = (bootstrap.get('instance_id'), bootstrap.get('epoch'), bootstrap['revision'])
+            if revision != identity:
                 boards = [fetch('boards/' + board['id'] + '/snapshot')['workspace'] for board in bootstrap['boards']]
                 updates.put(('boards', boards))
-                revision = bootstrap['revision']
+                revision = identity
             updates.put(('online', True))
         except (OSError, ValueError, KeyError):
             updates.put(('online', False))
@@ -114,6 +115,7 @@ def main():
                 board = workspace['boards'][0]
                 text(board['name'], (round(190 * scale), margin), title_font, max_width=width - round(230 * scale))
                 columns = visible(workspace)
+                page_count = 1
                 if columns:
                     per_screen = max(1, min(len(columns), width // round(280 * scale)))
                     column_width = (width - margin * 2) // per_screen

@@ -43,6 +43,9 @@ echte Kernel-/systemd-Boots unter QEMU, keine simulierten Erfolgsmeldungen.
    WLAN/SSH-Einträge bei Nichtbedarf auf `null` lassen. SSH akzeptiert genau
    einen eigenen Public Key, keine privaten Schlüssel. Die echte Konfigurations-
    datei wird nach erfolgreicher Übernahme von der Bootpartition gelöscht.
+   Bei UEFI-Images ist dies die EFI-Systempartition; Windows zeigt sie häufig
+   nicht automatisch als Laufwerk an. In diesem Fall die lokale Einrichtung
+   unter Ctrl+Alt+F2 verwenden oder die gewählte EFI-Partition unter Linux öffnen.
 4. Gerät mit Ethernet oder konfiguriertem WLAN starten. Die Datenpartition
    erweitert sich automatisch auf den Datenträger. Kanlo startet ohne Anmeldung
    und ohne Internet. Ohne Konfiguration heißt das Gerät `kanlo-<Gerätekennung>`.
@@ -93,8 +96,8 @@ prüfen oder für die Einrichtung Ethernet anschließen.
 
 `packaging/images/bases.json` pinnt offizielle Basisimages inklusive Hash.
 Der Build installiert alle Laufzeitpakete, dokumentiert sie und legt Kanlo mit
-passender Architektur und Quellstand ein. Es wird nichts beim ersten Start aus
-dem Internet nachgeladen. Die native Anzeige wird zusätzlich auf einem echten
+passender Architektur und Quellstand ein. Der erste Start benötigt keine
+Downloads; normale OS-Updatefunktionen bleiben davon getrennt. Die native Anzeige wird zusätzlich auf einem echten
 headless Wayland-Compositor getestet. Das zu veröffentlichende Image bleibt
 unberührt: Zwei Bootprüfungen laufen auf einer separaten Kopie, prüfen ein
 geschriebenes Ticket nach Reboot und kontrollieren SQLite abschließend.

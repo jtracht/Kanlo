@@ -147,8 +147,14 @@ def network():
     addresses = [a['local'] for interface in info for a in interface.get('addr_info', []) if a.get('family') == 'inet']
     hostname = Path('/etc/hostname').read_text().strip()
     hosts = authorities(addresses, hostname)
-    atomic(Path('/run/kanlo-network/server.env'), 'KANLO_BIND=0.0.0.0:8080\nKANLO_ALLOWED_HOSTS=' + ','.join(hosts) + '\n', 0o644)
+    environment = Path('/run/kanlo-network/server.env')
+    content = 'KANLO_BIND=0.0.0.0:8080\nKANLO_ALLOWED_HOSTS=' + ','.join(hosts) + '\n'
+    changed = not environment.exists() or environment.read_text() != content
+    if changed:
+        atomic(environment, content, 0o644)
     atomic(Path('/run/kanlo-network/urls.json'), json.dumps(['http://' + h for h in hosts if '.local:' not in h and not h.startswith(hostname + ':')] or ['http://' + hostname + '.local:8080']), 0o644)
+    if changed and subprocess.run(['systemctl', 'is-active', '--quiet', 'kanlo-server.service']).returncode == 0:
+        run('systemctl', '--no-block', 'try-restart', 'kanlo-server.service')
 
 
 def has_display():

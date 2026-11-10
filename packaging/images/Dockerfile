@@ -6,3 +6,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     shellcheck python3-pygame cage seatd fonts-dejavu-core && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /src
+RUN git config --system --add safe.directory /src

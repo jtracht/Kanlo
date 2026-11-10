@@ -1,0 +1,10 @@
+[Unit]
+Description=Catch DHCP/address changes without repeated Kanlo restarts
+
+[Timer]
+OnBootSec=5s
+OnUnitInactiveSec=15s
+AccuracySec=2s
+
+[Install]
+WantedBy=timers.target
