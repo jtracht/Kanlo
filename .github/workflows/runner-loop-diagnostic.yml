@@ -1,0 +1,32 @@
+name: Image runner loop diagnostic
+
+on:
+  push:
+    branches: [codex/gitea-loop-diagnostic]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  loop-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Attach an isolated disposable image file
+        run: |
+          docker run --rm --pull=never --privileged -v /work kanlo-image-builder:debian13 sh -ec '
+            printf "Loop driver registration:\n"
+            grep -E "(^|[[:space:]])loop$" /proc/devices || true
+            printf "Loop device nodes visible to the builder:\n"
+            ls -l /dev/loop* 2>&1 || true
+            printf "Loop devices visible in sysfs:\n"
+            for device in /sys/class/block/loop*; do
+              if test -e "$device/dev"; then printf "%s " "${device##*/}"; cat "$device/dev"; fi
+            done
+            image=/work/kanlo-loop-probe.img
+            truncate -s 8G "$image"
+            loop=$(losetup --find --show --partscan "$image")
+            trap '\''losetup -d "$loop"'\'' EXIT
+            printf "Attached disposable file through %s\n" "$loop"
+          '
