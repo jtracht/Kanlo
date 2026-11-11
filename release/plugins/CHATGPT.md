@@ -1,6 +1,6 @@
 # Kanlo in ChatGPT einrichten
 
-Du brauchst einen laufenden Kanlo-Server, Node.js ab Version 22 mit npm und
+Du brauchst Kanlo ab 0.2.0-dev.2, Node.js ab Version 22 mit npm und
 einen ChatGPT-Workspace, der eigene MCP-Server und private Tunnel zulässt.
 Der Tunnel-Client läuft auf einem Rechner, der Kanlo erreichen kann.
 
@@ -12,7 +12,8 @@ Der Tunnel-Client läuft auf einem Rechner, der Kanlo erreichen kann.
    auf die geschützte HTTPS-Adresse ohne Pfad und `KANLO_API_KEY` auf
    einen widerrufbaren Kanlo-API-Schlüssel. Setze die Variablen in der
    Umgebung, aus der du den Tunnel-Client startest. Wenn du das Anlegen von
-   Tickets freigeben willst, setze dort auch `KANLO_ENABLE_WRITES=1`.
+   Tickets, Bearbeitungen und Kommentare freigeben willst, setze dort
+   auch `KANLO_ENABLE_WRITES=1`.
    [Kanlo-Betriebsanleitung](https://git.tracht-digital.de/jtracht/Kanlo/src/branch/main/docs/de/BETRIEB.md)
 3. Richte in OpenAI Platform einen privaten Secure MCP Tunnel für den
    Ziel-Workspace ein. Halte die Tunnel-ID bereit, installiere den offiziellen

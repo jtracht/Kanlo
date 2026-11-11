@@ -48,6 +48,50 @@ async fn call(app: axum::Router, method: &str, path: &str, body: Value) -> (Stat
 }
 
 #[tokio::test]
+async fn ticket_search_pages_across_boards_and_validates_filters() {
+    let app = router(Store::open(":memory:").unwrap());
+    let (_, boards) = call(app.clone(), "GET", "/api/v1/boards", Value::Null).await;
+    let (status, second) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/boards",
+        json!({"name":"Second", "prefix":"SEC"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    for board in [&boards[0], &second] {
+        let path = format!("/api/v1/boards/{}/tickets", board["id"].as_str().unwrap());
+        let (status, _) = call(
+            app.clone(),
+            "POST",
+            &path,
+            json!({"title":"Find this", "description":"shared search term"}),
+        )
+        .await;
+        assert_eq!(status, StatusCode::CREATED);
+    }
+    let path = "/api/v1/ticket-search?query=shared+search+term&status=open&limit=1";
+    let (status, first) = call(app.clone(), "GET", path, Value::Null).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(first["next_offset"], 1);
+    let (status, last) = call(app.clone(), "GET", &format!("{path}&offset=1"), Value::Null).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(last["next_offset"], Value::Null);
+    assert_ne!(first["items"][0]["board_id"], last["items"][0]["board_id"]);
+    assert!(first["items"][0].get("description").is_none());
+    for query in ["limit=26", "status=unknown"] {
+        let (status, _) = call(
+            app.clone(),
+            "GET",
+            &format!("/api/v1/ticket-search?{query}"),
+            Value::Null,
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}
+
+#[tokio::test]
 async fn http_roundtrip_and_stale_revision() {
     let app = router(Store::open(":memory:").unwrap());
     let (status, boards) = call(app.clone(), "GET", "/api/v1/boards", Value::Null).await;

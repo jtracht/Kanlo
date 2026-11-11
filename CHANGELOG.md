@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.2
+
+- Die API bietet eine paginierte, boardübergreifende Ticketsuche mit Text-,
+  Spalten- und Statusfiltern auf Basis der Kanlo-Domänensuche.
+- Claude Code und ChatGPT nutzen dieselbe Suche und können mit freigegebenem
+  Schreibzugriff Tickets bearbeiten und kommentieren.
+
 ## 0.2.0-dev.1
 
 - Eine bereits vor dem ersten Ereignisstrom widerrufene externe Sitzung fordert

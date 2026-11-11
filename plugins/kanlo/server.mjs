@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -9,6 +10,7 @@ const local = ["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname);
 const apiKey = process.env.KANLO_API_KEY;
 const writesEnabled = process.env.KANLO_ENABLE_WRITES === "1";
 const clientId = randomUUID();
+const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
 if (origin.username || origin.password || origin.pathname !== "/" || origin.search || origin.hash ||
     !(origin.protocol === "https:" || (local && origin.protocol === "http:"))) {
@@ -39,7 +41,18 @@ async function request(path, body) {
   return response.json();
 }
 
-const server = new McpServer({ name: "kanlo", version: "0.1.0" });
+async function mutate(command) {
+  const { instance_id, epoch } = await request("health");
+  return request("commands", {
+    op_id: randomUUID(),
+    client_id: clientId,
+    server_instance_id: instance_id,
+    base_epoch: epoch,
+    command,
+  });
+}
+
+const server = new McpServer({ name: "kanlo", version });
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const paging = {
   offset: z.number().int().min(0).default(0),
@@ -52,10 +65,6 @@ function page(items, { offset, limit }, project) {
     items: items.slice(offset, next).map(project),
     next_offset: next < items.length ? next : null,
   };
-}
-
-function ticketSummary({ id, public_id, board_id, column_id, title, importance, done, revision }) {
-  return { id, public_id, board_id, column_id, title, importance, done, revision };
 }
 
 function tool(name, description, inputSchema, execute, readOnlyHint = true) {
@@ -82,19 +91,13 @@ tool("kanlo_list_boards", "Kanlo-Boards mit IDs und Ticketpräfixen auflisten.",
 tool("kanlo_list_columns", "Spalten eines Kanlo-Boards auflisten.", { board_id: id, ...paging },
   async (input) => page(await request(`boards/${input.board_id}/columns`), input, (column) => column));
 
-tool("kanlo_list_tickets", "Tickets eines Boards auflisten. Optional nach Spalte und Text im Titel oder der Ticketkennung filtern.", {
-  board_id: id,
+tool("kanlo_list_tickets", "Kanlo-Tickets durchsuchen. Ohne Board-ID wird boardübergreifend gesucht. Optional nach Spalte, Text oder Status filtern.", {
+  board_id: id.optional(),
   column_id: id.optional(),
   query: z.string().trim().min(1).max(200).optional(),
+  status: z.enum(["active", "open", "done", "blocked", "backlog", "overdue", "archive", "trash", "all"]).optional(),
   ...paging,
-}, async (input) => {
-  const tickets = await request(`boards/${input.board_id}/tickets`);
-  const query = input.query?.toLowerCase();
-  const matches = tickets.filter((ticket) =>
-    (!input.column_id || ticket.column_id === input.column_id) &&
-    (!query || ticket.title.toLowerCase().includes(query) || ticket.public_id.toLowerCase().includes(query)));
-  return page(matches, input, ticketSummary);
-});
+}, async (input) => request(`ticket-search?${new URLSearchParams(input)}`));
 
 tool("kanlo_get_ticket", "Ein Ticket per interner ID oder sichtbarer Ticketkennung abrufen.", {
   ticket_id: id,
@@ -107,23 +110,37 @@ if (writesEnabled) {
     description: z.string().max(20_000).default(""),
     column_id: id.optional(),
   }, async ({ board_id, title, description, column_id }) => {
-    const { instance_id, epoch } = await request("health");
-    const receipt = await request("commands", {
-      op_id: randomUUID(),
-      client_id: clientId,
-      server_instance_id: instance_id,
-      base_epoch: epoch,
-      command: {
-        kind: "create_ticket",
-        board_id,
-        title,
-        description,
-        importance: 0,
-        column_id: column_id ?? null,
-        parent_id: null,
-        type_id: null,
-      },
+    const receipt = await mutate({
+      kind: "create_ticket",
+      board_id,
+      title,
+      description,
+      importance: 0,
+      column_id: column_id ?? null,
+      parent_id: null,
+      type_id: null,
     });
+    return { id: receipt.result.entity_id, revision: receipt.revision };
+  }, false);
+
+  tool("kanlo_update_ticket", "Titel, Beschreibung oder Wichtigkeit auf Nutzerwunsch ändern. Die Revision aus der letzten Abfrage angeben. Bei Konflikt erneut lesen und die Änderung mit dem Nutzer abgleichen.", {
+    ticket_id: id,
+    revision: z.number().int().nonnegative(),
+    fields: z.strictObject({
+      title: z.string().trim().min(1).max(300).optional(),
+      description: z.string().max(20_000).optional(),
+      importance: z.number().int().min(0).max(255).optional(),
+    }).refine((fields) => Object.keys(fields).length > 0, "Mindestens ein Feld ist erforderlich."),
+  }, async ({ ticket_id, revision, fields }) => {
+    const receipt = await mutate({ kind: "patch_ticket", id: ticket_id, base_revision: revision, fields });
+    return { id: receipt.result.entity_id, revision: receipt.revision };
+  }, false);
+
+  tool("kanlo_add_comment", "Auf ausdrücklichen Nutzerwunsch einen Markdown-Kommentar zu einem Ticket hinzufügen.", {
+    ticket_id: id,
+    markdown: z.string().trim().min(1).max(4_000),
+  }, async ({ ticket_id, markdown }) => {
+    const receipt = await mutate({ kind: "add_comment", ticket_id, markdown });
     return { id: receipt.result.entity_id, revision: receipt.revision };
   }, false);
 }

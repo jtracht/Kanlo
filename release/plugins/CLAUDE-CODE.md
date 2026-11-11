@@ -1,6 +1,6 @@
 # Kanlo in Claude Code einrichten
 
-Du brauchst einen laufenden Kanlo-Server, Claude Code und Node.js ab Version 22
+Du brauchst Kanlo ab 0.2.0-dev.2, Claude Code und Node.js ab Version 22
 mit npm. Das ZIP enthält den Plugin-Quellcode und die Abhängigkeitsliste.
 
 1. Entpacke `kanlo-claude-code-<Version>-source.zip` und öffne ein Terminal im
@@ -23,6 +23,6 @@ mit npm. Das ZIP enthält den Plugin-Quellcode und die Abhängigkeitsliste.
    Plugin-Ordner an. [Claude Code Plugin-Referenz](https://code.claude.com/docs/en/plugins-reference)
 5. Öffne `/mcp` in Claude Code und prüfe, ob **kanlo** verbunden ist.
    Bitte Claude anschließend: „Liste meine Kanlo-Boards auf.“
-6. Wenn das Plugin Tickets anlegen soll, setze `KANLO_ENABLE_WRITES` in
+6. Wenn das Plugin Tickets anlegen, bearbeiten oder kommentieren soll, setze `KANLO_ENABLE_WRITES` in
    derselben Umgebung auf `1` und starte Claude Code neu. Ohne diese
    Einstellung bietet das Plugin nur Lesezugriff an.

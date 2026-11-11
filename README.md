@@ -1,7 +1,7 @@
 # Kanlo
 
 Lokales Kanban für ein Debian-/Raspberry-Pi-Gerät mit einer Weboberfläche und
-nativer Geräteanzeige. **Entwicklungsversion 0.2.0-dev.1, kein Stable-Release.**
+nativer Geräteanzeige. **Entwicklungsversion 0.2.0-dev.2, kein Stable-Release.**
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Den belegten
@@ -38,8 +38,8 @@ HTTPS-Proxy-Zugang: [Betrieb](docs/de/BETRIEB.md).
 ## Umgesetzt
 
 Die [Plugins für ChatGPT und Claude Code](plugins/kanlo/README.md) greifen über
-MCP auf Kanlo-Boards, Spalten und Tickets zu. Die Ticketanlage lässt sich
-pro Verbindung freigeben.
+MCP auf Kanlo-Boards, Spalten und Tickets zu. Schreibzugriff lässt sich pro
+Verbindung freigeben.
 
 Boards/Spalten, stabile Ticketkennungen, Typen, globale Labels, eigene Textfelder,
 Untertickets, azyklische Abhängigkeiten, WIP-Limits, transaktionale Sammelaktionen,

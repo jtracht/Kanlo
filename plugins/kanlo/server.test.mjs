@@ -77,4 +77,37 @@ test("MCP tools read and create tickets through an isolated Kanlo instance", { t
   });
   assert.equal(detail.structuredContent.ticket.title, title);
   assert.equal(detail.structuredContent.ticket.column_id, column_id);
+  const update = {
+    ticket_id: ticket.public_id,
+    revision: detail.structuredContent.ticket.revision,
+    fields: { description: "Searchable detail", importance: 40 },
+  };
+  const updated = await writer.callTool({ name: "kanlo_update_ticket", arguments: update });
+  assert.equal(updated.isError, undefined, JSON.stringify(updated));
+  const stale = await writer.callTool({ name: "kanlo_update_ticket", arguments: update });
+  assert.equal(stale.isError, true);
+  assert.match(stale.content[0].text, /409/);
+  const found = await reader.callTool({
+    name: "kanlo_list_tickets", arguments: { query: "Searchable detail", status: "open" },
+  });
+  assert.equal(found.structuredContent.items[0].id, ticket.id);
+  assert.equal(found.structuredContent.items[0].importance, 40);
+  const comment = await writer.callTool({
+    name: "kanlo_add_comment", arguments: { ticket_id: ticket.public_id, markdown: "Ein Testkommentar." },
+  });
+  assert.equal(comment.isError, undefined, JSON.stringify(comment));
+  assert.ok(comment.structuredContent.id);
+  const next = await writer.callTool({
+    name: "kanlo_create_ticket", arguments: { board_id, column_id, title: "MCP second ticket" },
+  });
+  const firstPage = await reader.callTool({
+    name: "kanlo_list_tickets", arguments: { board_id, limit: 1 },
+  });
+  assert.equal(firstPage.structuredContent.next_offset, 1);
+  const secondPage = await reader.callTool({
+    name: "kanlo_list_tickets", arguments: { board_id, offset: 1, limit: 1 },
+  });
+  assert.deepEqual(new Set([...firstPage.structuredContent.items, ...secondPage.structuredContent.items].map(item => item.id)),
+    new Set([ticket.id, next.structuredContent.id]));
+  assert.equal(secondPage.structuredContent.next_offset, null);
 });

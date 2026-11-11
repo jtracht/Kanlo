@@ -1,4 +1,8 @@
-# Kanlo 0.2.0-dev.1
+# Kanlo 0.2.0-dev.2
+
+Die Kanlo-API bietet eine paginierte Ticketsuche über mehrere Boards.
+Die separat erhältlichen Kanlo-Plugins 0.2.0 für Claude Code und ChatGPT
+nutzen diese Suche und unterstützen Ticketbearbeitung und Kommentare.
 
 Private Geräte-Images / Private appliance development release.
 

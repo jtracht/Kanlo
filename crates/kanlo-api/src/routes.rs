@@ -15,6 +15,7 @@ pub fn routes() -> Router<Database> {
         .route("/api/v1/commands/preview", post(preview))
         .route("/api/v1/commands/confirm", post(confirm))
         .route("/api/v1/search", post(search))
+        .route("/api/v1/ticket-search", get(ticket_search))
         .route("/api/v1/events", get(events))
         .route("/api/v1/statistics", get(statistics))
         .route("/api/v1/undo/{id}", get(history).post(undo))
@@ -102,6 +103,75 @@ async fn search(
     Ok(Json(
         database(db, move |db| {
             db.workspace()?.search(&view, chrono::Utc::now())
+        })
+        .await?,
+    ))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TicketSearch {
+    #[serde(default)]
+    board_id: String,
+    #[serde(default)]
+    query: String,
+    column_id: Option<String>,
+    status: Option<String>,
+    #[serde(default)]
+    offset: usize,
+    limit: Option<usize>,
+}
+
+async fn ticket_search(
+    State(db): State<Database>,
+    Query(input): Query<TicketSearch>,
+) -> Result<Json<Value>, ApiError> {
+    let limit = input.limit.unwrap_or(10);
+    if !(1..=25).contains(&limit) {
+        return Err(ApiError(Error::Validation("limit must be 1–25".into())));
+    }
+    let status = input.status.unwrap_or_else(|| "active".into());
+    if !matches!(
+        status.as_str(),
+        "active"
+            | "open"
+            | "done"
+            | "blocked"
+            | "backlog"
+            | "overdue"
+            | "archive"
+            | "trash"
+            | "all"
+    ) {
+        return Err(ApiError(Error::Validation(
+            "Invalid ticket search status".into(),
+        )));
+    }
+    let view = kanlo_core::ViewState {
+        board_id: input.board_id,
+        query: input.query,
+        status,
+        ..Default::default()
+    };
+    Ok(Json(
+        database(db, move |db| {
+            let tickets = db.workspace()?.search(&view, chrono::Utc::now())?;
+            let mut matching = tickets
+                .iter()
+                .filter(|ticket| {
+                    input
+                        .column_id
+                        .as_ref()
+                        .is_none_or(|column| ticket.column_id.as_ref() == Some(column))
+                })
+                .skip(input.offset);
+            let items: Vec<_> = matching.by_ref().take(limit).map(|ticket| json!({
+            "id": ticket.id, "public_id": ticket.public_id, "board_id": ticket.board_id,
+            "column_id": ticket.column_id, "title": ticket.title, "importance": ticket.importance,
+            "done": ticket.done, "revision": ticket.revision
+        })).collect();
+            let next_offset = matching.next().map(|_| input.offset.saturating_add(limit));
+            Ok(json!({ "items": items, "next_offset": next_offset }))
         })
         .await?,
     ))

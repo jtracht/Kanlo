@@ -1,9 +1,11 @@
 # Kanlo für Claude Code und ChatGPT
 
 Die gemeinsame MCP-Anbindung fragt Boards, Spalten und aktive Tickets ab.
-Tickets lassen sich nach Titel, sichtbarer Kennung und Spalte filtern.
+Die Suche funktioniert boardübergreifend und lässt sich nach Text, sichtbarer
+Kennung, Spalte und Status filtern. Plugin 0.2.0 benötigt Kanlo ab 0.2.0-dev.2.
 Die Ticketdetails können über die sichtbare Kennung geöffnet werden.
-Mit freigegebenem Schreibzugriff können beide Clients auch Tickets anlegen.
+Mit freigegebenem Schreibzugriff können beide Clients Tickets anlegen, bearbeiten
+und kommentieren. Bei veralteter Ticketrevision meldet Kanlo einen Konflikt.
 
 ## Vorbereitung
 
@@ -19,7 +21,7 @@ Der MCP-Prozess verwendet die folgenden Umgebungsvariablen.
 | --- | --- |
 | `KANLO_URL` | Standard `http://127.0.0.1:8080`. Für eine entfernte Instanz die geschützte HTTPS-Origin ohne Pfad verwenden. |
 | `KANLO_API_KEY` | Separater widerrufbarer Kanlo-API-Schlüssel. Für entfernte Instanzen erforderlich. Siehe [Betrieb](../../docs/de/BETRIEB.md). |
-| `KANLO_ENABLE_WRITES` | `1` stellt das Werkzeug zum Anlegen von Tickets bereit. Standardmäßig werden nur Lesewerkzeuge angeboten. |
+| `KANLO_ENABLE_WRITES` | `1` stellt Schreibwerkzeuge bereit. Standardmäßig werden nur Lesewerkzeuge angeboten. |
 
 Die Variablen vor dem Start von Claude Code beziehungsweise des Tunnel-Clients
 in dessen Prozessumgebung setzen. Schlüssel außerhalb des Repositories verwalten.
