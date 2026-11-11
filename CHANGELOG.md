@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0-dev.6 (lokale Entwicklung)
+
+- TV-Anzeige mit Ansichtswechsel, Rotation, Ticket-, Backlog- und
+  Unterticket-Einblendungen, Hervorhebungen und Anzeige-Warnhinweisen.
+- Boardübergreifende Statusübersicht für Web und TV sowie native Statistik.
+- MCP-Steuerung der Anzeige für Claude Code und ChatGPT. Einrichtungsdialog
+  mit Schlüsseltest und Leseschema für GPT Actions.
+- Optionaler Kiosk-Modus und Deinstallation im Standalone-Serverinstaller.
+
 ## 0.2.0-dev.5
 
 - Native Anzeige und Konsolen-Fallback beziehen Änderungen aus dem Kanlo-

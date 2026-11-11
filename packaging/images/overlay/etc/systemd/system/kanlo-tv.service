@@ -13,6 +13,8 @@ SupplementaryGroups=video render
 ExecCondition=/usr/bin/python3 /usr/lib/kanlo/appliance.py has-display
 RuntimeDirectory=kanlo-display
 RuntimeDirectoryMode=0700
+StateDirectory=kanlo-display
+StateDirectoryMode=0700
 Environment=XDG_RUNTIME_DIR=/run/kanlo-display
 Environment=LIBSEAT_BACKEND=seatd
 Environment=SDL_VIDEODRIVER=wayland

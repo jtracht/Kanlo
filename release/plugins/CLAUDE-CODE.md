@@ -1,6 +1,6 @@
 # Kanlo in Claude Code einrichten
 
-Du brauchst Kanlo ab 0.2.0-dev.3, Claude Code und Node.js ab Version 22
+Du brauchst Kanlo ab 0.2.0-dev.6, Claude Code und Node.js ab Version 22
 mit npm. Das ZIP enthält den Plugin-Quellcode und die Abhängigkeitsliste.
 
 1. Entpacke `kanlo-claude-code-<Version>-source.zip` und öffne ein Terminal im

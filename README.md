@@ -1,12 +1,12 @@
 # Kanlo
 
 Lokales Kanban für ein Debian-/Raspberry-Pi-Gerät mit einer Weboberfläche und
-nativer Geräteanzeige. **Entwicklungsversion 0.2.0-dev.5, kein Stable-Release.**
+nativer Geräteanzeige. **Lokale Entwicklungsversion 0.2.0-dev.6.**
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Den belegten
-Aufgabenstand dieses Releases liegt bei **60 % (42 von 70 Originalaufgaben)**.
-[Abnahme und Zählweise](docs/de/60-PROZENT.md)
+Aufgabenstand liegt bei **78,6 % (55 von 70 Originalaufgaben)**.
+[Abnahme und Zählweise](docs/de/FORTSCHRITT.md)
 
 ![Kanlo-Board mit Backlog, Suche und Tickets in drei Spalten](docs/screenshots/board-desktop.png)
 
@@ -60,9 +60,9 @@ Restore-Epochen brauchen eine ausdrückliche Entscheidung. Auf gewöhnlichem
 LAN-HTTP bleibt die Website online nutzbar; Offline-PWA auf anderen Geräten
 benötigt vertrauenswürdiges HTTPS.
 
-Offen bleiben insbesondere native TV-Anzeige und ihre Steuerung, Installer,
-Kiosk/Display-Erkennung, vollständiges OpenAPI/MCP/ChatGPT, OS-Images/Updater,
-Geräte-/Pi-Messungen und öffentliche Release-/Lizenzfreigaben.
+Offen bleiben insbesondere vollständiges OpenAPI, die Abnahme der ChatGPT-
+Einrichtung, der Updater, physische Geräteprüfungen und die öffentliche
+Release-/Lizenzfreigabe.
 
 ## Prüfen und Webassets ändern
 

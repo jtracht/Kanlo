@@ -391,6 +391,7 @@ impl Store {
             tx.execute("DELETE FROM api_keys", []).map_err(storage)?;
             tx.execute("DELETE FROM temp_mappings", [])
                 .map_err(storage)?;
+            crate::display::reset_context(&tx)?;
             tx.execute("INSERT INTO event_stream(payload,created_at) VALUES (?1,?2)",params![encode(&json!({"revision":revision(&tx)?,"epoch":identity(&tx)?.1,"boards":after.boards.iter().map(|b|b.id.clone()).collect::<Vec<_>>(),"affected":result.affected,"restored":true}))?,engine::now()]).map_err(storage)?;
         }
         tx.execute("DELETE FROM recovery_previews WHERE token=?1", [token])

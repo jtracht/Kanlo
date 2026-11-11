@@ -11,6 +11,7 @@ use std::{
 };
 use uuid::Uuid;
 
+mod display;
 #[cfg(test)]
 mod integration_tests;
 pub mod maintenance;
@@ -661,15 +662,8 @@ pub(crate) fn entity_changes(before: &Workspace, after: &Workspace) -> Result<Ve
         })
         .collect())
 }
-pub(crate) fn commit_state(
-    tx: &Transaction<'_>,
-    before: &Workspace,
-    after: &Workspace,
-    result: &ChangeResult,
-    description: &str,
-    history: bool,
-) -> Result<()> {
-    let relocated: Option<String> = tx
+fn require_writable(connection: &Connection) -> Result<()> {
+    let relocated: Option<String> = connection
         .query_row(
             "SELECT value FROM metadata WHERE key='relocated_to'",
             [],
@@ -682,6 +676,18 @@ pub(crate) fn commit_state(
             "Database relocated; configure the new data directory".into(),
         ));
     }
+    Ok(())
+}
+
+pub(crate) fn commit_state(
+    tx: &Transaction<'_>,
+    before: &Workspace,
+    after: &Workspace,
+    result: &ChangeResult,
+    description: &str,
+    history: bool,
+) -> Result<()> {
+    require_writable(tx)?;
     let old = records::to_records(before)?;
     let new = records::to_records(after)?;
     if old == new {

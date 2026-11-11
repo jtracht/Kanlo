@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import sys
@@ -130,6 +131,43 @@ class Appliance(unittest.TestCase):
         shown = [t['id'] for page in pages for _, group, _ in page for t in group]
         self.assertEqual(shown, [str(i) for i in range(31)])
         self.assertEqual(len(pages), 8)
+
+    def test_tv_pages_scroll_one_column_at_a_time_before_moving_right(self):
+        columns = [({'id': key}, [key + str(index) for index in range(3)])
+                   for key in ['A', 'B', 'C']]
+        pages = display.paginate_columns(columns, 2, 2)
+        self.assertEqual([[tickets for _, tickets, _ in page] for page in pages],
+                         [[['A0', 'A1'], ['B0', 'B1']], [['A2'], ['B0', 'B1']],
+                          [['A2'], ['B2']], [['C0', 'C1']], [['C2']]])
+
+    def test_tv_overlay_expiry_returns_to_saved_context(self):
+        state = {'preferences': {'overlay_minutes': 5},
+                 'expires_at': '2026-11-01T10:05:00Z',
+                 'overlays': [{'kind': 'backlog', 'board_id': 'a'},
+                              {'kind': 'ticket', 'ticket_id': '1'}]}
+        self.assertEqual(display.active_overlay(state, datetime(2026, 11, 1, 10, 4, tzinfo=timezone.utc))['kind'], 'ticket')
+        self.assertEqual(display.active_overlay(state, datetime(2026, 11, 1, 10, 5, tzinfo=timezone.utc))['kind'], 'backlog')
+        self.assertIsNone(display.active_overlay(state, datetime(2026, 11, 1, 10, 10, tzinfo=timezone.utc)))
+
+    def test_deadline_warning_distinguishes_local_date_and_instant(self):
+        workspace = {'settings': {'timezone': 'UTC'},
+                     'board_options': {'a': {'deadline_warning_days': 0}}}
+        ticket = {'board_id': 'a', 'done': False, 'details': {'deadline': '2026-11-01'}}
+        now = datetime(2026, 11, 1, 10, 15, tzinfo=timezone.utc)
+        self.assertEqual(display.due_warning(ticket, workspace, now)[0], 'Fällig')
+        ticket['details']['deadline'] = '2026-11-01T10:00:00Z'
+        self.assertEqual(display.due_warning(ticket, workspace, now)[0], 'Überfällig')
+        ticket['done'] = True
+        self.assertIsNone(display.due_warning(ticket, workspace, now))
+
+    def test_statistics_carry_board_gauges_forward_without_summing_snapshots(self):
+        def sample(board, day, created, completed, backlog, blocked):
+            return {'board_id': board, 'created_at': day + 'T12:00:00Z',
+                    'sample': {'created': created, 'completed': completed, 'backlog': backlog, 'blocked': blocked}}
+        samples = [sample('a', '2026-11-01', 1, 0, 1, 0),
+                   sample('b', '2026-11-01', 2, 0, 2, 1),
+                   sample('a', '2026-11-02', 0, 1, 0, 0)]
+        self.assertEqual(display.statistics_series(samples), [('2026-11-01', 3, 0, 3, 1), ('2026-11-02', 0, 1, 2, 1)])
 
     def test_builder_refuses_block_devices_and_files_outside_work(self):
         with tempfile.TemporaryDirectory() as directory:

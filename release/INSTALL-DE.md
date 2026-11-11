@@ -30,12 +30,25 @@ sudo ./install.sh
 ```
 
 Der Dienst verwendet `/var/lib/kanlo`, ein nicht interaktiv nutzbares Dienstkonto
-und private Verzeichnisrechte. Zustand/Fehler: `systemctl status kanlo-server`
-und `journalctl -u kanlo-server`. Zum Entfernen `sudo systemctl disable --now
-kanlo-server` ausführen, dann `/usr/local/lib/kanlo/kanlo-server`,
-`/etc/systemd/system/kanlo-server.service` und
-`/usr/lib/sysusers.d/kanlo.conf` entfernen. `sudo systemctl daemon-reload`
-lädt die Änderungen. Daten unter `/var/lib/kanlo` separat aufbewahren.
+und private Verzeichnisrechte. Zustand und Fehler stehen in
+`systemctl status kanlo-server` und `journalctl -u kanlo-server`. Ein Upgrade
+bewahrt die bisherige Binärdatei als `kanlo-server.previous` auf. Zum
+Entfernen `sudo ./install.sh --uninstall` aus dem Paket ausführen. Die Daten
+und Einstellungen bleiben auf dem System.
+
+### Optionale native Anzeige
+
+Auf einem dedizierten Linux-System mit freier lokaler Konsole kann der
+Serverinstaller auch die Anzeige installieren.
+
+```sh
+sudo apt install cage seatd python3-pygame fonts-dejavu-core
+sudo ./install.sh --kiosk
+```
+
+Die Anzeige nutzt tty1. Ein aktiver Desktop-Anmeldedienst muss für diesen
+Modus beendet sein. Für die WLAN-Einrichtung am Bildschirm das Geräte-Image
+verwenden.
 
 ## Netzwerk, Sicherung und Wartung
 

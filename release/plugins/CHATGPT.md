@@ -1,6 +1,6 @@
 # Kanlo in ChatGPT einrichten
 
-Du brauchst Kanlo ab 0.2.0-dev.3, Node.js ab Version 22 mit npm und
+Du brauchst Kanlo ab 0.2.0-dev.6, Node.js ab Version 22 mit npm und
 einen ChatGPT-Workspace, der eigene MCP-Server und private Tunnel zulässt.
 Der Tunnel-Client läuft auf einem Rechner, der Kanlo erreichen kann.
 

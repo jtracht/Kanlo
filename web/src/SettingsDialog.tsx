@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { IntegrationSetup } from "./IntegrationSetup";
 import type {
   BoardOptions,
   Bootstrap,
@@ -879,6 +880,7 @@ export function SettingsDialog({
               {t("Schlüssel erstellen", "Create key")}
             </button>
           </div>
+          <IntegrationSetup />
           {secret && (
             <div class="secret">
               <strong>

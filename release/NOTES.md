@@ -1,7 +1,11 @@
-# Kanlo 0.2.0-dev.5
+# Kanlo 0.2.0-dev.6
 
-**Belegter Entwicklungsstand: 60 % (42 von 70 vollständig abgenommenen
-Originalaufgaben).** Details stehen in `docs/de/60-PROZENT.md`.
+Lokaler Entwicklungsstand **78,6 % (55 von 70 Originalaufgaben)**.
+
+Die Weboberfläche und beide MCP-Plugins steuern die native TV-Anzeige.
+Sie bietet Board, Gesamtübersicht, Statistik, Rotation, Hervorhebungen
+und Einblendungen für Tickets, Backlog und Untertickets.
+Die Weboberfläche enthält einen Einrichtungsdialog für MCP und GPT Actions.
 
 Die native Anzeige verarbeitet Live-Änderungen und gleicht ihre Boards
 nach einem Serverneustart erneut ab. Die Serverpakete enthalten

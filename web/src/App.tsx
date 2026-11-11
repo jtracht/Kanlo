@@ -14,6 +14,7 @@ import * as storage from "./storage";
 import { blocked, deadlineTime, visibleTickets } from "./workspace";
 import { Dialog, Locale, Message, Busy, useT, errorText } from "./ui";
 import { TicketDialog } from "./TicketDialog";
+import { DisplayDialog } from "./DisplayDialog";
 import { SettingsDialog } from "./SettingsDialog";
 import { DataDialog } from "./DataDialog";
 import { HistoryDialog } from "./HistoryDialog";
@@ -58,7 +59,7 @@ function Main({
   const aliases = useRef<Record<string, string>>({});
   const boardRequest = useRef(0);
   const [panel, setPanel] = useState<
-    "settings" | "data" | "history" | "queue" | "board" | "bulk" | "statistics"
+    "settings" | "data" | "history" | "queue" | "board" | "bulk" | "statistics" | "display"
   >();
   const [preview, setPreview] = useState<QueueEntry>();
   const [newBoardName, setNewBoardName] = useState("");
@@ -494,6 +495,11 @@ function Main({
           </select>
         </label>
         <div class="header-actions">
+          <button type="button" class="secondary"
+            disabled={!bootstrap || !client.connection.online || client.connection.authRequired}
+            onClick={() => setPanel("display")}>
+            {t("TV-Anzeige", "TV display")}
+          </button>
           <button
             class="icon-button"
             aria-label={t("Neues Board", "New board")}
@@ -1010,6 +1016,9 @@ function Main({
           history={() => setPanel("history")}
         />
       )}
+      {panel === "display" && bootstrap && (
+        <DisplayDialog boards={bootstrap.boards} currentBoard={boardId} close={() => setPanel(undefined)} />
+      )}
       {panel === "data" && snapshot && (
         <DataDialog
           snapshot={snapshot}
@@ -1095,6 +1104,10 @@ function Main({
         <StatisticsDialog
           snapshot={snapshot}
           close={() => setPanel(undefined)}
+          openBoard={(id) => {
+            setPanel(undefined);
+            void selectBoard(id);
+          }}
         />
       )}
       {client.connection.authRequired && !authDismissed && (
@@ -1455,9 +1468,11 @@ function BulkDialog({
 function StatisticsDialog({
   snapshot,
   close,
+  openBoard,
 }: {
   snapshot: Snapshot;
   close: () => void;
+  openBoard: (id: string) => void;
 }) {
   const t = useT();
   const [days, setDays] = useState(30);
@@ -1474,6 +1489,12 @@ function StatisticsDialog({
     }[]
   >([]);
   const [error, setError] = useState("");
+  const [overview, setOverview] = useState<
+    { board_id: string; name: string; open: number; done: number; backlog: number; blocked: number }[]
+  >([]);
+  useEffect(() => {
+    void client.api<typeof overview>("/overview").then(setOverview).catch((error) => setError(errorText(error)));
+  }, [snapshot.revision]);
   useEffect(() => {
     const now = new Date();
     const from = new Date(Date.now() - days * 86400000);
@@ -1505,6 +1526,15 @@ function StatisticsDialog({
     >
       <div class="dialog-body">
         {error && <Message error>{error}</Message>}
+        <h3>{t("Gesamtübersicht", "Overview")}</h3>
+        <ul>
+          {overview.map((board) => (
+            <li key={board.board_id}>
+              <button type="button" class="text-button" onClick={() => openBoard(board.board_id)}>{board.name}</button>
+              <span>{board.open} {t("offen", "open")} · {board.done} {t("erledigt", "done")} · {board.backlog} Backlog · {board.blocked} {t("blockiert", "blocked")}</span>
+            </li>
+          ))}
+        </ul>
         <div class="form-grid">
           <label>
             {t("Zeitraum in Tagen", "Time range in days")}

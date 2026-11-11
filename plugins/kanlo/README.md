@@ -8,6 +8,11 @@ Mit freigegebenem Schreibzugriff können beide Clients Tickets anlegen, bearbeit
 kommentieren und in eine Zielspalte oder ins Backlog verschieben. Bei veralteter
 Ticketrevision meldet Kanlo einen Konflikt.
 
+Plugin 0.4.0 nutzt Kanlo ab 0.2.0-dev.6 zur TV-Steuerung. Mit
+freigegebenem Schreibzugriff lassen sich Ansicht, Einblendungen, Scrollen
+und Hervorhebungen steuern. Das Öffnen eines Tickets im Web hat keinen
+Einfluss auf den TV, bis ein ausdrücklicher Anzeigebefehl folgt.
+
 ## Vorbereitung
 
 Im Stammverzeichnis des Kanlo-Repositories mit Node.js ab Version 22 ausführen.

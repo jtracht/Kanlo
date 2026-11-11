@@ -10,6 +10,14 @@ use std::{collections::BTreeMap, convert::Infallible};
 pub fn routes() -> Router<Database> {
     Router::new()
         .route("/api/v1/bootstrap", get(bootstrap))
+        .route(
+            "/api/v1/display",
+            get(display_state)
+                .post(display_action)
+                .layer(DefaultBodyLimit::max(16 * 1024)),
+        )
+        .route("/api/v1/overview", get(overview))
+        .route("/api/v1/integrations/verify", get(verify_integration))
         .route("/api/v1/boards/{id}/snapshot", get(snapshot))
         .route("/api/v1/commands", post(command))
         .route("/api/v1/commands/preview", post(preview))
@@ -48,6 +56,52 @@ pub fn routes() -> Router<Database> {
 }
 async fn bootstrap(State(db): State<Database>) -> Result<Json<Value>, ApiError> {
     Ok(Json(database(db,|db|{let state=db.workspace()?;let (instance,epoch)=db.identity()?;Ok(json!({"boards":state.boards,"types":state.types,"labels":state.labels,"settings":state.settings,"board_options":state.board_options,"views":state.views,"revision":db.revision()?,"event_cursor":db.event_cursor()?,"instance_id":instance,"epoch":epoch,"passcode_configured":db.has_passcode()?}))}).await?))
+}
+async fn display_state(
+    State(db): State<Database>,
+) -> Result<Json<kanlo_core::tv::DisplayState>, ApiError> {
+    Ok(Json(database(db, |db| db.display()).await?))
+}
+
+async fn display_action(
+    State(db): State<Database>,
+    Json(action): Json<kanlo_core::tv::Action>,
+) -> Result<Json<kanlo_core::tv::DisplayState>, ApiError> {
+    Ok(Json(
+        database(db, move |db| db.control_display(action)).await?,
+    ))
+}
+
+async fn verify_integration(headers: axum::http::HeaderMap) -> Result<Json<Value>, ApiError> {
+    // Ingress already authenticates any Bearer token. LAN requests without a
+    // token must not be mistaken for a successful key check.
+    if !headers
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.starts_with("Bearer "))
+    {
+        return Err(ApiError(Error::Unauthorized));
+    }
+    Ok(Json(
+        json!({"status":"ok","version":env!("CARGO_PKG_VERSION")}),
+    ))
+}
+
+async fn overview(State(db): State<Database>) -> Result<Json<Vec<Value>>, ApiError> {
+    Ok(Json(database(db, |db| {
+        let workspace = db.workspace()?;
+        let mut counts = BTreeMap::<&str, [usize; 4]>::new();
+        for ticket in workspace.tickets.iter().filter(|ticket| !ticket.details.archived && !ticket.details.trashed) {
+            let count = counts.entry(&ticket.board_id).or_default();
+            count[usize::from(ticket.done)] += 1;
+            count[2] += usize::from(ticket.column_id.is_none());
+            count[3] += usize::from(workspace.blocked(&ticket.id));
+        }
+        Ok(workspace.boards.iter().map(|board| {
+            let [open, done, backlog, blocked] = counts.get(board.id.as_str()).copied().unwrap_or_default();
+            json!({"board_id":board.id,"name":board.name,"open":open,"done":done,"backlog":backlog,"blocked":blocked})
+        }).collect())
+    }).await?))
 }
 async fn snapshot(
     State(db): State<Database>,

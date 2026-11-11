@@ -30,10 +30,22 @@ The installer checks the operating system, architecture and binary checksum.
 It installs a server service with a non-login account and private
 `/var/lib/kanlo` data.
 Use `systemctl status kanlo-server` and `journalctl -u kanlo-server` for diagnosis.
-To uninstall, run `sudo systemctl disable --now kanlo-server`. Remove
-`/usr/local/lib/kanlo/kanlo-server`, `/etc/systemd/system/kanlo-server.service`
-and `/usr/lib/sysusers.d/kanlo.conf`, then run `sudo systemctl daemon-reload`.
-Keep the data under `/var/lib/kanlo` separately.
+An upgrade retains the previous binary as `kanlo-server.previous`. Run
+`sudo ./install.sh --uninstall` from the package to remove the installed
+services. Data and configuration remain on the system.
+
+### Optional native display
+
+On a dedicated Linux system with a free local console, the server installer
+can also install the display.
+
+```sh
+sudo apt install cage seatd python3-pygame fonts-dejavu-core
+sudo ./install.sh --kiosk
+```
+
+The kiosk uses tty1 and requires an inactive desktop display manager.
+Use the appliance image for on-screen Wi-Fi setup.
 
 ## Access and updates
 

@@ -108,7 +108,36 @@ tool("kanlo_list_comments", "Kommentare zu einem Kanlo-Ticket seitenweise abrufe
   ...paging,
 }, async ({ ticket_id, ...page }) => request(`tickets/${ticket_id}/comments?${new URLSearchParams(page)}`));
 
+tool("kanlo_get_display", "Ansicht, Rotation und aktuelle Einblendung der Kanlo-TV-Anzeige abrufen.", {},
+  async () => request("display"));
+
 if (writesEnabled) {
+  tool("kanlo_select_display", "Die TV-Ansicht auf Nutzerwunsch wechseln.", {
+    view: z.enum(["board", "overview", "statistics"]),
+    board_id: id.nullable().default(null),
+  }, async (input) => request("display", { kind: "select", ...input }), { readOnlyHint: false });
+
+  tool("kanlo_show_on_display", "Auf Nutzerwunsch ein Ticket, Untertickets oder das Backlog auf dem TV zeigen.", {
+    target: z.discriminatedUnion("kind", [
+      z.strictObject({ kind: z.literal("show_ticket"), ticket_id: id }),
+      z.strictObject({ kind: z.literal("show_children"), ticket_id: id }),
+      z.strictObject({ kind: z.literal("show_backlog"), board_id: id }),
+    ]),
+  }, async ({ target }) => request("display", target), { readOnlyHint: false });
+
+  tool("kanlo_close_display_overlay", "Auf Nutzerwunsch zur vorherigen Einblendung zurückgehen oder alle schließen.", {
+    back: z.boolean().default(false),
+  }, async ({ back }) => request("display", { kind: back ? "back" : "close" }), { readOnlyHint: false });
+
+  tool("kanlo_highlight_on_display", "Auf Nutzerwunsch Tickets desselben Boards hervorheben. 0 Sekunden behält die Markierung bei; eine leere Liste entfernt sie.", {
+    ticket_ids: z.array(id).max(20),
+    seconds: z.number().int().min(0).max(3600).default(25),
+  }, async (input) => request("display", { kind: "highlight", ...input }), { readOnlyHint: false });
+
+  tool("kanlo_scroll_display", "Auf Nutzerwunsch auf dem TV vor- oder zurückblättern.", {
+    delta: z.number().int().min(-20).max(20).refine((value) => value !== 0),
+  }, async (input) => request("display", { kind: "scroll", ...input }), { readOnlyHint: false });
+
   tool("kanlo_create_ticket", "Ein Ticket in Kanlo anlegen. Nur auf ausdrücklichen Nutzerwunsch ausführen.", {
     board_id: id,
     title: z.string().trim().min(1).max(200),

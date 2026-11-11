@@ -48,6 +48,87 @@ async fn call(app: axum::Router, method: &str, path: &str, body: Value) -> (Stat
 }
 
 #[tokio::test]
+async fn display_actions_restore_context_and_leave_board_content_unchanged() {
+    let app = router(Store::open(":memory:").unwrap());
+    let (_, boards) = call(app.clone(), "GET", "/api/v1/boards", Value::Null).await;
+    let id = boards[0]["id"].as_str().unwrap();
+    let (_, ticket) = call(
+        app.clone(),
+        "POST",
+        &format!("/api/v1/boards/{id}/tickets"),
+        json!({"title":"Backlog ticket"}),
+    )
+    .await;
+    let ticket_id = ticket["id"].as_str().unwrap();
+    let (_, before) = call(app.clone(), "GET", "/api/v1/bootstrap", Value::Null).await;
+    let (_, display) = call(app.clone(), "GET", "/api/v1/display", Value::Null).await;
+    assert_eq!(display["preferences"]["rotation"], json!([]));
+    let (status, _) = call(app.clone(), "POST", "/api/v1/display", json!({"kind":"configure","revision":0,"preferences":{"view":"overview","rotation":[{"view":"overview","board_id":null},{"view":"board","board_id":id}],"overlay_minutes":0}})).await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/display",
+        json!({"kind":"configure","revision":0,"preferences":{}}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    let (status, _) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/display",
+        json!({"kind":"show_backlog","board_id":id}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, opened) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/display",
+        json!({"kind":"show_ticket","ticket_id":ticket["public_id"]}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(opened["overlays"][0]["kind"], "backlog");
+    assert_eq!(opened["overlays"][1]["ticket_id"], ticket_id);
+    assert_eq!(opened["expires_at"], Value::Null);
+    let (_, returned) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/display",
+        json!({"kind":"back"}),
+    )
+    .await;
+    assert_eq!(
+        returned["overlays"],
+        json!([{"kind":"backlog","board_id":id}])
+    );
+    let (_, highlighted) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/display",
+        json!({"kind":"highlight","ticket_ids":[ticket_id],"seconds":0}),
+    )
+    .await;
+    assert_eq!(highlighted["highlights"], json!([ticket_id]));
+    assert_eq!(highlighted["overlays"], json!([]));
+    let (_, scrolled) = call(
+        app.clone(),
+        "POST",
+        "/api/v1/display",
+        json!({"kind":"scroll","delta":2}),
+    )
+    .await;
+    assert_eq!(scrolled["scroll_offset"], 2);
+    let (_, overview) = call(app.clone(), "GET", "/api/v1/overview", Value::Null).await;
+    assert_eq!(overview[0]["open"], 1);
+    assert_eq!(overview[0]["backlog"], 1);
+    let (_, after) = call(app, "GET", "/api/v1/bootstrap", Value::Null).await;
+    assert_eq!(before["revision"], after["revision"]);
+    assert!(after["event_cursor"].as_i64().unwrap() > before["event_cursor"].as_i64().unwrap());
+}
+
+#[tokio::test]
 async fn ticket_search_pages_across_boards_and_validates_filters() {
     let app = router(Store::open(":memory:").unwrap());
     let (_, boards) = call(app.clone(), "GET", "/api/v1/boards", Value::Null).await;

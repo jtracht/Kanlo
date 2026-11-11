@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 pub mod engine;
 pub mod model;
 pub mod sync;
+pub mod tv;
 pub use model::*;
 
 #[derive(Debug, thiserror::Error)]

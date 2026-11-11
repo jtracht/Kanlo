@@ -52,7 +52,8 @@ def verify_independent_restarts(board_id):
     subprocess.run(['systemctl', 'daemon-reload'], check=True)
     stop = threading.Event()
     updates = queue.Queue(maxsize=1)
-    threading.Thread(target=display.reader, args=(updates, stop), daemon=True).start()
+    display_updates = queue.Queue(maxsize=1)
+    threading.Thread(target=display.reader, args=(updates, stop, display_updates), daemon=True).start()
 
     def wait_for_display(ticket=None):
         deadline = time.monotonic() + 30
@@ -68,9 +69,25 @@ def verify_independent_restarts(board_id):
         return mutate({'kind': 'create_ticket', 'board_id': board_id, 'title': 'Live display probe',
                        'description': '', 'importance': 0, 'column_id': None, 'parent_id': None, 'type_id': None})
 
+    def show_ticket(ticket):
+        origin = 'http://127.0.0.1:8080'
+        req = urllib.request.Request(origin + '/api/v1/display',
+            data=json.dumps({'kind': 'show_ticket', 'ticket_id': ticket}).encode(),
+            headers={'Content-Type': 'application/json', 'Origin': origin})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            assert response.status == 200
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            state = display_updates.get(timeout=max(0.1, deadline - time.monotonic()))
+            if state['overlays'] and state['overlays'][-1].get('ticket_id') == ticket:
+                return
+        raise RuntimeError('Display did not receive the overlay action')
+
     try:
         wait_for_display()
-        wait_for_display(create_display_ticket())
+        ticket = create_display_ticket()
+        wait_for_display(ticket)
+        show_ticket(ticket)
         server_before = service_pid(server)
         subprocess.run(['systemctl', 'start', tv], check=True)
         display_before = wait_for_new_pid(tv, 0)
@@ -90,6 +107,7 @@ def verify_independent_restarts(board_id):
         else:
             raise RuntimeError('Server did not accept writes after restarting')
         wait_for_display(ticket)
+        show_ticket(ticket)
     finally:
         stop.set()
         subprocess.run(['systemctl', 'stop', tv], check=True)

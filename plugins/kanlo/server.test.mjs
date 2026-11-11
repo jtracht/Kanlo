@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const executable = fileURLToPath(new URL(
+const executable = process.env.KANLO_TEST_SERVER ?? fileURLToPath(new URL(
   `../../target/debug/kanlo-server${process.platform === "win32" ? ".exe" : ""}`,
   import.meta.url,
 ));
@@ -52,7 +52,7 @@ test("MCP tools manage tickets through an isolated Kanlo instance", { timeout: 3
 
   const reader = await connect(false);
   const { tools } = await reader.listTools();
-  assert.equal(tools.length, 5);
+  assert.equal(tools.length, 6);
   assert.ok(tools.every((tool) => tool.annotations.readOnlyHint));
   const boards = await reader.callTool({ name: "kanlo_list_boards" });
   assert.equal(boards.isError, undefined, JSON.stringify(boards));
@@ -77,6 +77,14 @@ test("MCP tools manage tickets through an isolated Kanlo instance", { timeout: 3
   });
   assert.equal(detail.structuredContent.ticket.title, title);
   assert.equal(detail.structuredContent.ticket.column_id, column_id);
+  const display = await writer.callTool({
+    name: "kanlo_show_on_display", arguments: { target: { kind: "show_ticket", ticket_id: ticket.public_id } },
+  });
+  assert.equal(display.structuredContent.overlays[0].ticket_id, ticket.id);
+  const readDisplay = await reader.callTool({ name: "kanlo_get_display" });
+  assert.deepEqual(readDisplay.structuredContent.overlays, display.structuredContent.overlays);
+  const closedDisplay = await writer.callTool({ name: "kanlo_close_display_overlay" });
+  assert.deepEqual(closedDisplay.structuredContent.overlays, []);
   const update = {
     ticket_id: ticket.public_id,
     revision: detail.structuredContent.ticket.revision,

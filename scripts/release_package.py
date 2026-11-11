@@ -118,7 +118,7 @@ def package(binary, target, output):
     epoch = int(os.environ.get('SOURCE_DATE_EPOCH') or git('log', '-1', '--format=%ct'))
     arch = TARGETS[target][0]
     prefix = f'kanlo-{version()}-linux-{arch}'
-    build = {'schema_version': 1, 'version': version(), 'target': target, 'arch': arch, 'source_commit': commit, 'source_date_epoch': epoch, 'binary_sha256': hashlib.sha256(data).hexdigest(), 'minimum_os': 'Debian 13', 'native_tv': False, 'physical_device_certified': False}
+    build = {'schema_version': 1, 'version': version(), 'target': target, 'arch': arch, 'source_commit': commit, 'source_date_epoch': epoch, 'binary_sha256': hashlib.sha256(data).hexdigest(), 'minimum_os': 'Debian 13', 'native_tv': True, 'physical_device_certified': False}
     files = [(f'{prefix}/bin/kanlo-server', data, 0o755), (f'{prefix}/BUILD.json', (json.dumps(build, indent=2) + '\n').encode(), 0o644)]
     paths = {
         'LICENSE': 'LICENSE', 'NOTICE': 'NOTICE', 'CHANGELOG.md': 'CHANGELOG.md',
@@ -127,8 +127,16 @@ def package(binary, target, output):
         'docs/de/BETRIEB.md': 'docs/de/BETRIEB.md', 'docs/en/README.md': 'docs/en/README.md',
         'docs/de/60-PROZENT.md': 'docs/de/60-PROZENT.md',
         'docs/de/50-PROZENT.md': 'docs/de/50-PROZENT.md',
+        'docs/de/INTEGRATIONEN.md': 'docs/de/INTEGRATIONEN.md',
+        'docs/de/FORTSCHRITT.md': 'docs/de/FORTSCHRITT.md',
+        'docs/de/SICHERHEITSPRUEFUNG.md': 'docs/de/SICHERHEITSPRUEFUNG.md',
         'release/plugins/screenshots/api-keys.png': 'release/plugins/screenshots/api-keys.png',
+        'release/plugins/CLAUDE-CODE.md': 'release/plugins/CLAUDE-CODE.md',
+        'release/plugins/CHATGPT.md': 'release/plugins/CHATGPT.md',
         'packaging/systemd/kanlo-server.service': 'systemd/kanlo-server.service', 'packaging/sysusers.d/kanlo.conf': 'sysusers.d/kanlo.conf',
+        'packaging/images/display.py': 'kiosk/display.py',
+        'packaging/images/appliance.py': 'kiosk/appliance.py',
+        'packaging/images/overlay/etc/systemd/system/kanlo-tv.service': 'kiosk/kanlo-tv.service',
     }
     paths.update({str(path.relative_to(ROOT)).replace('\\', '/'): str(path.relative_to(ROOT)).replace('\\', '/') for path in (ROOT / 'docs/licenses').rglob('*') if path.is_file()})
     paths.update({path.relative_to(ROOT).as_posix(): path.relative_to(ROOT).as_posix()
@@ -158,7 +166,7 @@ def inspect(path):
         elf(data, build['target'])
         if hashlib.sha256(data).hexdigest() != build['binary_sha256']:
             raise ValueError('Embedded binary checksum mismatch')
-        for required in ['LICENSE', 'NOTICE', 'INSTALL-DE.md', 'INSTALL-EN.md', 'RELEASE-NOTES.md', 'docs/licenses/inventory.json', 'install.sh']:
+        for required in ['LICENSE', 'NOTICE', 'INSTALL-DE.md', 'INSTALL-EN.md', 'RELEASE-NOTES.md', 'docs/licenses/inventory.json', 'install.sh', 'kiosk/display.py', 'kiosk/appliance.py', 'kiosk/kanlo-tv.service']:
             tar.getmember(f'{prefix}/{required}')
         return build
 
