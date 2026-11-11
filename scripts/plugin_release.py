@@ -15,6 +15,7 @@ COMMON = {
     'package-lock.json': 'plugins/kanlo/package-lock.json',
     'LICENSE': 'LICENSE',
     'NOTICE': 'NOTICE',
+    'screenshots/api-keys.png': 'release/plugins/screenshots/api-keys.png',
 }
 PLUGINS = {
     'claude-code': {

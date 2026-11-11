@@ -15,6 +15,10 @@ Der Tunnel-Client läuft auf einem Rechner, der Kanlo erreichen kann.
    Tickets, Bearbeitungen und Kommentare freigeben willst, setze dort
    auch `KANLO_ENABLE_WRITES=1`.
    [Kanlo-Betriebsanleitung](https://git.tracht-digital.de/jtracht/Kanlo/src/branch/main/docs/de/BETRIEB.md)
+
+   In Kanlo findest du das Formular unter **Einstellungen → Zugriff und Integrationen → Getrennte API-Schlüssel**.
+
+   ![API-Schlüssel in den Kanlo-Einstellungen anlegen](screenshots/api-keys.png)
 3. Richte in OpenAI Platform einen privaten Secure MCP Tunnel für den
    Ziel-Workspace ein. Halte die Tunnel-ID bereit, installiere den offiziellen
    Tunnel-Client und hinterlege dessen Schlüssel als `CONTROL_PLANE_API_KEY`

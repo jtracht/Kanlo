@@ -26,6 +26,11 @@ Der MCP-Prozess verwendet die folgenden Umgebungsvariablen.
 Die Variablen vor dem Start von Claude Code beziehungsweise des Tunnel-Clients
 in dessen Prozessumgebung setzen. Schlüssel außerhalb des Repositories verwalten.
 
+Das Formular für einen separaten Schlüssel findest du in Kanlo unter
+**Einstellungen → Zugriff und Integrationen → Getrennte API-Schlüssel**.
+
+![Formular für API-Schlüssel in Kanlo](../../release/plugins/screenshots/api-keys.png)
+
 ## Claude Code
 
 ```sh

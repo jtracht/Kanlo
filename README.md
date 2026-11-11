@@ -7,6 +7,10 @@ Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Den belegten
 Aufgabenstand führt [50-PROZENT.md](docs/de/50-PROZENT.md).
 
+![Kanlo-Board mit Backlog, Suche und Tickets in drei Spalten](docs/screenshots/board-desktop.png)
+
+Weitere Ansichten mit Beispieldaten findest du in der [Bildergalerie](docs/screenshots/README.md).
+
 Die privaten Entwicklungspakete für Debian 13 enthalten den Server und die
 Weboberfläche für AMD64, ARM64 und armhf. Installation:
 [Deutsch](release/INSTALL-DE.md), [English](release/INSTALL-EN.md).

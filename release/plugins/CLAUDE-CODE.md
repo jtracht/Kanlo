@@ -18,6 +18,10 @@ mit npm. Das ZIP enthält den Plugin-Quellcode und die Abhängigkeitsliste.
    lautet der Befehl `$env:KANLO_URL = 'https://kanlo.example.org'`.
    Hinterlege den Schlüssel nur in der Prozessumgebung.
    [Kanlo-Betriebsanleitung](https://git.tracht-digital.de/jtracht/Kanlo/src/branch/main/docs/de/BETRIEB.md)
+
+   In Kanlo findest du das Formular unter **Einstellungen → Zugriff und Integrationen → Getrennte API-Schlüssel**.
+
+   ![API-Schlüssel in den Kanlo-Einstellungen anlegen](screenshots/api-keys.png)
 4. Starte im entpackten Ordner `claude --plugin-dir .`. Um aus einem
    anderen Projektordner zu starten, gib den absoluten Pfad zum entpackten
    Plugin-Ordner an. [Claude Code Plugin-Referenz](https://code.claude.com/docs/en/plugins-reference)
