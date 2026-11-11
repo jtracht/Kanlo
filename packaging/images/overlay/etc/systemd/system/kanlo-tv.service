@@ -7,6 +7,7 @@ StartLimitIntervalSec=60
 StartLimitBurst=5
 
 [Service]
+Type=exec
 User=kanlo-display
 SupplementaryGroups=video render
 ExecCondition=/usr/bin/python3 /usr/lib/kanlo/appliance.py has-display
@@ -18,11 +19,12 @@ Environment=SDL_VIDEODRIVER=wayland
 Environment=SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR=0
 Environment=XDG_CACHE_HOME=/run/kanlo-display/cache
 Environment=WLR_RENDERER=pixman
-ExecStart=/usr/bin/cage -- /usr/bin/python3 /usr/lib/kanlo/display.py
-Restart=on-failure
+ExecStart=/usr/bin/python3 /usr/lib/kanlo/display.py --launch
+Restart=always
 RestartSec=5
 StandardInput=tty
-StandardOutput=journal
+StandardOutput=tty
+StandardError=journal
 TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes

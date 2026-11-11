@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0-dev.4
+
+- Die Geräteanzeige lässt den Wechsel zur lokalen Einrichtung zu und zeigt
+  bei einem Fehler im Grafikstart ein einfaches Board auf der Konsole.
+- DRM-Hotplug kann die Anzeige starten, ohne die laufende Sitzung neu zu
+  starten. Composite-Ausgänge mit einem verfügbaren Modus werden erkannt.
+- Die lokale Einrichtung bietet eine WLAN-Auswahl und eine Anzeige-Diagnose.
+- Belegter Entwicklungsstand nach Originalaufgaben **50 % (35 von 70)**.
+
 ## 0.2.0-dev.3
 
 - Die API liefert Ticketkommentare seitenweise. Beide Plugins können Kommentare

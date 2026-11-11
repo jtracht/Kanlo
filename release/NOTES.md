@@ -1,4 +1,13 @@
-# Kanlo 0.2.0-dev.3
+# Kanlo 0.2.0-dev.4
+
+**Belegter Entwicklungsstand: 50 % (35 von 70 vollständig abgenommenen
+Originalaufgaben).** Details stehen in `docs/de/50-PROZENT.md`.
+
+Die Geräteanzeige erlaubt den Wechsel zwischen Board und lokaler Einrichtung.
+Bei einem Grafikfehler steht eine einfache Boardansicht auf der Konsole zur
+Verfügung. Über Strg+Alt+F2 kann der Gerätebesitzer WLAN auswählen und die
+Anzeige diagnostizieren. Composite hängt vom Pi-Modell und der Firmware-
+Konfiguration ab. Die physische Anschlussprüfung steht noch aus.
 
 Die Kanlo-API liefert Ticketkommentare seitenweise. Die separat erhältlichen
 Kanlo-Plugins 0.3.0 für Claude Code und ChatGPT können Kommentare lesen und

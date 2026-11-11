@@ -40,6 +40,40 @@ class Appliance(unittest.TestCase):
         shown = display.visible({'columns': [column], 'tickets': tickets})
         self.assertEqual([t['details']['rank'] for t in shown[0][1]], [3, 10])
 
+    def test_display_detects_hdmi_and_composite_without_edid(self):
+        for connectors, expected in [
+            ([('card0-HDMI-A-1', 'connected', ['1920x1080'])], True),
+            ([('card0-HDMI-A-1', 'disconnected', []), ('card1-Composite-1', 'unknown', ['720x576'])], True),
+            ([('card0-HDMI-A-1', 'unknown', ['1920x1080']), ('card1-Composite-1', 'unknown', [])], False),
+        ]:
+            with self.subTest(connectors=connectors), patch.object(appliance, 'display_connectors', return_value=connectors):
+                self.assertEqual(appliance.graphical_output(), expected)
+
+    def test_display_launcher_allows_virtual_terminal_switching_and_falls_back(self):
+        with (
+            patch.object(appliance, 'graphical_output', return_value=True),
+            patch.object(display, 'wait_for_seat'),
+            patch.object(display.subprocess, 'run') as cage,
+            patch.object(display, 'console_board') as fallback,
+        ):
+            cage.return_value.returncode = 1
+            display.launch()
+            self.assertEqual(cage.call_args.args[0][:3], ['/usr/bin/cage', '-s', '--'])
+            fallback.assert_called_once_with()
+
+    def test_wifi_menu_starts_local_network_selector_without_credentials_in_command(self):
+        with (
+            patch('builtins.input', return_value='de'),
+            patch.object(appliance, 'set_wifi_country') as country,
+            patch.object(appliance, 'run') as run,
+            patch.object(appliance, 'print_web_addresses') as addresses,
+        ):
+            appliance.setup_wifi()
+            country.assert_called_once_with('DE')
+            self.assertEqual(run.call_args_list[1].args, ('/usr/bin/nmtui-connect',))
+            self.assertEqual(run.call_args_list[2].args, ('systemctl', 'restart', 'kanlo-network.service'))
+            addresses.assert_called_once_with()
+
     def test_all_four_official_bases_are_immutable_and_checked(self):
         self.assertEqual(set(build.PROFILES), {'rpi-armhf', 'rpi-arm64', 'generic-amd64', 'generic-arm64'})
         for profile in build.PROFILES.values():

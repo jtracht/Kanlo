@@ -13,6 +13,8 @@ import time
 STATE = Path('/var/lib/kanlo-appliance')
 BOOT = Path('/boot/firmware')
 DISPLAY_CONFIG = Path('/etc/kanlo/display.json')
+DRM = Path('/sys/class/drm')
+WIFI_COUNTRY = Path('/etc/modprobe.d/kanlo-wifi-country.conf')
 
 
 def run(*args, **kwargs):
@@ -58,6 +60,15 @@ def atomic(path, content, mode=0o600):
         Path(temporary).unlink(missing_ok=True)
 
 
+def set_wifi_country(country):
+    if not re.fullmatch(r'[A-Z]{2}', country):
+        raise ValueError('Invalid Wi-Fi country')
+    if Path('/usr/sbin/iw').exists():
+        run('modprobe', 'cfg80211')
+        run('iw', 'reg', 'set', country)
+    atomic(WIFI_COUNTRY, 'options cfg80211 ieee80211_regdom=' + country + '\n', 0o644)
+
+
 def apply(config):
     config = validate(config)
     atomic(Path('/etc/hostname'), config['hostname'] + '\n', 0o644)
@@ -76,11 +87,7 @@ def apply(config):
                '[wifi]\nmode=infrastructure\nssid=' + ';'.join(str(c) for c in wifi['ssid'].encode()) + ';\n'
                '[wifi-security]\nkey-mgmt=wpa-psk\npsk=' + escape(wifi['password']) + '\n'
                '[ipv4]\nmethod=auto\n[ipv6]\nmethod=auto\n')
-        atomic(Path('/etc/modprobe.d/kanlo-wifi-country.conf'), 'options cfg80211 ieee80211_regdom=' + wifi['country'] + '\n', 0o644)
-        if Path('/usr/sbin/iw').exists():
-            # The radio may appear later; initialize nl80211 before setting its domain.
-            run('modprobe', 'cfg80211')
-            run('iw', 'reg', 'set', wifi['country'])
+        set_wifi_country(wifi['country'])
     key = config['ssh_authorized_key']
     if key:
         # No password login; only the supplied device-owner key enables SSH.
@@ -159,41 +166,98 @@ def network():
         run('systemctl', '--no-block', 'try-restart', 'kanlo-server.service')
 
 
-def has_display():
+def display_connectors():
+    for status in sorted(DRM.glob('card*-*/status')):
+        try:
+            state = status.read_text().strip()
+        except OSError:
+            # A DRM connector can disappear while it is being inspected.
+            continue
+        try:
+            modes = (status.parent / 'modes').read_text().splitlines()
+        except OSError:
+            modes = []
+        yield status.parent.name, state, modes
+
+
+def display_enabled():
     try:
-        if not json.loads(DISPLAY_CONFIG.read_text())['enabled']:
-            return False
-    except FileNotFoundError:
+        return json.loads(DISPLAY_CONFIG.read_text())['enabled'] is True
+    except (FileNotFoundError, ValueError, KeyError):
         return False
-    return any(path.read_text().strip() == 'connected' for path in Path('/sys/class/drm').glob('card*-*/status'))
 
 
-def setup():
-    print('\033[2J\033[HKanlo – lokale Einrichtung / local setup (Ctrl+Alt+F1: Anzeige)')
+def has_display():
+    return display_enabled() and (graphical_output() or Path('/dev/fb0').exists())
+
+
+def graphical_output():
+    return any(state == 'connected' or ('-Composite-' in name and state == 'unknown' and modes)
+               for name, state, modes in display_connectors())
+
+
+def print_web_addresses():
     try:
         urls = json.loads(Path('/run/kanlo-network/urls.json').read_text())
-        print('\nWeb: ' + '  '.join(urls))
+        print('Web: ' + '  '.join(urls))
     except FileNotFoundError:
         pass
-    print('Kein voreingestelltes Kennwort. Ethernet: automatisch per DHCP.\n')
-    hostname = input('Hostname [kanlo]: ').strip() or 'kanlo'
-    timezone = input('Zeitzone [Europe/Berlin]: ').strip() or 'Europe/Berlin'
+
+
+def setup_wifi():
+    country = input('WLAN-Land (z. B. DE, leer = unverändert): ').strip().upper()
+    if country:
+        set_wifi_country(country)
+    run('nmcli', 'radio', 'wifi', 'on')
+    run('/usr/bin/nmtui-connect')
+    run('systemctl', 'restart', 'kanlo-network.service')
+    run('nmcli', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'device', 'status')
+    print_web_addresses()
+
+
+def setup_device():
+    current_host = Path('/etc/hostname').read_text().strip()
+    current_zone = os.path.realpath('/etc/localtime').removeprefix('/usr/share/zoneinfo/')
+    if not (Path('/usr/share/zoneinfo') / current_zone).is_file() or current_zone.startswith('/'):
+        current_zone = 'Europe/Berlin'
+    hostname = input(f'Hostname [{current_host}]: ').strip() or current_host
+    timezone = input(f'Zeitzone [{current_zone}]: ').strip() or current_zone
     ssid = input('WLAN-SSID (leer = unverändert): ').strip()
     wifi = {'ssid': ssid, 'password': getpass.getpass('WLAN-Kennwort: '), 'country': input('WLAN-Land [DE]: ').strip() or 'DE'} if ssid else None
     key = input('SSH Public Key (leer = nicht einrichten): ').strip() or None
     display = input('Lokale Anzeige aktivieren? [J/n]: ').strip().lower() != 'n'
-    try:
-        apply({'hostname': hostname, 'timezone': timezone, 'wifi': wifi, 'ssh_authorized_key': key, 'display': display})
-        run('nmcli', 'connection', 'reload')
-        if wifi:
-            run('nmcli', 'connection', 'up', 'kanlo-wifi')
-        run('systemctl', 'restart', 'kanlo-network.service')
-        run('systemctl', 'restart', 'kanlo-server.service')
-        run('systemctl', '--no-block', 'restart', 'kanlo-tv.service')
-        print('Gespeichert. Web-Adresse erscheint auf der Anzeige.')
-    except (ValueError, subprocess.CalledProcessError):
-        print('Einrichtung fehlgeschlagen. Eingaben und Netzwerk prüfen; keine Zugangsdaten protokolliert.')
-    input('Enter für erneute Einrichtung …')
+    apply({'hostname': hostname, 'timezone': timezone, 'wifi': wifi, 'ssh_authorized_key': key, 'display': display})
+    run('nmcli', 'connection', 'reload')
+    if wifi:
+        run('nmcli', 'connection', 'up', 'kanlo-wifi', capture_output=True)
+    run('systemctl', 'restart', 'kanlo-network.service')
+    run('systemctl', '--no-block', 'restart', 'kanlo-tv.service')
+    print('Gespeichert.')
+    print_web_addresses()
+
+
+def setup():
+    while True:
+        print('\033[2J\033[HKanlo – lokale Einrichtung (Strg+Alt+F1: Board)')
+        print_web_addresses()
+        print('\n1  WLAN auswählen und verbinden\n2  Gerät einrichten\n3  Anzeige-Diagnose\n4  Board-Anzeige neu starten')
+        choice = input('\nAuswahl: ').strip()
+        try:
+            if choice == '1':
+                setup_wifi()
+            elif choice == '2':
+                setup_device()
+            elif choice == '3':
+                for name, state, modes in display_connectors():
+                    print(f'{name}: {state} ({", ".join(modes) or "keine Modi"})')
+                run('journalctl', '-b', '-u', 'kanlo-tv.service', '-n', '20', '--no-pager')
+            elif choice == '4':
+                run('systemctl', '--no-block', 'restart', 'kanlo-tv.service')
+            else:
+                continue
+        except (OSError, ValueError, subprocess.CalledProcessError):
+            print('Einrichtung fehlgeschlagen. Eingaben und Geräte prüfen.')
+        input('Enter zurück zum Menü …')
 
 
 if __name__ == '__main__':

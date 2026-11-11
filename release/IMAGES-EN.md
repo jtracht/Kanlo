@@ -32,7 +32,16 @@ The server starts offline, without login. Default hostnames are
 `kanlo-<device-identity>`. Open the address shown on the attached display or on
 the physical Ctrl+Alt+F2 setup console: `http://<hostname>.local:8080` or the
 device's LAN IPv4 address. If mDNS is blocked, inspect your router's DHCP list.
-Ctrl+Alt+F1 returns to the native display.
+Press **Ctrl+Alt+F2**, choose **1** to select a Wi-Fi network, set the country
+if prompted, then enter your password in the network dialog. After closing it,
+check the connection status and Kanlo address. **Ctrl+Alt+F1** returns to the board.
+
+Connect HDMI before boot and select the matching monitor input. A Raspberry Pi
+composite output requires a compatible connector and cable and may require
+firmware configuration. On affected models, enabling composite disables HDMI.
+See the [Raspberry Pi composite documentation](https://www.raspberrypi.com/documentation/computers/config_txt.html#composite-video-mode).
+If the display stays on boot messages, open the setup console and select **3**
+for connector and service diagnostics or **4** to restart the board display.
 
 There is no shared password or open root shell. SSH stays off until you supply
 your own public key. That key grants full device administration as
@@ -43,7 +52,8 @@ ingress described in the server operating guide.
 
 The server and initial native read-only board viewer have separate services.
 The viewer uses SDL/Wayland/Cage without Chromium or a full desktop. Headless
-operation remains available; display hotplug restarts the viewer. Full TV
+operation remains available. Display hotplug can start the viewer, and a
+graphics startup failure falls back to a simple board on the local console. Full TV
 overlays/Markdown/statistics/control remain under development.
 
 SQLite is persistent in private `/var/lib/kanlo` storage. Volatile logs are

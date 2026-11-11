@@ -54,17 +54,40 @@ echte Kernel-/systemd-Boots unter QEMU, keine simulierten Erfolgsmeldungen.
    `http://<hostname>.local:8080` oder `http://<IPv4-Adresse>:8080` öffnen.
    mDNS muss im Clientnetz erlaubt sein; sonst die DHCP-Liste des Routers nutzen.
 
-Ctrl+Alt+F2 öffnet den lokalen Einrichtungsdialog; Ctrl+Alt+F1 kehrt zur Anzeige
-zurück. Der Dialog erlaubt dem physisch anwesenden Gerätebesitzer Netz-/Host-/
-Anzeigeeinstellungen. Es gibt keine offene Root-Shell und kein gemeinsames
+**Strg+Alt+F2** öffnet die lokale Einrichtung. Wähle **1 – WLAN auswählen und
+verbinden**, gib bei Bedarf das zweistellige WLAN-Land an und wähle mit den
+Pfeiltasten dein Netz. Gib das WLAN-Kennwort in der Netzwerkmaske ein.
+Schließe den Dialog nach der Verbindung. Kanlo zeigt den Netzwerkstatus und
+seine Webadresse. **Strg+Alt+F1** kehrt zum Board zurück.
+
+Der Gerätebesitzer kann vor Ort Netzwerk, Host und Anzeige einrichten.
+Es gibt keine offene Root-Shell und kein gemeinsames
 Administratorpasswort. Ein ausdrücklich eingerichteter SSH-Key erhält volle
 Geräteverwaltung als `kanlo-admin` mit sudo; ohne Schlüssel bleibt SSH aus.
+
+## HDMI und Composite
+
+- **HDMI** vor dem Start anschließen und am Monitor den passenden Eingang
+  wählen. Kanlo nutzt den vom Linux-Grafiktreiber erkannten Anschluss.
+- **Composite (analoges Video)** braucht einen dafür vorgesehenen Anschluss
+  und ein zum Pi-Modell passendes Kabel. Erkennt der Kernel den Composite-
+  Anschluss mit einem verfügbaren Modus, nutzt Kanlo denselben Anzeigedienst.
+  Raspberry Pi dokumentiert den KMS-Zusatz `,composite` an der vorhandenen
+  `dtoverlay=vc4-kms-v3d`-Zeile in `config.txt`. Modelle, die laut Raspberry Pi
+  `enable_tvout=1` benötigen, schalten damit HDMI ab. Für einen PAL-Fernseher kann
+  `vc4.tv_norm=PAL` in die einzige Zeile von `cmdline.txt` aufgenommen werden.
+  [Raspberry-Pi-Dokumentation zu Composite](https://www.raspberrypi.com/documentation/computers/config_txt.html#composite-video-mode)
+- Bleibt der Startbildschirm stehen, öffne **Strg+Alt+F2 → 3 – Anzeige-Diagnose**.
+  Dort erscheinen erkannte Anschlüsse und die letzten Meldungen des
+  Anzeigedienstes. **4** startet die Board-Anzeige neu.
 
 ## Verhalten und Optimierungen
 
 - Server und native Anzeige sind getrennte, automatisch startende Dienste.
   Ohne angeschlossenen Bildschirm bleibt der Server verfügbar. DRM-Hotplug
-  startet die Anzeige erneut. Kein vollständiger Desktop und kein Browsermotor.
+  kann einen noch nicht laufenden Anzeigedienst starten. Falls der Grafikstart
+  fehlschlägt, zeigt Kanlo eine einfache Boardansicht auf der lokalen Konsole.
+  Kein vollständiger Desktop und kein Browsermotor.
 - Native erste Boardansicht mit Ticketkarten und wechselnden Seiten/Boards.
   Bearbeitung erfolgt im Web. Erweiterte TV-Funktionen sind weiterhin Entwicklung.
 - SQLite unter `/var/lib/kanlo`, Dienstnutzer `kanlo`, Rechte 0700. Daten und

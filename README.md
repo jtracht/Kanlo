@@ -1,11 +1,12 @@
 # Kanlo
 
 Lokales Kanban für ein Debian-/Raspberry-Pi-Gerät mit einer Weboberfläche und
-nativer Geräteanzeige. **Entwicklungsversion 0.2.0-dev.3, kein Stable-Release.**
+nativer Geräteanzeige. **Entwicklungsversion 0.2.0-dev.4, kein Stable-Release.**
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Den belegten
-Aufgabenstand führt [50-PROZENT.md](docs/de/50-PROZENT.md).
+Aufgabenstand liegt bei **50 % (35 von 70 Originalaufgaben vollständig
+abgenommen)**. [Abnahme und Zählweise](docs/de/50-PROZENT.md)
 
 ![Kanlo-Board mit Backlog, Suche und Tickets in drei Spalten](docs/screenshots/board-desktop.png)
 

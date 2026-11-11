@@ -44,6 +44,7 @@ def main():
     assert mode == 0o700
     assert Path('/etc/cloud/cloud-init.disabled').is_file()
     assert Path('/usr/sbin/wpa_supplicant').is_file()
+    assert os.access('/usr/bin/nmtui-connect', os.X_OK)
     assert Path('/lib/firmware/regulatory.db').is_file()
     wifi = Path('/etc/NetworkManager/system-connections/kanlo-wifi.nmconnection')
     assert wifi.is_file() and stat.S_IMODE(wifi.stat().st_mode) == 0o600
@@ -58,6 +59,9 @@ def main():
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'kanlo-setup.service']).returncode == 0
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'NetworkManager.service']).returncode == 0
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'seatd.service']).returncode == 0
+    assert 'display.py --launch' in subprocess.check_output(
+        ['systemctl', 'show', '--property=ExecStart', '--value', 'kanlo-tv.service'], text=True
+    )
     lan_verified = False
     for _ in range(60):
         interfaces = json.loads(subprocess.check_output(['ip', '-j', '-4', 'address', 'show'], text=True))
