@@ -10,7 +10,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-from release_package import ROOT, git, inspect, validate_tag
+from release_package import ROOT, file_sha256, git, image_files, inspect, validate_tag
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -30,7 +30,7 @@ class API:
         self.repo = f'{self.base}/repos/{repository}'
         self.opener = urllib.request.build_opener(NoRedirect())
 
-    def request(self, method, url, body=None, content_type='application/json', binary=False):
+    def request(self, method, url, body=None, content_type='application/json', binary=False, digest=False, length=None):
         if not url or url.startswith('/'):
             url = self.repo + url
         allowed = {urllib.parse.urlparse(self.base).netloc}
@@ -42,11 +42,18 @@ class API:
         if isinstance(body, dict):
             body = json.dumps(body).encode()
         headers = {'Authorization': ('Bearer ' if self.github else 'token ') + self.token, 'Accept': 'application/octet-stream' if binary else 'application/json', 'Content-Type': content_type}
+        if length is not None:
+            headers['Content-Length'] = str(length)
         if self.github:
             headers['X-GitHub-Api-Version'] = '2026-03-10'
         for _ in range(5):
             try:
                 with self.opener.open(urllib.request.Request(url, data=body, method=method, headers=headers), timeout=120) as response:
+                    if binary and digest:
+                        checksum = hashlib.sha256()
+                        for chunk in iter(lambda: response.read(4 * 1024 * 1024), b''):
+                            checksum.update(chunk)
+                        return checksum.digest()
                     data = response.read()
                     return data if binary else json.loads(data) if data else None
             except urllib.error.HTTPError as error:
@@ -63,21 +70,27 @@ class API:
                 raise
         raise ValueError('Too many asset redirects')
 
-    def download(self, release, asset):
+    def download(self, release, asset, digest=False):
         if self.github:
-            return self.request('GET', f"/releases/assets/{asset['id']}", binary=True)
+            return self.request('GET', f"/releases/assets/{asset['id']}", binary=True, digest=digest)
         url = asset['browser_download_url']
         if urllib.parse.urlparse(url).netloc != urllib.parse.urlparse(self.server).netloc:
             raise ValueError('Untrusted Gitea asset URL')
-        return self.request('GET', url, binary=True)
+        return self.request('GET', url, binary=True, digest=digest)
 
     def upload(self, release, path):
+        def chunks(prefix=b'', suffix=b''):
+            yield prefix
+            with path.open('rb') as stream:
+                yield from iter(lambda: stream.read(4 * 1024 * 1024), b'')
+            yield suffix
         if self.github:
             url = release['upload_url'].split('{')[0] + '?name=' + urllib.parse.quote(path.name)
-            return self.request('POST', url, path.read_bytes(), 'application/octet-stream')
+            return self.request('POST', url, chunks(), 'application/octet-stream', length=path.stat().st_size)
         boundary = uuid.uuid4().hex
-        body = f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; filename="{path.name}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode() + path.read_bytes() + f'\r\n--{boundary}--\r\n'.encode()
-        return self.request('POST', f"/releases/{release['id']}/assets?name={urllib.parse.quote(path.name)}", body, f'multipart/form-data; boundary={boundary}')
+        prefix = f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; filename="{path.name}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode()
+        suffix = f'\r\n--{boundary}--\r\n'.encode()
+        return self.request('POST', f"/releases/{release['id']}/assets?name={urllib.parse.quote(path.name)}", chunks(prefix, suffix), f'multipart/form-data; boundary={boundary}', length=len(prefix) + path.stat().st_size + len(suffix))
 
 
 def checked_files(directory, tag):
@@ -90,12 +103,14 @@ def checked_files(directory, tag):
         if not re.fullmatch(r'[a-f0-9]{64}', checksum) or not re.fullmatch(r'[A-Za-z0-9._-]+', name):
             raise ValueError('Invalid checksum entry')
         path = directory / name
-        if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != checksum:
+        if path.is_symlink() or file_sha256(path) != checksum:
             raise ValueError('Release checksum mismatch')
         files.append(path)
     expected = {f'kanlo-{tag[1:]}-linux-{arch}.tar.gz' for arch in ('amd64', 'arm64', 'armhf')} | {f'kanlo-{tag[1:]}-source.tar.gz', 'release-manifest.json'}
-    if len(files) != 5 or {p.name for p in files} != expected:
-        raise ValueError('Exactly three platform archives, source and manifest are required')
+    image_assets, images = image_files(directory, manifest['source_commit'])
+    expected.update(path.name for path in image_assets)
+    if manifest.get('images') != images or len(files) != len(expected) or {p.name for p in files} != expected:
+        raise ValueError('Exactly three packages, four verified images/evidence, source and manifest are required')
     for path in files:
         if '-linux-' in path.name:
             build = inspect(path)
@@ -128,10 +143,11 @@ def publish(api, tag, directory):
             if not release['draft']:
                 raise ValueError('Published releases are immutable; missing asset')
             existing = api.upload(release, path)
-        digest = hashlib.sha256(api.download(release, existing)).digest()
-        if digest != hashlib.sha256(path.read_bytes()).digest():
+        digest = api.download(release, existing, digest=True)
+        if digest.hex() != file_sha256(path):
             raise ValueError('Uploaded asset differs; refusing overwrite/publication')
-    if {asset['name'] for asset in api.request('GET', f"/releases/{release['id']}/assets")} != {path.name for path in files}:
+    published_assets = api.request('GET', f"/releases/{release['id']}/assets")
+    if len(published_assets) != len(files) or {asset['name'] for asset in published_assets} != {path.name for path in files}:
         raise ValueError('Unexpected or missing release attachments')
     if release['draft']:
         release = api.request('PATCH', f"/releases/{release['id']}", {'draft': False})

@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import lzma
 import os
 from pathlib import Path
 import sys
@@ -68,8 +69,26 @@ class Packages(unittest.TestCase):
                 executable.write_bytes(binary(target))
                 package.package(executable, target, directory)
             tag = 'v' + package.version()
+            profiles = json.loads((package.ROOT / 'packaging/images/bases.json').read_text())['profiles']
+            for profile, base in profiles.items():
+                image = directory / f'kanlo-{package.version()}-{profile}.img.xz'
+                image.write_bytes(lzma.compress(b'fixture image, not boot evidence'))
+                evidence = image.with_name(f'kanlo-{package.version()}-{profile}.image.json')
+                evidence.write_text(json.dumps({'profile': profile, 'version': package.version(), 'source_commit': package.git('rev-parse', 'HEAD'), 'base': base, 'image': image.name, 'sha256': package.file_sha256(image), 'boot_test': {'status': 'passed', 'boots': [{'phase': phase, 'sqlite_integrity': 'ok', 'root_expanded': True} for phase in ['firstboot', 'reboot']]}}))
+                fixture = json.loads(evidence.read_text())
+                fixture['boot_test'].update(emulator_binary_sha256='0' * 64, emulator_source_commit=None if base['arch'] == 'amd64' else '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5')
+                for boot in fixture['boot_test']['boots']:
+                    boot.update(lan_http_verified=True, ram_swap_verified=True)
+                evidence.write_text(json.dumps(fixture))
+            original = evidence.read_text()
+            rejected = json.loads(original)
+            rejected['boot_test']['status'] = 'failed'
+            evidence.write_text(json.dumps(rejected))
+            with self.assertRaisesRegex(ValueError, 'Two successful image boots'):
+                package.bundle(directory, tag)
+            evidence.write_text(original)
             package.bundle(directory, tag)
-            self.assertEqual(len(publisher.checked_files(directory, tag)), 6)
+            self.assertEqual(len(publisher.checked_files(directory, tag)), 14)
             archive = next(directory.glob('*-linux-amd64.tar.gz'))
             archive.write_bytes(archive.read_bytes() + b'tampered')
             with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
@@ -83,6 +102,25 @@ class Packages(unittest.TestCase):
                 tar.addfile(item, io.BytesIO(b'x'))
             with self.assertRaises(ValueError):
                 package.inspect(archive)
+
+    def test_upload_streams_have_the_exact_declared_http_length(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'image.img.xz'
+            payload = b'fixture payload\x00' * 1000
+            path.write_bytes(payload)
+            for server, base, release in [('https://github.com', 'https://api.github.com', {'upload_url': 'https://uploads.github.com/repos/owner/repo/releases/1/assets{?name,label}'}), ('https://gitea.example', 'https://gitea.example/api/v1', {'id': 1})]:
+                api = publisher.API(server, base, 'owner/repo', 'fixture')
+                def request(method, url, body, content_type, **kwargs):
+                    self.assertEqual(method, 'POST')
+                    self.assertFalse(isinstance(body, bytes))
+                    wire = b''.join(body)
+                    self.assertEqual(len(wire), kwargs['length'])
+                    self.assertIn(payload, wire)
+                    if 'multipart' in content_type:
+                        self.assertIn(b'name="attachment"; filename="image.img.xz"', wire)
+                    return {'id': 1}
+                with patch.object(api, 'request', side_effect=request), patch.object(Path, 'read_bytes', side_effect=AssertionError('Do not buffer image uploads')):
+                    api.upload(release, path)
 
     def test_authenticated_api_does_not_allow_foreign_hosts(self):
         api = publisher.API('https://gitea.example', 'https://gitea.example/api/v1', 'owner/repo', 'fixture')
@@ -123,8 +161,9 @@ class FakeAPI:
         self.assets.append(asset); self.contents[asset['id']] = path.read_bytes()
         return asset
 
-    def download(self, release, asset):
-        return self.contents[asset['id']]
+    def download(self, release, asset, digest=False):
+        data = self.contents[asset['id']]
+        return hashlib.sha256(data).digest() if digest else data
 
 
 class Publication(unittest.TestCase):

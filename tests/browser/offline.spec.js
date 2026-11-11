@@ -72,6 +72,9 @@ test("lost creation acknowledgment is reconciled before rendering and never roll
   request,
 }) => {
   const board = await fixture(request, "Lost acknowledgment");
+  // Lose the event channel too: otherwise SSE can legitimately reconcile the
+  // committed receipt before the simulated HTTP acknowledgment is dropped.
+  await context.route("**/api/v1/events", (route) => route.abort("connectionreset"));
   await visit(page, board);
   let committed = false;
   await context.route("**/api/v1/sync/create", async (route) => {

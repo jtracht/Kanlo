@@ -22,6 +22,7 @@ jobs:
       - run: cargo test --workspace --locked
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: python3 -m unittest discover -s tests/release -v
+      - run: python3 -m unittest discover -s tests/images -v
       - name: Validate version tag and release channel
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -118,9 +119,90 @@ jobs:
       - name: Downloaded package, no network/display, non-root, restart and shutdown
         run: docker run --rm --network none --user kanlo --cap-drop ALL -v "$PWD:/src:ro" -v "$PWD/artifacts:/artifacts:ro" kanlo-runtime-validation:debian13 python3 /src/packaging/tests/package_smoke.py /artifacts
 
+  image-emulator:
+    needs: [quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        id: emulator-cache
+        with:
+          path: image-tools
+          key: kanlo-qemu-${{ runner.os }}-${{ hashFiles('packaging/images/Dockerfile.emulator') }}
+      - name: Build pinned upstream emulator with correct Pi watchdog behavior
+        if: steps.emulator-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p image-tools
+          docker build -f packaging/images/Dockerfile.emulator -t kanlo-image-emulator .
+          docker run --rm -v "$PWD/image-tools:/out" kanlo-image-emulator
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kanlo-emulator-tools
+          path: image-tools/*
+          if-no-files-found: error
+
+  appliance-images:
+    needs: [quality, debian-build, image-emulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - profile: rpi-armhf
+            arch: armhf
+          - profile: rpi-arm64
+            arch: arm64
+          - profile: generic-amd64
+            arch: amd64
+          - profile: generic-arm64
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: kanlo-dev-${{ matrix.arch }}
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: kanlo-emulator-tools
+          path: image-tools
+      - name: Enable cross-architecture package configuration
+        run: docker run --privileged --rm tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0 --install arm,arm64
+      - uses: actions/cache@v4
+        with:
+          path: image-cache
+          key: kanlo-base-${{ matrix.profile }}-${{ hashFiles('packaging/images/bases.json') }}
+      - run: docker build -f packaging/images/Dockerfile -t kanlo-image-builder:debian13 .
+      - name: Native display on a headless Wayland compositor
+        run: |
+          docker run --rm --network none --user 65534 -v "$PWD:/src:ro" kanlo-image-builder:debian13 sh -ec '
+            XDG_RUNTIME_DIR=$(mktemp -d)
+            export XDG_RUNTIME_DIR WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 WLR_RENDERER=pixman SDL_VIDEODRIVER=wayland SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR=0
+            timeout --kill-after=5s 45s cage -- python3 tests/images/display_smoke.py
+          '
+      - name: Build dedicated image and prove two kernel/systemd boots
+        env:
+          PROFILE: ${{ matrix.profile }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p image-cache image-output
+          PACKAGE=$(find artifacts -maxdepth 1 -name "kanlo-*-linux-$ARCH.tar.gz" -print -quit)
+          test -n "$PACKAGE"
+          docker run --rm --privileged -v "$PWD:/src" -v "$PWD/image-cache:/cache" \
+            -v /work kanlo-image-builder:debian13 \
+            python3 packaging/images/build.py --profile "$PROFILE" --package "$PACKAGE" --output image-output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kanlo-image-${{ matrix.profile }}
+          path: image-output/*
+          if-no-files-found: error
+
   publish-release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [quality, debian-build, headless]
+    needs: [quality, debian-build, headless, appliance-images]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -132,6 +214,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: kanlo-dev-*
+          merge-multiple: true
+          path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kanlo-image-*
           merge-multiple: true
           path: artifacts
       - name: Verify platform packages and create source bundle/checksums

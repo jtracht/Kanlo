@@ -1,0 +1,14 @@
+[Unit]
+Description=Kanlo appliance first boot
+After=local-fs.target
+Before=NetworkManager.service kanlo-server.service kanlo-tv.service
+ConditionPathExists=!/var/lib/kanlo-appliance/provisioned.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/lib/kanlo/appliance.py firstboot
+RemainAfterExit=yes
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

@@ -22,6 +22,15 @@ test("HTTPS PWA works offline and expired external sessions retain the durable q
   context,
   request,
 }) => {
+  await page.addInitScript(() => {
+    const Original = window.EventSource;
+    window.EventSource = class extends Original {
+      constructor(url, options) {
+        super(url, options);
+        this.addEventListener("open", () => { window.kanloSseOpened = true; });
+      }
+    };
+  });
   await page.goto(protectedOrigin);
   await login(page);
   expect(
@@ -41,6 +50,7 @@ test("HTTPS PWA works offline and expired external sessions retain the durable q
   expect(cookie.secure && cookie.httpOnly && cookie.sameSite === "Strict").toBe(
     true,
   );
+  await expect.poll(() => page.evaluate(() => window.kanloSseOpened)).toBe(true);
   const response = await request.post(
     `${local}/api/v1/security/sessions/revoke`,
     { headers: { Origin: local }, data: {} },
@@ -103,4 +113,31 @@ test("HTTPS PWA works offline and expired external sessions retain the durable q
   expect(persisted).not.toContain(passcode);
   expect(persisted).not.toContain(cookie.value);
   expect(persisted).not.toContain("secret_hash");
+});
+
+test.describe("initial SSE authorization failure", () => {
+  // Routing must see the original request, while the separate PWA test above
+  // keeps service workers fully enabled and verifies the durable offline queue.
+  test.use({ serviceWorkers: "block" });
+  test("a session revoked before SSE opens requests sign-in even with an empty queue", async ({ page, request }) => {
+    let releaseEvents;
+    const allowed = new Promise((resolve) => { releaseEvents = resolve; });
+    await page.route("**/api/v1/events", async (route) => {
+      await allowed;
+      await route.continue();
+    });
+    await page.goto(protectedOrigin);
+    await login(page);
+    const response = await request.post(`${local}/api/v1/security/sessions/revoke`, {
+      headers: { Origin: local }, data: {},
+    });
+    expect(response.ok()).toBe(true);
+    const rejected = page.waitForResponse((response) =>
+      response.url().endsWith("/api/v1/events") && response.status() === 401,
+    );
+    releaseEvents();
+    await rejected;
+    await expect(page.getByRole("dialog", { name: "Externen Zugang anmelden", exact: true })).toBeVisible();
+    await expect.poll(() => queueSize(page)).toBe(0);
+  });
 });

@@ -412,6 +412,7 @@ export function flush() {
 }
 export function startSynchronization(onChange: () => void) {
   let events: EventSource | undefined;
+  let checkingSession = false;
   const connect = () => {
     if (events || connection.authRequired) return;
     events = new EventSource("/api/v1/events", { withCredentials: true });
@@ -425,6 +426,22 @@ export function startSynchronization(onChange: () => void) {
       events?.close();
       events = undefined;
       storage.changed();
+    });
+    events.addEventListener("error", () => {
+      // HTTP 401 on the initial SSE request cannot emit auth_expired. Check the
+      // real session without turning a network outage into an authentication error.
+      if (!navigator.onLine || checkingSession || connection.authRequired) return;
+      checkingSession = true;
+      void api("/session")
+        .catch(() => {
+          if (connection.authRequired) {
+            events?.close();
+            events = undefined;
+          }
+        })
+        .finally(() => {
+          checkingSession = false;
+        });
     });
   };
   const online = () => {

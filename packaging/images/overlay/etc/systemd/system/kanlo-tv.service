@@ -1,0 +1,35 @@
+[Unit]
+Description=Kanlo native appliance display
+After=kanlo-firstboot.service kanlo-server.service seatd.service
+Wants=kanlo-server.service seatd.service
+Conflicts=getty@tty1.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+User=kanlo-display
+SupplementaryGroups=video render
+ExecCondition=/usr/bin/python3 /usr/lib/kanlo/appliance.py has-display
+RuntimeDirectory=kanlo-display
+RuntimeDirectoryMode=0700
+Environment=XDG_RUNTIME_DIR=/run/kanlo-display
+Environment=LIBSEAT_BACKEND=seatd
+Environment=SDL_VIDEODRIVER=wayland
+Environment=SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR=0
+Environment=XDG_CACHE_HOME=/run/kanlo-display/cache
+Environment=WLR_RENDERER=pixman
+ExecStart=/usr/bin/cage -- /usr/bin/python3 /usr/lib/kanlo/display.py
+Restart=on-failure
+RestartSec=5
+StandardInput=tty
+StandardOutput=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
