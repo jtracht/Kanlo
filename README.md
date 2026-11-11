@@ -37,6 +37,10 @@ HTTPS-Proxy-Zugang: [Betrieb](docs/de/BETRIEB.md).
 
 ## Umgesetzt
 
+Die [Plugins für ChatGPT und Claude Code](plugins/kanlo/README.md) greifen über
+MCP auf Kanlo-Boards, Spalten und Tickets zu. Die Ticketanlage lässt sich
+pro Verbindung freigeben.
+
 Boards/Spalten, stabile Ticketkennungen, Typen, globale Labels, eigene Textfelder,
 Untertickets, azyklische Abhängigkeiten, WIP-Limits, transaktionale Sammelaktionen,
 Kommentare und sicheres Markdown, Archiv/Papierkorb, gruppiertes Undo,

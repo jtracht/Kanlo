@@ -12,6 +12,7 @@ __pycache__/
 .env
 /web/node_modules/
 /web/dist/
+/plugins/kanlo/node_modules/
 /tests/browser/node_modules/
 /tests/browser/test-results/
 /tests/browser/playwright-report/

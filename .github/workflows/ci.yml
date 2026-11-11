@@ -31,6 +31,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: npm ci --prefix plugins/kanlo
+      - run: npm audit --prefix plugins/kanlo --audit-level=high
+      - run: cargo build --locked -p kanlo-api --bin kanlo-server
+      - run: npm test --prefix plugins/kanlo
       - run: npm ci --prefix web
       - run: npm audit --prefix web --audit-level=high
       - run: npm run build --prefix web

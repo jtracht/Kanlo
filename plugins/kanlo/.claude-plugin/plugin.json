@@ -1,0 +1,6 @@
+{
+  "name": "kanlo",
+  "version": "0.1.0",
+  "author": { "name": "Kanlo" },
+  "description": "Boards, Spalten und Tickets in einer eigenen Kanlo-Instanz abrufen und Tickets anlegen."
+}
