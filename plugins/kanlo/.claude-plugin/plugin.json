@@ -1,6 +1,6 @@
 {
   "name": "kanlo",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "author": { "name": "Kanlo" },
-  "description": "Kanlo-Tickets boardübergreifend suchen, anlegen, bearbeiten und kommentieren."
+  "description": "Kanlo-Tickets und Kommentare lesen sowie Tickets anlegen, bearbeiten, verschieben und kommentieren."
 }

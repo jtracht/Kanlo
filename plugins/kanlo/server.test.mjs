@@ -15,7 +15,7 @@ const executable = fileURLToPath(new URL(
   import.meta.url,
 ));
 
-test("MCP tools read and create tickets through an isolated Kanlo instance", { timeout: 30_000 }, async (t) => {
+test("MCP tools manage tickets through an isolated Kanlo instance", { timeout: 30_000 }, async (t) => {
   const data = await mkdtemp(join(tmpdir(), "kanlo-mcp-"));
   const env = { ...process.env, KANLO_DATA_DIR: data, KANLO_BIND: "127.0.0.1:0" };
   delete env.KANLO_EXTERNAL_BIND;
@@ -52,7 +52,7 @@ test("MCP tools read and create tickets through an isolated Kanlo instance", { t
 
   const reader = await connect(false);
   const { tools } = await reader.listTools();
-  assert.equal(tools.length, 4);
+  assert.equal(tools.length, 5);
   assert.ok(tools.every((tool) => tool.annotations.readOnlyHint));
   const boards = await reader.callTool({ name: "kanlo_list_boards" });
   assert.equal(boards.isError, undefined, JSON.stringify(boards));
@@ -97,6 +97,55 @@ test("MCP tools read and create tickets through an isolated Kanlo instance", { t
   });
   assert.equal(comment.isError, undefined, JSON.stringify(comment));
   assert.ok(comment.structuredContent.id);
+  const secondComment = await writer.callTool({
+    name: "kanlo_add_comment", arguments: { ticket_id: ticket.public_id, markdown: "Zweiter Kommentar." },
+  });
+  assert.equal(secondComment.isError, undefined, JSON.stringify(secondComment));
+  const comments = await reader.callTool({
+    name: "kanlo_list_comments", arguments: { ticket_id: ticket.public_id, limit: 1 },
+  });
+  assert.equal(comments.structuredContent.next_offset, 1);
+  const moreComments = await reader.callTool({
+    name: "kanlo_list_comments", arguments: { ticket_id: ticket.id, limit: 1, offset: 1 },
+  });
+  assert.equal(moreComments.structuredContent.next_offset, null);
+  const [first] = comments.structuredContent.items;
+  const [second] = moreComments.structuredContent.items;
+  assert.deepEqual(new Map([[first.id, first.markdown], [second.id, second.markdown]]),
+    new Map([[comment.structuredContent.id, "Ein Testkommentar."], [secondComment.structuredContent.id, "Zweiter Kommentar."]]));
+  assert.ok(first.created_at < second.created_at || (first.created_at === second.created_at && first.id < second.id));
+  const missing = await reader.callTool({
+    name: "kanlo_list_comments", arguments: { ticket_id: "missing-ticket" },
+  });
+  assert.equal(missing.isError, true);
+  assert.match(missing.content[0].text, /404/);
+  const move = { ticket_id: ticket.public_id, board_id, column_id: null, revision: update.revision };
+  const staleMove = await writer.callTool({ name: "kanlo_move_ticket", arguments: move });
+  assert.equal(staleMove.isError, true);
+  assert.match(staleMove.content[0].text, /409/);
+  const latest = await reader.callTool({
+    name: "kanlo_get_ticket", arguments: { ticket_id: ticket.public_id },
+  });
+  move.revision = latest.structuredContent.ticket.revision;
+  const moved = await writer.callTool({ name: "kanlo_move_ticket", arguments: move });
+  assert.equal(moved.isError, undefined, JSON.stringify(moved));
+  const backlog = await reader.callTool({
+    name: "kanlo_list_tickets", arguments: { board_id, status: "backlog" },
+  });
+  assert.equal(backlog.structuredContent.items[0].id, ticket.id);
+  assert.equal(backlog.structuredContent.items[0].column_id, null);
+  const target = columns.structuredContent.items.find((column) => column.is_done);
+  assert.ok(target);
+  const completed = await writer.callTool({
+    name: "kanlo_move_ticket",
+    arguments: { ...move, revision: backlog.structuredContent.items[0].revision, column_id: target.id },
+  });
+  assert.equal(completed.isError, undefined, JSON.stringify(completed));
+  const done = await reader.callTool({
+    name: "kanlo_list_tickets", arguments: { board_id, column_id: target.id, status: "done" },
+  });
+  assert.equal(done.structuredContent.items[0].id, ticket.id);
+  assert.equal(done.structuredContent.items[0].done, true);
   const next = await writer.callTool({
     name: "kanlo_create_ticket", arguments: { board_id, column_id, title: "MCP second ticket" },
   });

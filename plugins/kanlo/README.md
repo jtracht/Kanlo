@@ -2,10 +2,11 @@
 
 Die gemeinsame MCP-Anbindung fragt Boards, Spalten und aktive Tickets ab.
 Die Suche funktioniert boardübergreifend und lässt sich nach Text, sichtbarer
-Kennung, Spalte und Status filtern. Plugin 0.2.0 benötigt Kanlo ab 0.2.0-dev.2.
-Die Ticketdetails können über die sichtbare Kennung geöffnet werden.
-Mit freigegebenem Schreibzugriff können beide Clients Tickets anlegen, bearbeiten
-und kommentieren. Bei veralteter Ticketrevision meldet Kanlo einen Konflikt.
+Kennung, Spalte und Status filtern. Plugin 0.3.0 benötigt Kanlo ab 0.2.0-dev.3.
+Ticketdetails und Kommentare lassen sich über die sichtbare Kennung abrufen.
+Mit freigegebenem Schreibzugriff können beide Clients Tickets anlegen, bearbeiten,
+kommentieren und in eine Zielspalte oder ins Backlog verschieben. Bei veralteter
+Ticketrevision meldet Kanlo einen Konflikt.
 
 ## Vorbereitung
 

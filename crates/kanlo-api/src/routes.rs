@@ -16,6 +16,7 @@ pub fn routes() -> Router<Database> {
         .route("/api/v1/commands/confirm", post(confirm))
         .route("/api/v1/search", post(search))
         .route("/api/v1/ticket-search", get(ticket_search))
+        .route("/api/v1/tickets/{id}/comments", get(ticket_comments))
         .route("/api/v1/events", get(events))
         .route("/api/v1/statistics", get(statistics))
         .route("/api/v1/undo/{id}", get(history).post(undo))
@@ -122,14 +123,52 @@ struct TicketSearch {
     limit: Option<usize>,
 }
 
+fn page_limit(limit: Option<usize>) -> Result<usize, ApiError> {
+    let limit = limit.unwrap_or(10);
+    if !(1..=25).contains(&limit) {
+        return Err(ApiError(Error::Validation("limit must be 1–25".into())));
+    }
+    Ok(limit)
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CommentPage {
+    #[serde(default)]
+    offset: usize,
+    limit: Option<usize>,
+}
+
+async fn ticket_comments(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+    Query(input): Query<CommentPage>,
+) -> Result<Json<Value>, ApiError> {
+    let limit = page_limit(input.limit)?;
+    Ok(Json(
+        database(db, move |db| {
+            let workspace = db.workspace()?;
+            let ticket = workspace.find_ticket(&id)?;
+            let mut comments: Vec<_> = workspace
+                .comments
+                .iter()
+                .filter(|comment| comment.ticket_id == ticket.id)
+                .collect();
+            comments.sort_unstable_by(|a, b| (&a.created_at, &a.id).cmp(&(&b.created_at, &b.id)));
+            let mut comments = comments.into_iter().skip(input.offset);
+            let items: Vec<_> = comments.by_ref().take(limit).collect();
+            let next_offset = comments.next().map(|_| input.offset.saturating_add(limit));
+            Ok(json!({ "items": items, "next_offset": next_offset }))
+        })
+        .await?,
+    ))
+}
+
 async fn ticket_search(
     State(db): State<Database>,
     Query(input): Query<TicketSearch>,
 ) -> Result<Json<Value>, ApiError> {
-    let limit = input.limit.unwrap_or(10);
-    if !(1..=25).contains(&limit) {
-        return Err(ApiError(Error::Validation("limit must be 1–25".into())));
-    }
+    let limit = page_limit(input.limit)?;
     let status = input.status.unwrap_or_else(|| "active".into());
     if !matches!(
         status.as_str(),

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0-dev.3
+
+- Die API liefert Ticketkommentare seitenweise. Beide Plugins können Kommentare
+  lesen und mit freigegebenem Schreibzugriff Tickets in Zielspalten oder ins
+  Backlog verschieben.
+
 ## 0.2.0-dev.2
 
 - Die API bietet eine paginierte, boardübergreifende Ticketsuche mit Text-,

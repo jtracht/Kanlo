@@ -67,11 +67,11 @@ function page(items, { offset, limit }, project) {
   };
 }
 
-function tool(name, description, inputSchema, execute, readOnlyHint = true) {
+function tool(name, description, inputSchema, execute, { readOnlyHint = true, destructiveHint = false } = {}) {
   server.registerTool(name, {
     description,
     inputSchema,
-    annotations: { readOnlyHint, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: { readOnlyHint, destructiveHint, idempotentHint: false, openWorldHint: false },
   }, async (input) => {
     try {
       const result = await execute(input);
@@ -103,6 +103,11 @@ tool("kanlo_get_ticket", "Ein Ticket per interner ID oder sichtbarer Ticketkennu
   ticket_id: id,
 }, async ({ ticket_id }) => ({ ticket: await request(`tickets/${ticket_id}`) }));
 
+tool("kanlo_list_comments", "Kommentare zu einem Kanlo-Ticket seitenweise abrufen.", {
+  ticket_id: id,
+  ...paging,
+}, async ({ ticket_id, ...page }) => request(`tickets/${ticket_id}/comments?${new URLSearchParams(page)}`));
+
 if (writesEnabled) {
   tool("kanlo_create_ticket", "Ein Ticket in Kanlo anlegen. Nur auf ausdrücklichen Nutzerwunsch ausführen.", {
     board_id: id,
@@ -121,7 +126,7 @@ if (writesEnabled) {
       type_id: null,
     });
     return { id: receipt.result.entity_id, revision: receipt.revision };
-  }, false);
+  }, { readOnlyHint: false });
 
   tool("kanlo_update_ticket", "Titel, Beschreibung oder Wichtigkeit auf Nutzerwunsch ändern. Die Revision aus der letzten Abfrage angeben. Bei Konflikt erneut lesen und die Änderung mit dem Nutzer abgleichen.", {
     ticket_id: id,
@@ -134,7 +139,7 @@ if (writesEnabled) {
   }, async ({ ticket_id, revision, fields }) => {
     const receipt = await mutate({ kind: "patch_ticket", id: ticket_id, base_revision: revision, fields });
     return { id: receipt.result.entity_id, revision: receipt.revision };
-  }, false);
+  }, { readOnlyHint: false });
 
   tool("kanlo_add_comment", "Auf ausdrücklichen Nutzerwunsch einen Markdown-Kommentar zu einem Ticket hinzufügen.", {
     ticket_id: id,
@@ -142,7 +147,25 @@ if (writesEnabled) {
   }, async ({ ticket_id, markdown }) => {
     const receipt = await mutate({ kind: "add_comment", ticket_id, markdown });
     return { id: receipt.result.entity_id, revision: receipt.revision };
-  }, false);
+  }, { readOnlyHint: false });
+
+  tool("kanlo_move_ticket", "Ein Ticket auf Nutzerwunsch in eine Zielspalte oder in das Backlog verschieben. Kanlo kann dabei Status und Untertickets mitändern. Zielboard und aktuelle Ticketrevision angeben. Bei Konflikt erneut lesen und mit dem Nutzer abgleichen.", {
+    ticket_id: id,
+    revision: z.number().int().nonnegative(),
+    board_id: id,
+    column_id: id.nullable().describe("ID der Zielspalte oder null für das Backlog."),
+  }, async ({ ticket_id, revision, board_id, column_id }) => {
+    const receipt = await mutate({
+      kind: "move_ticket",
+      id: ticket_id,
+      base_revision: revision,
+      board_id,
+      column_id,
+      activate_types: false,
+      convert_types: {},
+    });
+    return { id: receipt.result.entity_id, revision: receipt.revision };
+  }, { readOnlyHint: false, destructiveHint: true });
 }
 
 await server.connect(new StdioServerTransport());
