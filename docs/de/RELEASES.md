@@ -64,6 +64,14 @@ Stable wird verweigert, solange native TV-, Geräte-, Backup/Update/Rollback-,
 Security-, Dokumentations-, Lizenz- und Markenbelege für genau diesen Commit
 fehlen. Ein Dev-Tag kann diese Freigaben nicht als erfüllt markieren.
 
+## Plugin-Releases
+
+Plugins haben eigene Tags nach dem Schema `plugins-vX.Y.Z`. Die Version
+muss mit dem Node-Paket und dem Claude-Manifest übereinstimmen. Der Tag
+startet einen separaten Gitea-Lauf, der die MCP-Integration prüft und zwei
+Quell-ZIPs mit separaten Einrichtungsanleitungen und `SHA256SUMS`
+veröffentlicht. Der Tag wird wie die übrigen Tags zu GitHub gespiegelt.
+
 ## Quellen der Schnittstellen
 
 - [Gitea-Job-Tokens und Rechte](https://docs.gitea.com/usage/actions/token-permissions/)

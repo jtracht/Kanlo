@@ -1,0 +1,48 @@
+name: Kanlo plugin source release
+
+on:
+  push:
+    tags: ['plugins-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix plugins/kanlo
+      - run: npm audit --prefix plugins/kanlo --audit-level=high
+      - run: cargo build --locked -p kanlo-api --bin kanlo-server
+      - run: npm test --prefix plugins/kanlo
+
+  publish:
+    if: github.server_url != 'https://github.com'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Package source files
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 scripts/plugin_release.py --tag "$RELEASE_TAG" --output artifacts
+      - name: Publish verified source archives
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_SERVER_URL: ${{ github.server_url }}
+          RELEASE_API_URL: ${{ github.api_url }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_TOKEN: ${{ secrets.GITEA_TOKEN || secrets.GITHUB_TOKEN }}
+        run: python3 scripts/publish_release.py --directory artifacts
