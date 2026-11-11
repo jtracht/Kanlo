@@ -2,6 +2,7 @@
 
 Diese private Vorabversion enthält zwei ungebaute Quellpakete. Jedes ZIP
 enthält eine eigene Schritt-für-Schritt-Anleitung als `README.md`.
+Ein Screenshot zeigt, wo der API-Schlüssel in Kanlo angelegt wird.
 
 - **Claude Code** lädt das entpackte Plugin lokal.
 - **ChatGPT** registriert den entpackten MCP-Server über einen privaten Tunnel.
