@@ -1,5 +1,6 @@
 """Native, read-only appliance board display. SDL/Wayland, no browser engine."""
 import argparse
+from http.client import HTTPException
 import json
 import os
 from pathlib import Path
@@ -18,31 +19,83 @@ def fetch(path):
         return json.load(response)
 
 
+def event_changes(response):
+    event, data = None, []
+    for raw in response:
+        line = raw.decode('utf-8').rstrip('\r\n')
+        if not line:
+            if event == 'change' and data:
+                yield json.loads('\n'.join(data))
+            event, data = None, []
+        elif line.startswith('event:'):
+            event = line.removeprefix('event:').strip()
+        elif line.startswith('data:'):
+            data.append(line.removeprefix('data:').lstrip(' '))
+
+
 def reader(updates, stop):
-    revision = None
+    cache = {}
+    last_state = None
+
+    def publish(online):
+        nonlocal last_state
+        state = list(cache.values()), online
+        if state == last_state:
+            return
+        last_state = state
+        try:
+            updates.get_nowait()
+        except queue.Empty:
+            pass
+        updates.put_nowait(state)
+
+    def refresh(bootstrap, affected):
+        nonlocal cache
+        next_cache = {}
+        for board in bootstrap['boards']:
+            key = board['id']
+            if affected is None or key in affected or key not in cache:
+                next_cache[key] = fetch(f'boards/{key}/snapshot')['workspace']
+            else:
+                next_cache[key] = cache[key]
+        cache = next_cache
+
     while not stop.is_set():
         try:
             bootstrap = fetch('bootstrap')
-            identity = (bootstrap.get('instance_id'), bootstrap.get('epoch'), bootstrap['revision'])
-            if revision != identity:
-                boards = [fetch('boards/' + board['id'] + '/snapshot')['workspace'] for board in bootstrap['boards']]
-                updates.put(('boards', boards))
-                revision = identity
-            updates.put(('online', True))
-        except (OSError, ValueError, KeyError):
-            updates.put(('online', False))
-        stop.wait(3)
+            identity = bootstrap['instance_id'], bootstrap['epoch']
+            refresh(bootstrap, None)
+            publish(True)
+            with urllib.request.urlopen(
+                f'http://127.0.0.1:8080/api/v1/events?after={bootstrap["event_cursor"]}',
+                timeout=22,
+            ) as response:
+                for change in event_changes(response):
+                    if stop.is_set():
+                        return
+                    bootstrap = fetch('bootstrap')
+                    current = bootstrap['instance_id'], bootstrap['epoch']
+                    refresh(bootstrap, None if current != identity or change.get('restored') else set(change['boards']))
+                    identity = current
+                    publish(True)
+            publish(False)
+        except (OSError, ValueError, KeyError, HTTPException):
+            publish(False)
+        stop.wait(2)
 
 
 def visible(workspace):
     columns = sorted(workspace.get('columns', []), key=lambda c: c['position'])
-    if any(t['column_id'] is None and not t['details']['trashed'] and not t['details']['archived'] for t in workspace.get('tickets', [])):
+    grouped = {}
+    for ticket in workspace.get('tickets', []):
+        if not ticket['details']['trashed'] and not ticket['details']['archived']:
+            grouped.setdefault(ticket['column_id'], []).append(ticket)
+    if None in grouped:
         columns.insert(0, {'id': None, 'name': 'Backlog', 'position': -1})
-    return [(column, sorted([t for t in workspace.get('tickets', []) if t['column_id'] == column['id'] and not t['details']['trashed'] and not t['details']['archived']], key=lambda t: t['details']['rank'])) for column in columns]
+    return [(column, sorted(grouped.get(column['id'], []), key=lambda t: t['details']['rank'])) for column in columns]
 
 
-def paginate(workspace, per_screen, rows):
-    columns = visible(workspace)
+def paginate_columns(columns, per_screen, rows):
     pages = []
     for start in range(0, len(columns), per_screen):
         group = columns[start:start + per_screen]
@@ -51,29 +104,56 @@ def paginate(workspace, per_screen, rows):
     return pages
 
 
+def paginate(workspace, per_screen, rows):
+    return paginate_columns(visible(workspace), per_screen, rows)
+
+
+def layout_metrics(width, height):
+    scale = max(0.6, min(height / 900, width / 960, 1.75))
+    margin = round(28 * scale)
+    card = round(100 * scale)
+    columns = max(1, (width - 2 * margin) // round(280 * scale))
+    rows = max(1, (height - round(230 * scale)) // card)
+    return scale, margin, card, columns, rows
+
+
 def console_board():
+    updates = queue.Queue(maxsize=1)
+    stop = threading.Event()
+    threading.Thread(target=reader, args=(updates, stop), daemon=True).start()
+    boards, online, previous_frame = [], False, None
     while True:
+        try:
+            boards, online = updates.get(timeout=1)
+        except queue.Empty:
+            pass
         width, height = shutil.get_terminal_size((80, 25))
         lines = ['Kanlo · Board-Anzeige', 'Strg+Alt+F2: WLAN und Einrichtung', '']
-        try:
-            boards = fetch('boards')
-            if boards:
-                board = boards[int(time.monotonic() // 20) % len(boards)]
-                workspace = fetch('boards/' + board['id'] + '/snapshot')['workspace']
-                lines.extend([board['name'], ''])
-                for column, tickets in visible(workspace):
-                    lines.append(f"{column['name']} · {len(tickets)}")
-                    lines.extend(f"  {ticket['public_id']}  {ticket['title']}" for ticket in tickets[:3])
-            urls = Path('/run/kanlo-network/urls.json')
-            if urls.is_file():
-                lines.extend(['', 'Web: ' + '  '.join(json.loads(urls.read_text()))])
-        except (OSError, ValueError, KeyError):
+        if not online:
             lines.append('Kanlo wartet auf den Server.')
+        urls = web_addresses()
+        if urls:
+            lines.append('Web: ' + urls)
+        if boards:
+            workspace = boards[int(time.monotonic() // 20) % len(boards)]
+            lines.extend([workspace['boards'][0]['name'], ''])
+            for column, tickets in visible(workspace):
+                lines.append(f"{column['name']} · {len(tickets)}")
+                lines.extend(f"  {ticket['public_id']}  {ticket['title']}" for ticket in tickets[:3])
         # Ticket text is data, including on terminals that interpret escape sequences.
         safe = [''.join(char if char.isprintable() else ' ' for char in line)[:max(1, width - 1)]
                 for line in lines]
-        print('\033[2J\033[H' + '\n'.join(safe[:max(1, height - 1)]), flush=True)
-        time.sleep(3)
+        frame = '\n'.join(safe[:max(1, height - 1)])
+        if frame != previous_frame:
+            print('\033[2J\033[H' + frame, flush=True)
+            previous_frame = frame
+
+
+def web_addresses():
+    try:
+        return '  '.join(json.loads(Path('/run/kanlo-network/urls.json').read_text()))
+    except (OSError, ValueError):
+        return ''
 
 
 def launch():
@@ -104,12 +184,12 @@ def wait_for_seat():
             time.sleep(0.25)
 
 
-def main():
+def main(size=None):
     import pygame
     pygame.display.init()
     pygame.font.init()
     pygame.mouse.set_visible(False)
-    desktop = pygame.display.get_desktop_sizes()[0]
+    desktop = size or pygame.display.get_desktop_sizes()[0]
     # Cage owns fullscreen; an SDL exclusive-mode request can block on Wayland.
     screen = pygame.display.set_mode(desktop, pygame.RESIZABLE)
     pygame.display.set_caption('Kanlo')
@@ -117,16 +197,16 @@ def main():
 
     def layout():
         width, height = screen.get_size()
-        scale = max(0.45, min(width / 1600, height / 900))
+        scale, margin, card, columns, rows = layout_metrics(width, height)
         fonts = [pygame.font.Font(font_path, round(size * scale)) for size in (24, 38, 18)]
-        return width, height, scale, *fonts
+        return width, height, scale, margin, card, columns, rows, *fonts
 
-    width, height, scale, font, title_font, small = layout()
-    updates = queue.Queue(maxsize=0)
+    width, height, scale, margin, card_height, per_screen, rows, font, title_font, small = layout()
+    updates = queue.Queue(maxsize=1)
     stop = threading.Event()
     threading.Thread(target=reader, args=(updates, stop), daemon=True).start()
     boards, active, page, page_count, online = [], 0, 0, 1, False
-    dirty, last_rotate, last_urls = True, time.monotonic(), ''
+    dirty, footer_dirty, last_rotate, last_urls = True, True, time.monotonic(), ''
     def text(value, position, face=None, color='#e5e7eb', max_width=None):
         face = font if face is None else face
         value = str(value)
@@ -141,37 +221,43 @@ def main():
             # An event-driven, capped loop: repaint only on data/page/connection changes.
             event = pygame.event.wait(250)
             if screen.get_size() != (width, height):
-                width, height, scale, font, title_font, small = layout()
+                width, height, scale, margin, card_height, per_screen, rows, font, title_font, small = layout()
                 dirty = True
+                footer_dirty = True
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 break
             if event.type == pygame.KEYDOWN and event.key in (pygame.K_RIGHT, pygame.K_SPACE):
                 active += 1; page = 0; dirty = True
-            while not updates.empty():
-                kind, value = updates.get_nowait()
-                if kind == 'boards':
-                    boards = value; dirty = True
-                elif online != value:
-                    online = value; dirty = True
             try:
-                urls = '  '.join(json.loads(Path('/run/kanlo-network/urls.json').read_text()))
-            except FileNotFoundError:
-                urls = 'Strg+Alt+F2: WLAN einrichten oder Ethernet anschließen'
+                new_boards, new_online = updates.get_nowait()
+                dirty |= boards != new_boards
+                footer_dirty |= online != new_online
+                boards, online = new_boards, new_online
+            except queue.Empty:
+                pass
+            urls = web_addresses() or 'Strg+Alt+F2: WLAN einrichten oder Ethernet anschließen'
             if urls != last_urls:
-                last_urls = urls; dirty = True
+                last_urls = urls
+                footer_dirty = True
             if time.monotonic() - last_rotate > 20:
                 page += 1
                 if page >= page_count:
                     page = 0; active += 1
                 dirty = True; last_rotate = time.monotonic()
+            if not dirty and not footer_dirty:
+                continue
+            footer = pygame.Rect(0, height - 4 * margin, width, 4 * margin)
+            if footer_dirty:
+                screen.fill('#101820', footer)
+                text(urls, (margin, height - 2 * margin), small, max_width=width - 2 * margin)
+                text('Strg+Alt+F2: WLAN und Einrichtung' if online else 'Verbindung wird wiederhergestellt …', (margin, height - 3 * margin), small, '#9ca3af')
+                footer_dirty = False
             if not dirty:
+                pygame.display.update(footer)
                 continue
             dirty = False
-            screen.fill('#101820')
-            margin = round(28 * scale)
+            screen.fill('#101820', pygame.Rect(0, 0, width, footer.top))
             text('Kanlo', (margin, margin), title_font)
-            text(urls, (margin, height - 2 * margin), small, max_width=width - 2 * margin)
-            text('Strg+Alt+F2: WLAN und Einrichtung' if online else 'Verbindung wird wiederhergestellt …', (margin, height - 3 * margin), small, '#9ca3af')
             if not boards:
                 text('Bereit – Board über die Weboberfläche einrichten.', (margin, height // 2), max_width=width - 2 * margin)
             else:
@@ -182,11 +268,9 @@ def main():
                 columns = visible(workspace)
                 page_count = 1
                 if columns:
-                    per_screen = max(1, min(len(columns), width // round(280 * scale)))
-                    column_width = (width - margin * 2) // per_screen
-                    card_height = round(100 * scale)
-                    rows = max(1, (height - round(210 * scale)) // card_height)
-                    pages = paginate(workspace, per_screen, rows)
+                    shown_columns = min(len(columns), per_screen)
+                    column_width = (width - margin * 2) // shown_columns
+                    pages = paginate_columns(columns, shown_columns, rows)
                     page_count = len(pages)
                     selected = pages[page % page_count]
                     for index, (column, tickets, total) in enumerate(selected):
@@ -198,7 +282,7 @@ def main():
                             text(ticket['public_id'], (x + 10, y + 8), small, '#67e8c9')
                             text(ticket['title'], (x + 10, y + round(38 * scale)), max_width=column_width - 32)
             pygame.display.flip()
-            if os.environ.get('KANLO_DISPLAY_TEST') == '1':
+            if os.environ.get('KANLO_DISPLAY_TEST') == '1' and boards:
                 pygame.image.save(screen, os.environ.get('KANLO_DISPLAY_SCREENSHOT', '/tmp/kanlo-display.png'))
                 break
     finally:

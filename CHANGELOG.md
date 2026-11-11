@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0-dev.5
+
+- Native Anzeige und Konsolen-Fallback beziehen Änderungen aus dem Kanlo-
+  Ereignisstrom und gleichen Boards nach einem Serverneustart erneut ab.
+- Formatprüfungen für kleine, hochkantige, breite und Ultrawide-Anzeigen sowie
+  unabhängige Neustarttests für Server und Anzeigedienst.
+- Serverpakete enthalten ein Installationsskript mit Architektur- und
+  Integritätsprüfung. Die deutsch- und englischsprachigen Anleitungen wurden
+  an den Gerätebetrieb angepasst.
+- Entwicklungsstand nach Originalaufgaben **60 % (42 von 70)**.
+
 ## 0.2.0-dev.4
 
 - Die Geräteanzeige lässt den Wechsel zur lokalen Einrichtung zu und zeigt

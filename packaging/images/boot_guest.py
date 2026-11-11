@@ -2,11 +2,15 @@
 import json
 import os
 from pathlib import Path
+import queue
 import stat
 import subprocess
+import threading
 import time
 import urllib.request
 import uuid
+
+import display
 
 
 def get(path, origin='http://127.0.0.1:8080'):
@@ -20,6 +24,77 @@ def mutate(command):
     request = urllib.request.Request('http://127.0.0.1:8080/api/v1/commands', data=json.dumps(body).encode(), headers={'Content-Type': 'application/json', 'Origin': 'http://127.0.0.1:8080'})
     with urllib.request.urlopen(request, timeout=5) as response:
         return json.load(response)['result']['entity_id']
+
+
+def service_pid(unit):
+    return int(subprocess.check_output(
+        ['systemctl', 'show', '--property=MainPID', '--value', unit], text=True
+    ))
+
+
+def wait_for_new_pid(unit, old):
+    for _ in range(25):
+        pid = service_pid(unit)
+        if pid and pid != old:
+            return pid
+        time.sleep(1)
+    raise RuntimeError(f'{unit} did not start again after process termination')
+
+
+def verify_independent_restarts(board_id):
+    tv = 'kanlo-tv.service'
+    server = 'kanlo-server.service'
+    # A QEMU fixture has no physical connector. Open the normal display service
+    # on its console after the headless checks, using its console fallback.
+    override = Path('/run/systemd/system/kanlo-tv.service.d/image-test.conf')
+    override.parent.mkdir(parents=True, exist_ok=True)
+    override.write_text('[Service]\nExecCondition=\n')
+    subprocess.run(['systemctl', 'daemon-reload'], check=True)
+    stop = threading.Event()
+    updates = queue.Queue(maxsize=1)
+    threading.Thread(target=display.reader, args=(updates, stop), daemon=True).start()
+
+    def wait_for_display(ticket=None):
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            boards, online = updates.get(timeout=max(0.1, deadline - time.monotonic()))
+            if online and (ticket is None or any(
+                item['id'] == ticket for board in boards for item in board['tickets']
+            )):
+                return
+        raise RuntimeError('Display did not receive the expected board snapshot')
+
+    def create_display_ticket():
+        return mutate({'kind': 'create_ticket', 'board_id': board_id, 'title': 'Live display probe',
+                       'description': '', 'importance': 0, 'column_id': None, 'parent_id': None, 'type_id': None})
+
+    try:
+        wait_for_display()
+        wait_for_display(create_display_ticket())
+        server_before = service_pid(server)
+        subprocess.run(['systemctl', 'start', tv], check=True)
+        display_before = wait_for_new_pid(tv, 0)
+        assert service_pid(server) == server_before
+        subprocess.run(['systemctl', 'kill', '--kill-whom=main', '--signal=KILL', tv], check=True)
+        display_after = wait_for_new_pid(tv, display_before)
+        assert service_pid(server) == server_before
+        subprocess.run(['systemctl', 'kill', '--kill-whom=main', '--signal=KILL', server], check=True)
+        wait_for_new_pid(server, server_before)
+        assert service_pid(tv) == display_after
+        for _ in range(15):
+            try:
+                ticket = create_display_ticket()
+                break
+            except OSError:
+                time.sleep(1)
+        else:
+            raise RuntimeError('Server did not accept writes after restarting')
+        wait_for_display(ticket)
+    finally:
+        stop.set()
+        subprocess.run(['systemctl', 'stop', tv], check=True)
+        override.unlink()
+        subprocess.run(['systemctl', 'daemon-reload'], check=True)
 
 
 def main():
@@ -86,11 +161,13 @@ def main():
         snapshot = get('/api/v1/boards/' + before['board_id'] + '/snapshot')
         assert any(ticket['id'] == before['ticket_id'] and ticket['title'] == 'Survives an image reboot' for ticket in snapshot['workspace']['tickets'])
         phase = 'reboot'
+        board = before['board_id']
     else:
         board = mutate({'kind': 'create_board', 'name': 'Image acceptance', 'prefix': 'IMGTEST'})
         ticket = mutate({'kind': 'create_ticket', 'board_id': board, 'title': 'Survives an image reboot', 'description': '', 'importance': 100, 'column_id': None, 'parent_id': None, 'type_id': None})
         marker.write_text(json.dumps({'machine_id': identity, 'instance_id': state['instance_id'], 'configured_at': provisioned['configured_at'], 'board_id': board, 'ticket_id': ticket}))
         phase = 'firstboot'
+    verify_independent_restarts(board)
     # Actually restart the service and check the same SQLite instance remains intact.
     subprocess.run(['systemctl', 'restart', 'kanlo-server.service'], check=True)
     for _ in range(30):
@@ -104,7 +181,7 @@ def main():
     subprocess.run(['systemctl', 'stop', 'kanlo-server.service'], check=True)
     checked = subprocess.run(['runuser', '-u', 'kanlo', '--', 'env', 'KANLO_DATA_DIR=/var/lib/kanlo', '/usr/local/lib/kanlo/kanlo-server', '--check'], check=True, capture_output=True, text=True)
     assert checked.stdout.strip() == 'ok'
-    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'kernel_machine': os.uname().machine, 'kernel_release': os.uname().release, 'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(), 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True}), flush=True)
+    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'kernel_machine': os.uname().machine, 'kernel_release': os.uname().release, 'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(), 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True, 'independent_service_restarts': True, 'live_display_verified': True}), flush=True)
 
 
 try:

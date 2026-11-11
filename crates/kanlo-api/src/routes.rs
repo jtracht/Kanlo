@@ -47,7 +47,7 @@ pub fn routes() -> Router<Database> {
         .route("/api/v1/security/sessions/revoke", post(revoke_sessions))
 }
 async fn bootstrap(State(db): State<Database>) -> Result<Json<Value>, ApiError> {
-    Ok(Json(database(db,|db|{let state=db.workspace()?;let (instance,epoch)=db.identity()?;Ok(json!({"boards":state.boards,"types":state.types,"labels":state.labels,"settings":state.settings,"board_options":state.board_options,"views":state.views,"revision":db.revision()?,"instance_id":instance,"epoch":epoch,"passcode_configured":db.has_passcode()?}))}).await?))
+    Ok(Json(database(db,|db|{let state=db.workspace()?;let (instance,epoch)=db.identity()?;Ok(json!({"boards":state.boards,"types":state.types,"labels":state.labels,"settings":state.settings,"board_options":state.board_options,"views":state.views,"revision":db.revision()?,"event_cursor":db.event_cursor()?,"instance_id":instance,"epoch":epoch,"passcode_configured":db.has_passcode()?}))}).await?))
 }
 async fn snapshot(
     State(db): State<Database>,

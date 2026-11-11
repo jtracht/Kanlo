@@ -1,8 +1,9 @@
-import importlib.util
+from contextlib import nullcontext
 import json
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -14,6 +15,48 @@ import build
 
 
 class Appliance(unittest.TestCase):
+    def test_display_stream_updates_affected_boards_and_reconciles_on_reconnect(self):
+        frames = [b': keepalive\n', b'\n', b'event: change\n',
+                  b'data: {"boards":["a"]}\n', b'\n']
+        bootstrap = {'boards': [{'id': 'a'}, {'id': 'b'}], 'instance_id': 'server',
+                     'epoch': 'first', 'event_cursor': 10}
+        stop = threading.Event()
+        generations = iter(['A1', 'B1', 'A2', 'A3', 'B3'])
+        requests = []
+        publications = []
+
+        def fetch(path):
+            requests.append(path)
+            if path == 'bootstrap':
+                return bootstrap
+            return {'workspace': next(generations)}
+
+        class Mailbox:
+            def get_nowait(self):
+                return None
+
+            def put_nowait(self, state):
+                publications.append(state)
+
+        def connect(url, timeout):
+            self.assertTrue(url.endswith('/events?after=10'))
+            if requests.count('bootstrap') == 3:
+                stop.set()
+                return nullcontext([])
+            return nullcontext(frames)
+
+        with (
+            patch.object(display, 'fetch', side_effect=fetch),
+            patch.object(display.urllib.request, 'urlopen', side_effect=connect),
+            patch.object(stop, 'wait'),
+        ):
+            display.reader(Mailbox(), stop)
+        self.assertEqual(requests, ['bootstrap', 'boards/a/snapshot', 'boards/b/snapshot',
+                                    'bootstrap', 'boards/a/snapshot',
+                                    'bootstrap', 'boards/a/snapshot', 'boards/b/snapshot'])
+        self.assertEqual([state for state in publications if state[1]],
+                         [(['A1', 'B1'], True), (['A2', 'B1'], True), (['A3', 'B3'], True)])
+
     def test_configuration_rejects_unknown_fields_and_unsafe_values(self):
         with patch.object(Path, 'is_file', return_value=True):
             valid = appliance.validate({'hostname': 'kanlo-pi', 'timezone': 'Europe/Berlin', 'wifi': {'ssid': 'Office; WiFi', 'password': 'a safe passphrase', 'country': 'DE'}})

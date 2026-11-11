@@ -1,7 +1,8 @@
 # Kanlo server on Debian 13
 
-This archive includes the server and embedded web app. Native TV, kiosk setup
-and flash images are not part of this development prerelease.
+This archive includes the server and embedded web app for an existing desktop
+or headless system. The separate [appliance image](IMAGES-EN.md) includes the
+native kiosk display and local Wi-Fi setup.
 
 Choose `amd64` for x86-64, `arm64` for a 64-bit ARM OS or `armhf` for an ARMv7
 hard-float OS. Match the operating system architecture. Physical Pi validation
@@ -21,19 +22,18 @@ required at runtime. Stop with Ctrl+C. `--check` verifies database integrity.
 From the extracted archive:
 
 ```sh
-sudo install -Dm755 bin/kanlo-server /usr/local/lib/kanlo/kanlo-server
-sudo install -Dm644 systemd/kanlo-server.service /etc/systemd/system/kanlo-server.service
-sudo install -Dm644 sysusers.d/kanlo.conf /usr/lib/sysusers.d/kanlo.conf
-sudo systemd-sysusers /usr/lib/sysusers.d/kanlo.conf
-sudo systemctl daemon-reload
-sudo systemctl enable --now kanlo-server
+./install.sh --check
+sudo ./install.sh
 ```
 
-This installs the server only and does not change your desktop or enable a
-kiosk. The unit uses a non-login account and private `/var/lib/kanlo` data.
+The installer checks the operating system, architecture and binary checksum.
+It installs a server service with a non-login account and private
+`/var/lib/kanlo` data.
 Use `systemctl status kanlo-server` and `journalctl -u kanlo-server` for diagnosis.
-Uninstall by stopping/disabling the service and removing installed program/unit
-files. Keep data separately; it is never deleted automatically.
+To uninstall, run `sudo systemctl disable --now kanlo-server`. Remove
+`/usr/local/lib/kanlo/kanlo-server`, `/etc/systemd/system/kanlo-server.service`
+and `/usr/lib/sysusers.d/kanlo.conf`, then run `sudo systemctl daemon-reload`.
+Keep the data under `/var/lib/kanlo` separately.
 
 ## Access and updates
 
@@ -47,5 +47,5 @@ previous archive. Install the new binary and restart. Older binaries refuse
 newer database schemas. A data rollback requires the corresponding old binary
 and a prior backup; automatic updates/rollback are not implemented yet.
 
-For `Exec format error`, check OS/archive architecture. HDMI/display problems
-must not block the server: this release contains no native TV process.
+For `Exec format error`, compare the archive with `dpkg --print-architecture`.
+See the [appliance guide](IMAGES-EN.md) for Pi 3 B+ HDMI and composite troubleshooting.

@@ -21,6 +21,7 @@ with tempfile.TemporaryDirectory() as directory:
     with tarfile.open(archive) as tar:
         tar.extractall(directory, filter='data')
     binary = next(Path(directory).glob('*/bin/kanlo-server'))
+    subprocess.run([str(binary.parents[1] / 'install.sh'), '--check'], check=True)
     environment = {**os.environ, 'KANLO_TEST_BINARY': str(binary), 'KANLO_EXPECT_VERSION': build['version']}
     subprocess.run([sys.executable, str(root / 'packaging/tests/headless.py')], env=environment, check=True)
 print('PASS: packaged AMD64 binary, embedded version, restart and integrity')

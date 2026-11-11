@@ -49,8 +49,10 @@ def image_files(output, commit):
         boot = report.get('boot_test', {})
         if report.get('source_commit') != commit or report.get('version') != version() or report.get('profile') != profile or report.get('base') != base or report.get('image') != image.name:
             raise ValueError('Image provenance/version/base mismatch')
-        if boot.get('status') != 'passed' or [b.get('phase') for b in boot.get('boots', [])] != ['firstboot', 'reboot'] or any(b.get('sqlite_integrity') != 'ok' or not b.get('root_expanded') or not b.get('lan_http_verified') or not b.get('ram_swap_verified') for b in boot['boots']):
-            raise ValueError('Two successful image boots are required')
+        required = ('root_expanded', 'lan_http_verified', 'ram_swap_verified',
+                    'independent_service_restarts', 'live_display_verified')
+        if boot.get('status') != 'passed' or [b.get('phase') for b in boot.get('boots', [])] != ['firstboot', 'reboot'] or any(b.get('sqlite_integrity') != 'ok' or not all(b.get(key) for key in required) for b in boot['boots']):
+            raise ValueError('Two successful image boots and independent service restarts are required')
         if not re.fullmatch(r'[0-9a-f]{64}', boot.get('emulator_binary_sha256', '')) or base['arch'] != 'amd64' and boot.get('emulator_source_commit') != '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5':
             raise ValueError('Pinned emulator provenance is required')
         with image.open('rb') as stream:
@@ -123,14 +125,20 @@ def package(binary, target, output):
         'release/NOTES.md': 'RELEASE-NOTES.md', 'release/INSTALL-DE.md': 'INSTALL-DE.md', 'release/INSTALL-EN.md': 'INSTALL-EN.md',
         'release/IMAGES-DE.md': 'IMAGES-DE.md', 'release/IMAGES-EN.md': 'IMAGES-EN.md',
         'docs/de/BETRIEB.md': 'docs/de/BETRIEB.md', 'docs/en/README.md': 'docs/en/README.md',
+        'docs/de/60-PROZENT.md': 'docs/de/60-PROZENT.md',
+        'docs/de/50-PROZENT.md': 'docs/de/50-PROZENT.md',
+        'release/plugins/screenshots/api-keys.png': 'release/plugins/screenshots/api-keys.png',
         'packaging/systemd/kanlo-server.service': 'systemd/kanlo-server.service', 'packaging/sysusers.d/kanlo.conf': 'sysusers.d/kanlo.conf',
     }
     paths.update({str(path.relative_to(ROOT)).replace('\\', '/'): str(path.relative_to(ROOT)).replace('\\', '/') for path in (ROOT / 'docs/licenses').rglob('*') if path.is_file()})
+    paths.update({path.relative_to(ROOT).as_posix(): path.relative_to(ROOT).as_posix()
+                  for path in (ROOT / 'docs/screenshots').iterdir() if path.is_file()})
     for source, name in paths.items():
         path = ROOT / source
         if path.is_symlink():
             raise ValueError('Package input must not be a symlink')
         files.append((f'{prefix}/{name}', path.read_bytes(), 0o644))
+    files.append((f'{prefix}/install.sh', (ROOT / 'packaging/install.sh').read_bytes(), 0o755))
     result = output / f'{prefix}.tar.gz'
     archive(result, files, epoch)
     return result
@@ -150,7 +158,7 @@ def inspect(path):
         elf(data, build['target'])
         if hashlib.sha256(data).hexdigest() != build['binary_sha256']:
             raise ValueError('Embedded binary checksum mismatch')
-        for required in ['LICENSE', 'NOTICE', 'INSTALL-DE.md', 'INSTALL-EN.md', 'RELEASE-NOTES.md', 'docs/licenses/inventory.json']:
+        for required in ['LICENSE', 'NOTICE', 'INSTALL-DE.md', 'INSTALL-EN.md', 'RELEASE-NOTES.md', 'docs/licenses/inventory.json', 'install.sh']:
             tar.getmember(f'{prefix}/{required}')
         return build
 

@@ -19,6 +19,7 @@ Environment=SDL_VIDEODRIVER=wayland
 Environment=SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR=0
 Environment=XDG_CACHE_HOME=/run/kanlo-display/cache
 Environment=WLR_RENDERER=pixman
+Environment=LP_NUM_THREADS=2
 ExecStart=/usr/bin/python3 /usr/lib/kanlo/display.py --launch
 Restart=always
 RestartSec=5

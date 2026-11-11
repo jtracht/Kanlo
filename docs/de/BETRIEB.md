@@ -1,8 +1,9 @@
 # Entwicklungsbetrieb
 
 Das Programm bettet sämtliche Webassets ein. Es benötigt zur Laufzeit weder
-Node noch Docker, CDN, Internet oder Bildschirm. Eine native TV-Laufzeit ist
-noch nicht vorhanden; keine TV-Unit einschalten.
+Node, Docker, CDN, Internet oder Bildschirm. Das Geräte-Image bringt
+seinen separaten Anzeigedienst mit. Installation und Deinstallation stehen
+in `INSTALL-DE.md` im Serverpaket beziehungsweise unter `release/` im Quellcode.
 
 ## Daten und Dienstkonto
 

@@ -1,7 +1,11 @@
-# Kanlo 0.2.0-dev.4
+# Kanlo 0.2.0-dev.5
 
-**Belegter Entwicklungsstand: 50 % (35 von 70 vollständig abgenommenen
-Originalaufgaben).** Details stehen in `docs/de/50-PROZENT.md`.
+**Belegter Entwicklungsstand: 60 % (42 von 70 vollständig abgenommenen
+Originalaufgaben).** Details stehen in `docs/de/60-PROZENT.md`.
+
+Die native Anzeige verarbeitet Live-Änderungen und gleicht ihre Boards
+nach einem Serverneustart erneut ab. Die Serverpakete enthalten
+`install.sh` mit Architektur- und Prüfsummenprüfung.
 
 Die Geräteanzeige erlaubt den Wechsel zwischen Board und lokaler Einrichtung.
 Bei einem Grafikfehler steht eine einfache Boardansicht auf der Konsole zur

@@ -497,6 +497,16 @@ impl Store {
         Ok(result)
     }
 
+    pub fn event_cursor(&self) -> Result<i64> {
+        self.connection
+            .query_row(
+                "SELECT COALESCE(MAX(sequence), 0) FROM event_stream",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(storage)
+    }
+
     pub fn events(&self, after: i64, limit: usize) -> Result<Vec<Value>> {
         let mut query = self.connection.prepare("SELECT sequence,payload,created_at FROM event_stream WHERE sequence>?1 ORDER BY sequence LIMIT ?2").map_err(storage)?;
         query
