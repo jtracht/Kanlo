@@ -20,6 +20,12 @@ import tv_markdown
 
 
 class Appliance(unittest.TestCase):
+    def test_raspberry_pi_start_messages_use_separate_console(self):
+        line = build.raspberry_pi_cmdline('console=serial0,115200 console=tty1 console=tty2 '
+                                          'root=PARTUUID=abc systemd.show_status=1 loglevel=7')
+        self.assertEqual(line, 'console=serial0,115200 root=PARTUUID=abc '
+                               'console=tty3 loglevel=3 systemd.show_status=no\n')
+
     def test_first_wifi_setup_runs_once_and_can_be_skipped(self):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
@@ -27,7 +33,9 @@ class Appliance(unittest.TestCase):
             with patch.object(appliance, 'STATE', state), patch.object(appliance, 'has_display', return_value=True), patch.object(appliance, 'run') as command, patch('builtins.input', return_value='0'), patch('builtins.print'):
                 self.assertTrue(appliance.needs_welcome())
                 appliance.welcome()
-                command.assert_called_once_with('chvt', '1')
+                self.assertEqual([call.args for call in command.call_args_list], [
+                    ('chvt', '1'), ('systemctl', '--no-block', 'start', 'kanlo-tv.service'),
+                ])
                 self.assertFalse(appliance.needs_welcome())
             (state / 'welcome-complete').unlink()
             (state / 'provisioned.json').write_text('{"wifi_configured": true}')
@@ -40,10 +48,26 @@ class Appliance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
             connected = subprocess.CompletedProcess([], 0, 'ethernet:unavailable\nwifi:connected\n', '')
-            with patch.object(appliance, 'STATE', state), patch.object(appliance, 'setup_wifi') as wifi, patch.object(appliance, 'run', return_value=connected), patch('builtins.input', return_value=''), patch('builtins.print'):
+            with patch.object(appliance, 'STATE', state), patch.object(appliance, 'setup_wifi') as wifi, patch.object(appliance, 'run', return_value=connected) as command, patch('builtins.input', return_value=''), patch('builtins.print'):
                 appliance.welcome()
                 wifi.assert_called_once()
                 self.assertTrue((state / 'welcome-complete').is_file())
+                command.assert_called_with('systemctl', '--no-block', 'start', 'kanlo-tv.service')
+
+    def test_return_to_board_activates_the_display_service_and_console(self):
+        with patch.object(appliance, 'run') as command:
+            appliance.return_to_board(restart=True)
+            self.assertEqual([call.args for call in command.call_args_list], [
+                ('systemctl', '--no-block', 'restart', 'kanlo-tv.service'), ('chvt', '1'),
+            ])
+
+    def test_welcome_waits_for_pending_wifi_address(self):
+        states = [subprocess.CompletedProcess([], 0, state + '\n', '') for state in (
+            'wifi:connecting (getting IP configuration)', 'wifi:connected (externally)',
+        )]
+        with patch.object(appliance, 'run', side_effect=states), patch.object(appliance.time, 'sleep') as wait:
+            self.assertTrue(appliance.wifi_ready())
+            wait.assert_called_once_with(1)
 
     def test_settings_menu_routes_to_wifi_and_bluetooth(self):
         with patch.object(appliance, 'wifi_menu') as wifi, patch.object(appliance, 'bluetooth_menu') as bluetooth, patch('builtins.input', side_effect=['1', '2', EOFError]), patch('builtins.print') as output:
@@ -240,7 +264,8 @@ class Appliance(unittest.TestCase):
         for connectors, expected in [
             ([('card0-HDMI-A-1', 'connected', ['1920x1080'])], True),
             ([('card0-HDMI-A-1', 'disconnected', []), ('card1-Composite-1', 'unknown', ['720x576'])], True),
-            ([('card0-HDMI-A-1', 'unknown', ['1920x1080']), ('card1-Composite-1', 'unknown', [])], False),
+            ([('card0-HDMI-A-1', 'unknown', ['1920x1080']), ('card1-Composite-1', 'unknown', [])], True),
+            ([('card0-HDMI-A-1', 'unknown', []), ('card1-Composite-1', 'unknown', [])], False),
         ]:
             with self.subTest(connectors=connectors), patch.object(appliance, 'display_connectors', return_value=connectors):
                 self.assertEqual(appliance.graphical_output(), expected)
@@ -256,6 +281,19 @@ class Appliance(unittest.TestCase):
             display.launch()
             self.assertEqual(cage.call_args.args[0][:3], ['/usr/bin/cage', '-s', '--'])
             fallback.assert_called_once_with()
+
+    def test_console_board_hands_off_to_cage_when_connector_appears(self):
+        with (
+            patch.object(appliance, 'graphical_output', side_effect=[False, True]) as output,
+            patch.object(display, 'wait_for_seat'),
+            patch.object(display.subprocess, 'run') as cage,
+            patch.object(display, 'console_board') as fallback,
+        ):
+            cage.return_value.returncode = 1
+            display.launch()
+        self.assertEqual(fallback.call_args_list[0].kwargs, {'until': output})
+        cage.assert_called_once()
+        self.assertFalse(fallback.call_args_list[1].kwargs)
 
     def test_wifi_menu_starts_local_network_selector_without_credentials_in_command(self):
         with (

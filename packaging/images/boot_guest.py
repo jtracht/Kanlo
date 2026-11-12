@@ -117,8 +117,13 @@ def verify_independent_restarts(board_id):
         wait_for_display(ticket)
         show_ticket(ticket)
         server_before = service_pid(server)
+        if os.uname().machine == 'x86_64':
+            subprocess.run(['chvt', '2'], check=True)
+            assert Path('/sys/class/tty/tty0/active').read_text().strip() == 'tty2'
         subprocess.run(['systemctl', 'start', tv], check=True)
         display_before = wait_for_new_pid(tv, 0)
+        if os.uname().machine == 'x86_64':
+            assert Path('/sys/class/tty/tty0/active').read_text().strip() == 'tty1'
         assert service_pid(server) == server_before
         subprocess.run(['systemctl', 'kill', '--kill-whom=main', '--signal=KILL', tv], check=True)
         display_after = wait_for_new_pid(tv, display_before)

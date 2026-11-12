@@ -83,6 +83,11 @@ Es gibt keine offene Root-Shell und kein gemeinsames
 Administratorpasswort. Ein ausdrücklich eingerichteter SSH-Key erhält volle
 Geräteverwaltung als `kanlo-admin` mit sudo; ohne Schlüssel bleibt SSH aus.
 
+Startmeldungen werden im Journal erfasst. Die Menüs und das Board haben
+eigene Konsolen. **Board-Anzeige neu starten** wechselt nach der Anforderung
+zur Board-Konsole. Unter **Anzeige-Diagnose** stehen der aktive Bildschirm-
+Konsolenplatz, die erkannten Ausgänge und die letzten Meldungen der Anzeige.
+
 ## HDMI und Composite
 
 - **HDMI** vor dem Start anschließen und am Monitor den passenden Eingang

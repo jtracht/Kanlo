@@ -6,6 +6,7 @@ import json
 import lzma
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -17,6 +18,14 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from release_package import git, inspect, version
 
 PROFILES = json.loads((ROOT / 'packaging/images/bases.json').read_text())['profiles']
+
+
+def raspberry_pi_cmdline(original):
+    excluded = ('init=', 'systemd.run=', 'systemd.run_success_action=',
+                'systemd.run_failure_action=', 'loglevel=', 'systemd.show_status=')
+    args = [value for value in original.split() if not value.startswith(excluded)
+            and not re.fullmatch(r'console=tty\d+(?:,.*)?', value)]
+    return ' '.join([*args, 'console=tty3', 'loglevel=3', 'systemd.show_status=no']) + '\n'
 
 
 @contextlib.contextmanager
@@ -177,7 +186,6 @@ def build(profile, package, cache, work, output):
         # A power-of-two SD capacity is also required by QEMU's Raspberry Pi model.
         run('truncate', '-s', '8G', image)
         with mounted(image, directory, expand=True) as (root, root_part, parts):
-            import re
             if not re.search(r'^VERSION_ID="?13"?$', (root / 'etc/os-release').read_text(), re.M):
                 raise ValueError('Only Debian/Raspberry Pi OS 13 is supported')
             import tarfile
@@ -199,9 +207,8 @@ def build(profile, package, cache, work, output):
             # Raspberry Pi uses its original firmware, DTBs, kernel and auto-initramfs.
             boot = root / 'boot/firmware'
             if base['family'] == 'rpi':
-                cmdline = (boot / 'cmdline.txt').read_text().strip().split()
-                cmdline = [p for p in cmdline if not p.startswith(('init=', 'systemd.run=', 'systemd.run_success_action=', 'systemd.run_failure_action='))]
-                (boot / 'cmdline.txt').write_text(' '.join(cmdline) + '\n')
+                cmdline = boot / 'cmdline.txt'
+                cmdline.write_text(raspberry_pi_cmdline(cmdline.read_text()))
             else:
                 # FAT provisioning area: same KANLO_CONFIG.json path as Raspberry Pi.
                 efi = root / 'boot/efi'

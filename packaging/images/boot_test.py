@@ -7,12 +7,14 @@ import subprocess
 import time
 
 
-def verify(image, profile, directory):
+def verify(image, profile, directory, *, overlay=None):
     from build import ROOT, checksum, mounted, run
     test = directory / 'boot-test.img'
     run('cp', '--sparse=always', image, test)
     run('truncate', '-s', '16G', test)
     with mounted(test, directory) as (root, root_part, parts):
+        if overlay:
+            overlay(root)
         shutil.copy2(ROOT / 'packaging/images/boot_guest.py', root / 'usr/lib/kanlo/boot_guest.py')
         if profile == 'generic-amd64':
             shutil.copy2(ROOT / 'packaging/images/boot_wifi.py', root / 'usr/lib/kanlo/boot_wifi.py')
@@ -55,7 +57,7 @@ def verify(image, profile, directory):
             code = Path('/usr/share/OVMF/OVMF_CODE_4M.fd')
             variables = firmware / 'vars.fd'
             shutil.copy2('/usr/share/OVMF/OVMF_VARS_4M.fd', variables)
-            command = ['qemu-system-x86_64', '-M', 'q35', '-accel', 'tcg', '-m', '1024', '-smp', '2', '-drive', f'if=pflash,format=raw,readonly=on,file={code}', '-drive', f'if=pflash,format=raw,file={variables}', '-drive', f'file={test},if=virtio,format=raw', '-nic', 'user,model=virtio-net-pci']
+            command = ['qemu-system-x86_64', '-M', 'q35', '-accel', 'tcg', '-m', '1024', '-smp', '2', '-vga', 'virtio', '-drive', f'if=pflash,format=raw,readonly=on,file={code}', '-drive', f'if=pflash,format=raw,file={variables}', '-drive', f'file={test},if=virtio,format=raw', '-nic', 'user,model=virtio-net-pci']
         else:
             code = Path('/usr/share/AAVMF/AAVMF_CODE.fd')
             variables = firmware / 'vars.fd'

@@ -1,6 +1,6 @@
 [Unit]
 Description=Kanlo native appliance display
-After=kanlo-firstboot.service kanlo-server.service seatd.service
+After=kanlo-firstboot.service kanlo-server.service seatd.service getty@tty1.service
 Wants=kanlo-server.service seatd.service
 Conflicts=getty@tty1.service
 StartLimitIntervalSec=60
@@ -11,6 +11,7 @@ Type=exec
 User=kanlo-display
 SupplementaryGroups=video render
 ExecCondition=/usr/bin/python3 /usr/lib/kanlo/appliance.py has-display
+ExecStartPre=-+/usr/bin/chvt 1
 RuntimeDirectory=kanlo-display
 RuntimeDirectoryMode=0700
 StateDirectory=kanlo-display
@@ -25,7 +26,8 @@ Environment=LP_NUM_THREADS=2
 ExecStart=/usr/bin/python3 /usr/lib/kanlo/display.py --launch
 Restart=always
 RestartSec=5
-StandardInput=tty
+TimeoutStartSec=25
+StandardInput=tty-fail
 StandardOutput=tty
 StandardError=journal
 TTYPath=/dev/tty1

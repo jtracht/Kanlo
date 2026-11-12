@@ -328,12 +328,12 @@ def layout_metrics(width, height):
     return scale, margin, card, columns, rows
 
 
-def console_board():
+def console_board(until=None):
     updates = queue.Queue(maxsize=1)
     stop = threading.Event()
     threading.Thread(target=reader, args=(updates, stop), daemon=True).start()
     boards, online, previous_frame = [], False, None
-    while True:
+    while until is None or not until():
         try:
             boards, online = updates.get(timeout=1)
         except queue.Empty:
@@ -358,6 +358,7 @@ def console_board():
         if frame != previous_frame:
             print('\033[2J\033[H' + frame, flush=True)
             previous_frame = frame
+    stop.set()
 
 
 def web_addresses():
@@ -387,6 +388,8 @@ def setup_qr(url):
 def launch():
     from appliance import graphical_output
 
+    if not graphical_output():
+        console_board(until=graphical_output)
     if graphical_output():
         try:
             wait_for_seat()

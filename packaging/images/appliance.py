@@ -200,7 +200,8 @@ def has_display():
 
 
 def graphical_output():
-    return any(state == 'connected' or ('-Composite-' in name and state == 'unknown' and modes)
+    return any(state == 'connected' or (state == 'unknown' and modes
+               and any(output in name for output in ('-Composite-', '-HDMI-', '-DP-')))
                for name, state, modes in display_connectors())
 
 
@@ -234,6 +235,21 @@ def needs_welcome():
     return not configured.get('wifi_configured', False)
 
 
+def wifi_ready():
+    # NetworkManager may still be assigning an address when its dialog closes.
+    for attempt in range(12):
+        rows = run('nmcli', '-t', '-f', 'TYPE,STATE', 'device', 'status',
+                   capture_output=True, env={**os.environ, 'LC_ALL': 'C'}).stdout.splitlines()
+        states = [row.split(':', 1)[1] for row in rows if row.startswith('wifi:')]
+        if any(state in ('connected', 'connected (externally)') for state in states):
+            return True
+        if not any(state.startswith('connecting') for state in states):
+            return False
+        if attempt < 11:
+            time.sleep(1)
+    return False
+
+
 def welcome():
     run('chvt', '1')
     while True:
@@ -243,17 +259,26 @@ def welcome():
         if choice == '1':
             try:
                 setup_wifi()
-                connections = run('nmcli', '-t', '-f', 'TYPE,STATE', 'device', 'status',
-                                  capture_output=True, env={**os.environ, 'LC_ALL': 'C'}).stdout
-                if 'wifi:connected' in connections.splitlines():
-                    atomic(STATE / 'welcome-complete', '1\n')
+                if wifi_ready():
+                    finish_welcome()
                     return
             except (OSError, ValueError, subprocess.CalledProcessError):
                 print('WLAN konnte nicht eingerichtet werden.')
             input('Enter für die WLAN-Ersteinrichtung …')
         elif choice == '0':
-            atomic(STATE / 'welcome-complete', '1\n')
+            finish_welcome()
             return
+
+
+def finish_welcome():
+    atomic(STATE / 'welcome-complete', '1\n')
+    # The display service orders itself after this unit. Queue it without waiting.
+    run('systemctl', '--no-block', 'start', 'kanlo-tv.service')
+
+
+def return_to_board(restart=False):
+    run('systemctl', '--no-block', 'restart' if restart else 'start', 'kanlo-tv.service')
+    run('chvt', '1')
 
 
 def wifi_menu():
@@ -400,15 +425,17 @@ def setup():
                 bluetooth_menu()
                 continue
             elif choice == '3':
+                run('fgconsole')
                 for name, state, modes in display_connectors():
                     print(f'{name}: {state} ({", ".join(modes) or "keine Modi"})')
-                run('journalctl', '-b', '-u', 'kanlo-tv.service', '-n', '20', '--no-pager')
+                run('journalctl', '-b', '-u', 'kanlo-tv.service', '-u', 'seatd.service', '-n', '25', '--no-pager')
             elif choice == '4':
-                run('systemctl', '--no-block', 'restart', 'kanlo-tv.service')
+                return_to_board(restart=True)
+                continue
             elif choice == '5':
                 setup_device()
             elif choice == '0':
-                run('chvt', '1')
+                return_to_board()
                 continue
             else:
                 continue
