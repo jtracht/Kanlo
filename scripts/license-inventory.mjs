@@ -9,7 +9,7 @@ for(const item of metadata.packages.filter(item=>!metadata.workspace_members.inc
   const directory=dirname(item.manifest_path);
   rows.push({ecosystem:'cargo',name:item.name,version:item.version,license:item.license??null,repository:item.repository??null,notices:collect(directory,`cargo/${item.name}-${item.version}`)});
 }
-for(const root of ['web','tests/browser']){
+for(const root of ['web','tests/browser','plugins/kanlo']){
   const lock=JSON.parse(readFileSync(`${root}/package-lock.json`,'utf8'));
   for(const [location,item] of Object.entries(lock.packages).filter(([location])=>location)){
     const name=item.name??location.slice(location.lastIndexOf('node_modules/')+13);

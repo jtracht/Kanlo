@@ -3,7 +3,19 @@ use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Deserialize,
+    Eq,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    schemars::JsonSchema,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum View {
     #[default]
@@ -12,14 +24,16 @@ pub enum View {
     Statistics,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize, schemars::JsonSchema,
+)]
 #[serde(deny_unknown_fields)]
 pub struct RotationEntry {
     pub view: View,
     pub board_id: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, schemars::JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct Preferences {
     pub view: View,
@@ -45,7 +59,7 @@ impl Default for Preferences {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Overlay {
     Ticket { ticket_id: String },
@@ -53,7 +67,7 @@ pub enum Overlay {
     Children { ticket_id: String },
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize, schemars::JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct DisplayState {
     pub preferences: Preferences,
@@ -65,7 +79,7 @@ pub struct DisplayState {
     pub scroll_offset: i64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
     Configure {
@@ -91,6 +105,9 @@ pub enum Action {
     },
     Scroll {
         delta: i16,
+    },
+    Resume {
+        revision: u64,
     },
     Back,
     Close,
@@ -315,6 +332,11 @@ impl DisplayState {
                     .checked_add(i64::from(delta))
                     .ok_or(Error::Storage)?;
             }
+            Action::Resume { revision } => {
+                if revision != self.revision {
+                    return Err(Error::Conflict("Display context changed".into()));
+                }
+            }
         }
         self.expires_at = (!self.overlays.is_empty() && self.preferences.overlay_minutes > 0)
             .then(|| now + Duration::minutes(self.preferences.overlay_minutes.into()));
@@ -404,5 +426,31 @@ mod tests {
         );
         state.reconcile(&workspace, now + Duration::minutes(16));
         assert!(state.overlays.is_empty());
+    }
+
+    #[test]
+    fn resume_restarts_the_timer_only_for_the_current_context() {
+        let now = DateTime::parse_from_rfc3339("2026-11-01T10:00:00Z")
+            .unwrap()
+            .to_utc();
+        let workspace = Workspace::initial();
+        let board_id = workspace.boards[0].id.clone();
+        let mut state = DisplayState::default();
+        state
+            .apply(Action::ShowBacklog { board_id }, &workspace, now)
+            .unwrap();
+        assert!(
+            state
+                .apply(Action::Resume { revision: 0 }, &workspace, now)
+                .is_err()
+        );
+        state
+            .apply(
+                Action::Resume { revision: 1 },
+                &workspace,
+                now + Duration::minutes(2),
+            )
+            .unwrap();
+        assert_eq!(state.expires_at, Some(now + Duration::minutes(7)));
     }
 }

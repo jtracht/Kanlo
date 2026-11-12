@@ -1,0 +1,26 @@
+[
+  {
+    "id": "KAN-FOLLOWUP-001",
+    "title": "Erweiterte Statistik nach 1.0 prüfen",
+    "milestone": "Post-1.0",
+    "status": "planned",
+    "scope": "Bei nachgewiesenem Bedarf Cycle-Time-, Lead-Time- und Cumulative-Flow-Diagramme entwerfen.",
+    "acceptance": "Zusätzliche Diagramme erklären ihre Berechnung und verändern die bestehende Historie nicht."
+  },
+  {
+    "id": "KAN-FOLLOWUP-002",
+    "title": "Zusätzliche Geräteprofile nach 1.0 abnehmen",
+    "milestone": "Post-1.0",
+    "status": "planned",
+    "scope": "Für nachgefragte weitere ARM-Boards eigene Boot- und Treiberprofile prüfen.",
+    "acceptance": "Jedes zusätzliche Gerät erhält einen physischen Boot-, Anzeige- und Netzwerknachweis."
+  },
+  {
+    "id": "KAN-FOLLOWUP-003",
+    "title": "Öffentliche Plugin-Verteilung nach Freigabe",
+    "milestone": "Post-1.0",
+    "status": "planned",
+    "scope": "Freigegebene Marken- und Lizenzdaten in die öffentliche Einreichung übernehmen und Plattformentscheidungen dokumentieren.",
+    "acceptance": "Einreichung und etwaige Freigabe sind separat dokumentiert und die private Einrichtung bleibt verfügbar."
+  }
+]

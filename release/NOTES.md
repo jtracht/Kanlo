@@ -1,6 +1,12 @@
 # Kanlo 0.2.0-dev.6
 
-Lokaler Entwicklungsstand **78,6 % (55 von 70 Originalaufgaben)**.
+Lokaler Entwicklungsstand **85,7 % (60 von 70 Originalaufgaben)**.
+
+Die versionierte API veröffentlicht ihren OpenAPI-3.1-Vertrag unter
+`/api/v1/openapi.json`. Der Integrationsassistent erzeugt daraus das GPT-Actions-
+Leseschema. Die native TV-Anzeige speichert ihre zuletzt sichtbare Position für
+den Wiederanlauf. Die lokale Speicherabnahme prüft Onlinebackup, SSD-Wechsel,
+Rückwechsel und Wiederherstellung.
 
 Die Weboberfläche und beide MCP-Plugins steuern die native TV-Anzeige.
 Sie bietet Board, Gesamtübersicht, Statistik, Rotation, Hervorhebungen
@@ -53,20 +59,17 @@ Read `IMAGES-DE.md` / `IMAGES-EN.md` for compatible hardware and flashing/setup.
 
 ## Grenzen / Known limits
 
-Entwicklungsversion, kein Stable 1.0. Die native Anzeige ist eine erste passive
-Boardansicht; vollständige TV-Detailoverlays/Markdown/Statistik/Steuerung, Updater,
-vollständiges OpenAPI/MCP/ChatGPT und physische Pi-/SSD-Abnahmen bleiben offen.
-QEMU-Boots sind kein realer Hardware-/HDMI-/WLAN-Leistungsnachweis.
-Die vorhandene Lizenzdatei erteilt keine öffentliche Nutzungslizenz; dieser
-Release bleibt im privaten Repository. Öffentliche Verteilung erfordert die
-noch ausstehende Lizenz-/Markenfreigabe.
+Entwicklungsversion. Vollständige native Markdown- und Bilddarstellung,
+automatisierte Update-Wiederherstellung, die ChatGPT-Abnahme im Workspace
+sowie physische Raspberry-Pi-Tests stehen aus. Die QEMU-Prüfung erfasst den
+emulierten Systemstart. Tests für HDMI, Composite und WLAN am Gerät stehen aus.
+Die öffentliche Verteilung erfordert die ausstehende Lizenz- und Markenfreigabe.
 
-Development prerelease, not stable 1.0. The native display provides initial
-read-only boards; full TV overlays/Markdown/statistics/control, the updater,
-complete OpenAPI/MCP/ChatGPT and physical Pi/SSD acceptance remain open.
-Emulated boots do not certify physical device performance. The current LICENSE does
-not grant public distribution rights; this release stays private pending owner
-licensing and trademark clearance.
+Development prerelease. Full native Markdown and image rendering, automated
+update recovery, ChatGPT workspace acceptance and physical Raspberry Pi testing
+are pending. QEMU verifies the emulated boot. On-device HDMI, composite and
+Wi-Fi testing remain pending. Public distribution requires licensing and
+trademark clearance.
 
 ## Installation
 

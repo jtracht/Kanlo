@@ -27,6 +27,15 @@ def fetch(path):
         return json.load(response)
 
 
+def resume_timer(revision):
+    origin = 'http://127.0.0.1:8080'
+    request = urllib.request.Request(origin + '/api/v1/display',
+        data=json.dumps({'kind': 'resume', 'revision': revision}).encode(),
+        headers={'Origin': origin, 'Content-Type': 'application/json'})
+    with urllib.request.urlopen(request, timeout=4) as response:
+        return json.load(response)
+
+
 def event_changes(response):
     event, data = None, []
     for raw in response:
@@ -52,6 +61,8 @@ def offer(mailbox, state):
 def reader(updates, stop, display_updates=None):
     cache = {}
     last_state = None
+    saved = read_runtime_view() if display_updates is not None else None
+    resumed = None
 
     def publish(online):
         nonlocal last_state
@@ -62,11 +73,25 @@ def reader(updates, stop, display_updates=None):
         offer(updates, state)
 
     def refresh_display(bootstrap):
+        nonlocal saved, resumed
         if display_updates is None:
             return
         state = fetch('display')
+        instance = [bootstrap['instance_id'], bootstrap['epoch']]
+        if saved is not None:
+            if state['overlays'] and state['expires_at'] and saved.get('revision') == state['revision'] and saved.get('instance') == instance:
+                previous = state['revision']
+                try:
+                    state = resume_timer(previous)
+                    resumed = state['revision'], previous
+                except (OSError, ValueError, HTTPException):
+                    # A concurrent control action wins over restoring an older timer.
+                    state = fetch('display')
+            saved = None
+        if resumed and resumed[0] == state['revision']:
+            state['resumed_revision'] = resumed[1]
         state['animation'] = bootstrap.get('settings', {}).get('animation', 'fluid')
-        state['instance'] = [bootstrap['instance_id'], bootstrap['epoch']]
+        state['instance'] = instance
         preferences = state['preferences']
         modes = {entry['view'] for entry in preferences['rotation']} | {preferences['view']}
         if 'overview' in modes:
@@ -433,7 +458,7 @@ def main(size=None):
                         preferences = new_preferences
                         animate = bool(state)
                         rotation_index = -1
-                    if not state and saved.get('instance') == new_state.get('instance') and saved.get('revision') == new_state['revision']:
+                    if not state and saved.get('instance') == new_state.get('instance') and saved.get('revision') in (new_state['revision'], new_state.get('resumed_revision')):
                         if saved.get('mode') in ('board', 'overview', 'statistics'):
                             mode = saved['mode']
                         if isinstance(saved.get('page'), int):

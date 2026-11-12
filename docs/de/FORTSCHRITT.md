@@ -1,7 +1,7 @@
 # Entwicklungsstand
 
-Der lokale Stand 0.2.0-dev.6 umfasst **55 von 70 Originalaufgaben
-(78,6 %)**. Er baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md)
+Der lokale Stand 0.2.0-dev.6 umfasst **60 von 70 Originalaufgaben
+(85,7 %)**. Er baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md)
 auf. Das Ziel von mindestens 85 % liegt bei 60 Aufgaben.
 
 | Zusätzlich abgenommen | Lokaler Nachweis |
@@ -19,10 +19,9 @@ auf. Das Ziel von mindestens 85 % liegt bei 60 Aufgaben.
 | KAN-049 · Historische Statistik | Bestehender Test für Statistik bei Undo-Tiefe 0, hinzugekommen sind Tagesaggregation und nativer Diagrammtest. |
 | KAN-058 · Integrationsassistent | Getrennte Anleitungen für MCP und GPT Actions auf Deutsch und Englisch. Desktop und Mobil prüfen den Schlüsseltest und den Export ohne Zugangsdaten. |
 | KAN-059 · Sicherheits- und Datenschutzprüfung | [Lokale Prüfmatrix](SICHERHEITSPRUEFUNG.md) mit HTTP-, Browser- und Abhängigkeitstests. |
+| KAN-070 · Offene Folgearbeiten | [Offene Originalabnahmen](../planning/OFFENE-ABNAHME.md) und getrennte lokale Post-1.0-Tickets. |
 
-Animationsprofile und die Wiederherstellung der lokalen Anzeigeposition sind
-implementiert. Die Langzeitabnahme dafür steht noch aus. Für den nächsten
-Abnahmeschritt sind unter anderem die vollständige native Markdown-Darstellung,
-das vollständige OpenAPI-Schema, ein Update mit geprüftem Rollback und die
-Abnahmen auf realen Geräten offen. Die GPT-Actions-Registrierung im tatsächlichen
-Workspace wurde noch nicht geprüft.
+Die [offenen Originalabnahmen](../planning/OFFENE-ABNAHME.md) umfassen
+weiterhin den physischen Raspberry-Pi-Start samt HDMI-, Composite- und WLAN-Prüfung,
+vollständige native Markdown- und Bilddarstellung, den Update-Rollback und die
+ChatGPT-Abnahme im tatsächlichen Workspace.

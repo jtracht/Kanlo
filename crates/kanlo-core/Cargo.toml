@@ -8,6 +8,7 @@ publish.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 serde_json.workspace = true
+schemars.workspace = true
 uuid.workspace = true
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"

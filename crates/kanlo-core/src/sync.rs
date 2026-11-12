@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Operation {
     pub op_id: String,
@@ -20,7 +20,7 @@ pub struct Operation {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct FieldConflict {
     pub field: String,
     pub base: Value,
@@ -28,7 +28,7 @@ pub struct FieldConflict {
     pub local: Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MergeResult {
     pub fields: BTreeMap<String, Value>,
     pub conflicts: Vec<FieldConflict>,

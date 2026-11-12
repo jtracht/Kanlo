@@ -7,8 +7,11 @@ use axum::{
 use serde::Deserialize;
 use std::{collections::BTreeMap, convert::Infallible};
 
+mod contract;
+
 pub fn routes() -> Router<Database> {
     Router::new()
+        .route("/api/v1/openapi.json", get(contract::openapi))
         .route("/api/v1/bootstrap", get(bootstrap))
         .route(
             "/api/v1/display",
@@ -126,14 +129,14 @@ async fn preview(
         .await?,
     ))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct PreviewRequest {
     command: kanlo_core::Command,
     #[serde(default)]
     base_context: Value,
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Confirmation {
     token: String,
@@ -163,7 +166,7 @@ async fn search(
     ))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct TicketSearch {
     #[serde(default)]
@@ -185,7 +188,7 @@ fn page_limit(limit: Option<usize>) -> Result<usize, ApiError> {
     Ok(limit)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct CommentPage {
     #[serde(default)]
@@ -269,7 +272,7 @@ async fn ticket_search(
         .await?,
     ))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 struct EventQuery {
     #[serde(default)]
     after: i64,
@@ -295,7 +298,7 @@ async fn events(
     let stream = async_stream::stream! {loop{if stop.as_ref().is_some_and(|receiver|*receiver.borrow()){break;}let current=cursor;let key=key.clone();let token=token.clone();match database(db.clone(),move|db|{if let Some(key)=key{db.authorize_key(&key)?;}else if let Some(token)=token{db.authorize_session(&token,None,false)?;}db.events(current,1000)}).await{Ok(events)=>{for event in events{cursor=event["id"].as_i64().unwrap_or(cursor);yield Ok(Event::default().id(cursor.to_string()).event("change").data(event["data"].to_string()));}},Err(_)=>{yield Ok(Event::default().event("auth_expired").data("Authentication required"));break}}if let Some(receiver)=stop.as_mut(){tokio::select!{_=receiver.changed()=>break,_=tokio::time::sleep(std::time::Duration::from_secs(2))=>{}}}else{tokio::time::sleep(std::time::Duration::from_secs(2)).await;}}};
     Sse::new(stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 struct StatisticsQuery {
     board_id: Option<String>,
     from: String,
@@ -318,7 +321,7 @@ async fn history(
 ) -> Result<Json<Vec<Value>>, ApiError> {
     Ok(Json(database(db, move |db| db.undo_history(&id)).await?))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct UndoRequest {
     revision: i64,
@@ -366,7 +369,7 @@ async fn export_csv(
         database(db, move |db| db.export_csv(&id)).await?,
     ))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ImportRequest {
     package: kanlo_db::recovery::BoardExport,
@@ -386,7 +389,7 @@ async fn import_preview(
         .await?,
     ))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct CsvRequest {
     board_id: String,
@@ -419,7 +422,7 @@ async fn recovery_confirm(
 async fn backup(State(db): State<Database>) -> Result<Json<kanlo_db::recovery::Backup>, ApiError> {
     Ok(Json(database(db, |db| db.backup()).await?))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct RestoreRequest {
     backup: kanlo_db::recovery::Backup,
@@ -451,7 +454,7 @@ async fn sync_patch(
 ) -> Result<Json<kanlo_db::synchronization::SyncResponse>, ApiError> {
     Ok(Json(database(db, move |db| db.sync_patch(body)).await?))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 struct ReceiptQuery {
     client_id: String,
 }
@@ -480,7 +483,7 @@ async fn sync_comment(
 ) -> Result<Json<kanlo_db::Receipt>, ApiError> {
     Ok(Json(database(db, move |db| db.sync_comment(body)).await?))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 struct SettingsQuery {
     category: Option<String>,
     #[serde(default)]
@@ -518,8 +521,9 @@ async fn setting_categories(
         .take(5)
         .map(|s| s.to_string())
         .collect();
-    let next = if query.offset + 5 < names.len() {
-        Some(query.offset + 5)
+    let next_offset = query.offset.saturating_add(5);
+    let next = if next_offset < names.len() {
+        Some(next_offset)
     } else {
         None
     };
@@ -528,7 +532,7 @@ async fn setting_categories(
     }
     Ok(Json(database(db,move|db|{let state=db.workspace()?;let settings=serde_json::to_value(state.settings).map_err(|_|Error::Storage)?;let values:BTreeMap<_,_>=page.iter().map(|name|(name.clone(),settings.get(name).cloned().unwrap_or(Value::Null))).collect();Ok(json!({"values":values,"next_offset":next,"board_options":if category=="boards"{json!(state.board_options)}else{Value::Null}}))}).await?))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Passcode {
     passcode: String,
@@ -586,7 +590,7 @@ async fn set_passcode(
 async fn keys(State(db): State<Database>) -> Result<Json<Vec<Value>>, ApiError> {
     Ok(Json(database(db, |db| db.list_api_keys()).await?))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct KeyName {
     name: String,

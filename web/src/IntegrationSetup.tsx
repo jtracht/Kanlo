@@ -1,39 +1,51 @@
 import { useState } from "preact/hooks";
+import { api } from "./client";
 import { Message, useT } from "./ui";
 
-const bearer = [{ kanloKey: [] }];
-const ok = { "200": { description: "Success", content: { "application/json": {
-  schema: { type: "object", additionalProperties: true },
-} } } };
+interface OpenApi {
+  paths: Record<string, Record<string, Record<string, unknown>>>;
+  components: { schemas: Record<string, unknown> };
+}
 
-function makeActionsSchema(origin: string) {
+function makeActionsSchema(origin: string, contract: OpenApi) {
+  const actions = [
+    ["/api/v1/integrations/verify", "verifyKanloConnection", "Verify the Kanlo API key"],
+    ["/api/v1/ticket-search", "searchKanloTickets", "Find tickets across Kanlo boards"],
+    ["/api/v1/tickets/{id}", "getKanloTicket", "Get a ticket by visible ID or internal ID"],
+  ];
+  const paths = Object.fromEntries(actions.map(([path, operationId, summary]) => {
+    const operation = contract.paths[path]?.get;
+    if (!operation) throw new Error("Missing API operation");
+    return [path, { get: { ...operation, operationId, summary, security: [{ kanloKey: [] }] } }];
+  }));
+  const schemas: Record<string, unknown> = {};
+  function collect(value: unknown) {
+    if (typeof value !== "object" || value === null) return;
+    if (Array.isArray(value)) {
+      value.forEach(collect);
+      return;
+    }
+    const fields = value as Record<string, unknown>;
+    const ref = fields.$ref;
+    if (typeof ref === "string" && ref.startsWith("#/components/schemas/")) {
+      const name = ref.slice("#/components/schemas/".length);
+      if (!Object.hasOwn(schemas, name)) {
+        const schema = contract.components.schemas[name];
+        if (schema === undefined) throw new Error("Missing API schema");
+        schemas[name] = schema;
+        collect(schema);
+      }
+    }
+    Object.values(fields).forEach(collect);
+  }
+  collect(paths);
   return {
     openapi: "3.1.0",
     info: { title: "Kanlo", description: "Read tickets from your Kanlo instance.", version: "1.0.0" },
     servers: [{ url: origin }],
-    components: { securitySchemes: { kanloKey: { type: "http", scheme: "bearer" } } },
-    security: bearer,
-    paths: {
-      "/api/v1/integrations/verify": { get: {
-        operationId: "verifyKanloConnection", summary: "Verify the Kanlo API key", responses: ok,
-      } },
-      "/api/v1/ticket-search": { get: {
-        operationId: "searchKanloTickets", summary: "Find tickets across Kanlo boards",
-        parameters: [
-          { name: "query", in: "query", schema: { type: "string" } },
-          { name: "board_id", in: "query", schema: { type: "string" } },
-          { name: "status", in: "query", schema: { type: "string", enum: ["active", "open", "done", "blocked", "backlog", "overdue", "archive", "trash", "all"] } },
-          { name: "offset", in: "query", schema: { type: "integer", minimum: 0 } },
-          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 25, default: 5 } },
-        ],
-        responses: ok,
-      } },
-      "/api/v1/tickets/{id}": { get: {
-        operationId: "getKanloTicket", summary: "Get a ticket by visible ID or internal ID",
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        responses: ok,
-      } },
-    },
+    components: { schemas, securitySchemes: { kanloKey: { type: "http", scheme: "bearer" } } },
+    security: [{ kanloKey: [] }],
+    paths,
   };
 }
 
@@ -73,13 +85,23 @@ export function IntegrationSetup() {
     }
   }
 
-  function downloadSchema() {
+  async function downloadSchema() {
+    let url: URL;
     try {
-      const url = new URL(origin.trim());
+      url = new URL(origin.trim());
       if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
         throw new Error();
       }
-      const blob = new Blob([JSON.stringify(makeActionsSchema(url.origin), null, 2)], { type: "application/json" });
+    } catch {
+      setError(true);
+      setMessage(t("Gib die geschützte HTTPS-Adresse ohne Pfad ein.", "Enter the protected HTTPS address without a path."));
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const contract = await api<OpenApi>("/openapi.json");
+      const blob = new Blob([JSON.stringify(makeActionsSchema(url.origin, contract), null, 2)], { type: "application/json" });
       const href = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = href;
@@ -88,7 +110,9 @@ export function IntegrationSetup() {
       setTimeout(() => URL.revokeObjectURL(href), 1000);
     } catch {
       setError(true);
-      setMessage(t("Gib die geschützte HTTPS-Adresse ohne Pfad ein.", "Enter the protected HTTPS address without a path."));
+      setMessage(t("Das Kanlo-Schema konnte nicht geladen werden.", "Could not load the Kanlo schema."));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -119,7 +143,7 @@ export function IntegrationSetup() {
     {path === "actions" && <div class="input-row">
       <input type="url" aria-label={t("Geschützte HTTPS-Adresse", "Protected HTTPS address")}
         value={origin} onInput={(event) => setOrigin(event.currentTarget.value)} placeholder="https://kanlo.example.org" />
-      <button type="button" class="secondary" onClick={downloadSchema}>{t("Leseschema herunterladen", "Download read schema")}</button>
+      <button type="button" class="secondary" disabled={busy} onClick={() => void downloadSchema()}>{t("Leseschema herunterladen", "Download read schema")}</button>
     </div>}
     <div class="input-row">
       <input type="password" autoComplete="off" disabled={!secureKeyTest} aria-label={t("API-Schlüssel zum Testen", "API key to test")}

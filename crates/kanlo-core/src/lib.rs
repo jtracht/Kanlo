@@ -45,7 +45,7 @@ pub fn board_prefix(value: &str) -> Result<String> {
     Ok(value.to_owned())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Board {
     pub id: String,
     pub name: String,
@@ -58,7 +58,7 @@ fn initial_counter() -> i64 {
     1
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Column {
     pub id: String,
     pub board_id: String,
@@ -69,7 +69,7 @@ pub struct Column {
     pub wip_strict: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Ticket {
     pub id: String,
     pub public_id: String,
@@ -84,14 +84,14 @@ pub struct Ticket {
     pub details: TicketDetails,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct NewBoard {
     pub name: String,
     pub prefix: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct NewColumn {
     pub name: String,
@@ -102,7 +102,7 @@ pub struct NewColumn {
     pub wip_strict: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct NewTicket {
     pub title: String,
@@ -113,7 +113,7 @@ pub struct NewTicket {
     pub column_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MoveTicket {
     pub board_id: String,

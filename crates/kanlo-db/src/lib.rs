@@ -42,7 +42,7 @@ fn hash(value: &str) -> String {
     format!("{:x}", Sha256::digest(value.as_bytes()))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Mutation {
     pub op_id: String,
@@ -54,7 +54,7 @@ pub struct Mutation {
     pub base_context: Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Receipt {
     pub op_id: String,
     pub revision: i64,
@@ -65,7 +65,7 @@ pub struct Receipt {
     #[serde(default)]
     pub epoch: String,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct EntityChange {
     pub kind: String,
     pub id: String,
@@ -73,7 +73,7 @@ pub struct EntityChange {
     pub body: Option<Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Preview {
     pub token: String,
     pub revision: i64,
@@ -83,7 +83,7 @@ pub struct Preview {
     pub tickets: Vec<Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct RecordChange {
     pub kind: String,
     pub id: String,
