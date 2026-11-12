@@ -1,6 +1,6 @@
 {
   "name": "kanlo",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "author": { "name": "Kanlo" },
   "description": "Kanlo-Tickets und Kommentare lesen sowie Tickets anlegen, bearbeiten, verschieben und kommentieren."
 }

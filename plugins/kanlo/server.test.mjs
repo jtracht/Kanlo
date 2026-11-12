@@ -79,6 +79,24 @@ test("MCP tools manage tickets through an isolated Kanlo instance", { timeout: 3
   assert.equal(columns.isError, undefined, JSON.stringify(columns));
   const column_id = columns.structuredContent.items[0].id;
   const writer = await connect(true);
+  const beforeSettings = await (await fetch(url + "/api/v1/bootstrap")).json();
+  const setLanguage = { name: "kanlo_update_setting", arguments: { key: "language", expected: "de", value: "en" } };
+  const settingChange = await writer.callTool(setLanguage);
+  assert.equal(settingChange.isError, undefined, JSON.stringify(settingChange));
+  assert.equal(settingChange.structuredContent.applied, true);
+  assert.deepEqual((await (await fetch(url + "/api/v1/bootstrap")).json()).settings,
+    { ...beforeSettings.settings, language: "en" });
+  assert.deepEqual((await writer.callTool(setLanguage)).structuredContent, { applied: false, conflict: true });
+  const initialOptions = beforeSettings.board_options[board_id];
+  const updateBoard = { name: "kanlo_update_board_setting", arguments: {
+    board_id, key: "undo_depth", expected: initialOptions.undo_depth, value: 20,
+  } };
+  const boardChange = await writer.callTool(updateBoard);
+  assert.equal(boardChange.isError, undefined, JSON.stringify(boardChange));
+  assert.equal(boardChange.structuredContent.applied, true);
+  assert.deepEqual((await (await fetch(url + "/api/v1/bootstrap")).json()).board_options[board_id],
+    { ...initialOptions, undo_depth: 20 });
+  assert.deepEqual((await writer.callTool(updateBoard)).structuredContent, { applied: false, conflict: true });
   const title = "MCP integration ticket";
   const result = await writer.callTool({
     name: "kanlo_create_ticket", arguments: { board_id, column_id, title },

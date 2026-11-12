@@ -42,3 +42,8 @@ Für Einstellungen zuerst „Welche Kanlo-Einstellungskategorien gibt es?“ fra
 Nach Auswahl einer Kategorie zeigt das Plugin bis zu fünf Namen pro Seite.
 Werte werden separat abgerufen. Für Board-Regeln mit Board-Auswahl
 Kanlo 0.2.0-dev.10 verwenden.
+
+Mit freigegebenem Schreibzugriff können globale Einstellungen und Board-Regeln
+einzeln geändert werden. Dazu zuerst den aktuellen Wert lesen und die Änderung
+ausdrücklich anfordern. Bei einem Konflikt den Wert erneut lesen und die
+beabsichtigte Änderung bestätigen.

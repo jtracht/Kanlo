@@ -42,13 +42,14 @@ async function request(path, body) {
   return response.json();
 }
 
-async function mutate(command) {
-  const { instance_id, epoch } = await request("health");
+async function mutate(command, baseContext, snapshot) {
+  const { instance_id, epoch } = snapshot ?? await request("health");
   return request("commands", {
     op_id: randomUUID(),
     client_id: clientId,
     server_instance_id: instance_id,
     base_epoch: epoch,
+    base_context: baseContext,
     command,
   });
 }
@@ -80,6 +81,8 @@ const toolOperations = {
   kanlo_list_setting_categories: "readSettings",
   kanlo_list_setting_names: "readSettings",
   kanlo_read_setting_values: "readSettings",
+  kanlo_update_setting: "executeCommand",
+  kanlo_update_board_setting: "executeCommand",
 };
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const paging = {
@@ -128,6 +131,36 @@ tool("kanlo_list_setting_names", "Nach Wahl einer Kategorie bis zu fünf Einstel
 tool("kanlo_read_setting_values", "Nur auf ausdrückliche Nachfrage die Werte einer ausgewählten Einstellungsseite anzeigen. Für Board-Regeln die Board-ID angeben.",
   { ...settingPage, board_id: id.optional(), key: id.optional().describe("Einzelner Einstellungsname, wenn nur dieser Wert angefragt wurde.") }, async (input) =>
     request(`settings/categories?${new URLSearchParams({ ...input, values: "true" })}`));
+
+if (writesEnabled) {
+  const settingValue = z.union([z.string().max(120), z.number().int().min(0).max(65535), z.null()]);
+  tool("kanlo_update_setting", "Ändert auf ausdrücklichen Wunsch genau eine globale Einstellung. expected muss der zuvor gelesene Wert sein. Bei Konflikt den aktuellen Wert neu lesen und dem Nutzer vorlegen.", {
+    key: z.enum(["language", "theme", "timezone", "animation", "accent_color", "backup_every_hours", "backup_keep"]),
+    expected: settingValue,
+    value: settingValue,
+  }, async ({ key, expected, value }) => {
+    const snapshot = await request("bootstrap");
+    const { settings } = snapshot;
+    if (settings[key] !== expected) {
+      return { applied: false, conflict: true };
+    }
+    const receipt = await mutate({ kind: "set_settings", settings: { ...settings, [key]: value } }, settings, snapshot);
+    return { applied: true, revision: receipt.revision };
+  }, { readOnlyHint: false });
+  tool("kanlo_update_board_setting", "Ändert auf ausdrücklichen Wunsch eine Regel des ausgewählten Boards. Die Board-ID und den zuletzt gelesenen Wert angeben.", {
+    board_id: id,
+    key: z.enum(["undo_depth", "importance_weight", "type_weight", "deadline_weight", "deadline_warning_days", "auto_archive_days", "trash_retention_days"]),
+    expected: z.number().int().nonnegative().nullable(),
+    value: z.number().int().nonnegative().nullable(),
+  }, async ({ board_id, key, expected, value }) => {
+    const snapshot = await request("bootstrap");
+    const options = snapshot.board_options[board_id];
+    if (!options) return { applied: false, board_not_found: true };
+    if (options[key] !== expected) return { applied: false, conflict: true };
+    const receipt = await mutate({ kind: "set_board_options", board_id, options: { ...options, [key]: value } }, options, snapshot);
+    return { applied: true, revision: receipt.revision };
+  }, { readOnlyHint: false });
+}
 
 tool("kanlo_list_columns", "Spalten eines Kanlo-Boards auflisten.", { board_id: id, ...paging },
   async (input) => page(await request(`boards/${input.board_id}/columns`), input, (column) => column));
