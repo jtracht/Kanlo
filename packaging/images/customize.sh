@@ -23,7 +23,7 @@ SOURCES
         firmware-atheros firmware-misc-nonfree firmware-amd-graphics firmware-intel-graphics
 fi
 apt-get update
-apt-get install -y --no-install-recommends python3 python3-pygame cage seatd \
+apt-get install -y --no-install-recommends python3 python3-pygame weston cage seatd \
     fonts-dejavu-core network-manager avahi-daemon systemd-resolved \
     cloud-guest-utils parted systemd-zram-generator sudo openssh-server iw \
     wpasupplicant wireless-regdb dnsmasq-base bluez rfkill kbd console-setup \

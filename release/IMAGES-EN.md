@@ -63,7 +63,7 @@ ingress described in the server operating guide.
 
 The server and initial native read-only board viewer have separate services.
 The viewer draws in software and presents the board through GTK/Wayland and
-Cage without Chromium or a full desktop. Headless
+Weston without Chromium or a full desktop. Headless
 operation remains available. Display hotplug can start the viewer, and a
 graphics startup failure falls back to a simple board on the local console. Full TV
 overlays/Markdown/statistics/control remain under development.

@@ -71,9 +71,11 @@ class Appliance(unittest.TestCase):
             with patch.object(display.subprocess, 'Popen') as spawn, patch.object(display, 'FIRST_FRAME_TIMEOUT', 0), patch('sys.stderr'):
                 cage = spawn.return_value.__enter__.return_value
                 cage.poll.return_value = None
-                self.assertFalse(display.launch_graphical(marker, 'pixman'))
+                self.assertFalse(display.launch_graphical(marker, 'weston'))
                 cage.terminate.assert_called_once()
-                self.assertEqual(spawn.call_args.kwargs['env']['WLR_RENDERER'], 'pixman')
+                self.assertEqual(spawn.call_args.args[0][:3],
+                                 ['/usr/bin/weston', '--backend=drm', '--renderer=pixman'])
+                self.assertEqual(spawn.call_args.kwargs['env']['KANLO_WAYLAND_SOFTWARE'], '1')
 
     def test_return_to_board_activates_the_display_service_and_console(self):
         with patch.object(appliance, 'run') as command:
@@ -301,7 +303,7 @@ class Appliance(unittest.TestCase):
             patch('sys.stderr'),
         ):
             display.launch()
-            self.assertEqual([call.args[1] for call in cage.call_args_list], ['pixman', None])
+            self.assertEqual([call.args[1] for call in cage.call_args_list], ['weston', 'cage'])
             fallback.assert_called_once_with()
 
     def test_console_board_hands_off_to_cage_when_connector_appears(self):

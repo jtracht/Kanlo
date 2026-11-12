@@ -131,7 +131,7 @@ Weiterleitungen. Ohne Freigabe bleiben Bildbeschreibungen sichtbar.
 ## Verhalten und Optimierungen
 
 - Server und native Anzeige sind getrennte, automatisch startende Dienste.
-  Das Board wird in Software gezeichnet und über GTK/Wayland an Cage übergeben.
+  Das Board wird in Software gezeichnet und über GTK/Wayland an Weston übergeben.
   Ohne angeschlossenen Bildschirm bleibt der Server verfügbar. DRM-Hotplug
   kann einen noch nicht laufenden Anzeigedienst starten. Falls der Grafikstart
   fehlschlägt, zeigt Kanlo eine einfache Boardansicht auf der lokalen Konsole.

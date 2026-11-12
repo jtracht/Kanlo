@@ -3,6 +3,7 @@ class WaylandDisplay:
     def __init__(self, pygame, size, on_frame):
         import gi
         gi.require_version('Gtk', '3.0')
+        gi.require_version('Gdk', '3.0')
         from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
 
         self.pygame = pygame

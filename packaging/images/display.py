@@ -396,8 +396,8 @@ def launch():
         try:
             wait_for_seat()
             marker = Path(os.environ['XDG_RUNTIME_DIR']) / 'first-frame'
-            for renderer in ('pixman', None):
-                if launch_graphical(marker, renderer):
+            for compositor in ('weston', 'cage'):
+                if launch_graphical(marker, compositor):
                     break
         except OSError as error:
             print(f'Kanlo graphical display could not start: {error}', file=sys.stderr, flush=True)
@@ -405,26 +405,29 @@ def launch():
     console_board()
 
 
-def launch_graphical(marker, renderer):
+def launch_graphical(marker, compositor):
     marker.unlink(missing_ok=True)
     environment = {**os.environ, 'KANLO_FIRST_FRAME': str(marker),
                    'PYGAME_HIDE_SUPPORT_PROMPT': '1'}
     environment.pop('WLR_RENDERER', None)
     environment.pop('KANLO_WAYLAND_SOFTWARE', None)
-    if renderer:
-        environment['WLR_RENDERER'] = renderer
+    client = [sys.executable, __file__]
+    if compositor == 'weston':
         environment['KANLO_WAYLAND_SOFTWARE'] = '1'
-    name = renderer or 'automatic'
-    print(f'Kanlo starting Cage ({name}).', file=sys.stderr, flush=True)
-    with subprocess.Popen(['/usr/bin/cage', '-s', '--', sys.executable, __file__],
+        command = ['/usr/bin/weston', '--backend=drm', '--renderer=pixman', '--shell=kiosk',
+                   '--no-config', '--idle-time=0', '--continue-without-input', '--', *client]
+    else:
+        command = ['/usr/bin/cage', '-s', '--', *client]
+    print(f'Kanlo starting {compositor}.', file=sys.stderr, flush=True)
+    with subprocess.Popen(command,
                           env=environment, stdout=sys.stderr, process_group=0) as process:
         deadline = time.monotonic() + FIRST_FRAME_TIMEOUT
         while process.poll() is None and not marker.is_file() and time.monotonic() < deadline:
             time.sleep(0.2)
         ready = marker.is_file()
         if not ready and process.poll() is None:
-            print(f'Kanlo first frame timed out ({name}).', file=sys.stderr, flush=True)
-            # Let Cage release its seat and restore the console before forcing exit.
+            print(f'Kanlo first frame timed out ({compositor}).', file=sys.stderr, flush=True)
+            # Let the compositor release its seat and restore the console.
             process.terminate()
             try:
                 process.wait(timeout=3)
@@ -434,7 +437,7 @@ def launch_graphical(marker, renderer):
                 except ProcessLookupError:
                     pass
         result = process.wait()
-    print(f'Kanlo Cage exited ({name}, status {result}, first frame: {ready}).',
+    print(f'Kanlo {compositor} exited (status {result}, first frame: {ready}).',
           file=sys.stderr, flush=True)
     return ready
 
