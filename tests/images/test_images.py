@@ -323,14 +323,30 @@ class Appliance(unittest.TestCase):
             patch('builtins.input', return_value='de'),
             patch.object(appliance, 'set_wifi_country') as country,
             patch.object(appliance, 'run') as run,
+            patch.object(appliance, 'prepare_wifi_scan') as scan,
             patch.object(appliance, 'print_web_addresses') as addresses,
         ):
             appliance.setup_wifi()
             country.assert_called_once_with('DE')
+            scan.assert_called_once_with()
             self.assertEqual(run.call_args_list[0].args, ('systemctl', 'stop', 'kanlo-hotspot.service'))
-            self.assertEqual(run.call_args_list[2].args, ('/usr/bin/nmtui-connect',))
-            self.assertEqual(run.call_args_list[3].args, ('systemctl', 'restart', 'kanlo-network.service'))
+            self.assertEqual(run.call_args_list[1].args, ('/usr/bin/nmtui-connect',))
+            self.assertEqual(run.call_args_list[2].args, ('systemctl', 'restart', 'kanlo-network.service'))
             addresses.assert_called_once_with()
+
+    def test_first_wifi_scan_waits_for_adapter_after_unblocking(self):
+        unavailable = subprocess.CompletedProcess([], 0, 'wifi:unavailable\n', '')
+        available = subprocess.CompletedProcess([], 0, 'wifi:disconnected\n', '')
+        with (
+            patch.object(appliance, 'run', side_effect=[None, None, unavailable, available]) as command,
+            patch.object(appliance.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0)) as scan,
+            patch.object(appliance.time, 'sleep') as wait,
+        ):
+            appliance.prepare_wifi_scan()
+        self.assertEqual(command.call_args_list[0].args, ('rfkill', 'unblock', 'wifi'))
+        self.assertEqual(command.call_args_list[1].args, ('nmcli', '--wait', '5', 'radio', 'wifi', 'on'))
+        wait.assert_called_once_with(1)
+        self.assertEqual(scan.call_args.args[0][-4:], ['wifi', 'list', '--rescan', 'yes'])
 
     def test_all_four_official_bases_are_immutable_and_checked(self):
         self.assertEqual(set(build.PROFILES), {'rpi-armhf', 'rpi-arm64', 'generic-amd64', 'generic-arm64'})

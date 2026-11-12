@@ -410,8 +410,10 @@ def launch_graphical(marker, renderer):
     environment = {**os.environ, 'KANLO_FIRST_FRAME': str(marker),
                    'PYGAME_HIDE_SUPPORT_PROMPT': '1'}
     environment.pop('WLR_RENDERER', None)
+    environment.pop('KANLO_WAYLAND_SOFTWARE', None)
     if renderer:
         environment['WLR_RENDERER'] = renderer
+        environment['KANLO_WAYLAND_SOFTWARE'] = '1'
     name = renderer or 'automatic'
     print(f'Kanlo starting Cage ({name}).', file=sys.stderr, flush=True)
     with subprocess.Popen(['/usr/bin/cage', '-s', '--', sys.executable, __file__],
@@ -453,19 +455,50 @@ def wait_for_seat():
 
 
 def main(size=None):
+    software = os.environ.get('KANLO_WAYLAND_SOFTWARE') == '1'
+    if software:
+        # SDL2's Wayland window surface can require an EGL texture even when
+        # Pygame draws entirely on the CPU. Keep SDL offscreen in this mode.
+        os.environ['SDL_VIDEODRIVER'] = 'dummy'
+        os.environ['GDK_BACKEND'] = 'wayland'
     import pygame
     marker = os.environ.get('KANLO_FIRST_FRAME')
+
+    def first_frame():
+        nonlocal marker
+        if marker:
+            Path(marker).write_text('gtk-wayland\n' if software else 'sdl\n')
+            print('Kanlo submitted its first board frame.', file=sys.stderr, flush=True)
+            marker = None
+
     if marker:
-        print('Kanlo initializing SDL video.', file=sys.stderr, flush=True)
+        print(f'Kanlo initializing {"GTK Wayland" if software else "SDL"} video.', file=sys.stderr, flush=True)
     pygame.display.init()
     pygame.font.init()
-    pygame.mouse.set_visible(False)
-    desktop = size or pygame.display.get_desktop_sizes()[0]
-    # Cage owns fullscreen; an SDL exclusive-mode request can block on Wayland.
-    screen = pygame.display.set_mode(desktop, pygame.RESIZABLE)
-    pygame.display.set_caption('Kanlo')
+    presenter = None
+    if software:
+        from tv_wayland import WaylandDisplay
+        presenter = WaylandDisplay(pygame, size or (800, 600), first_frame)
+        screen = presenter.surface
+    else:
+        desktop = size or pygame.display.get_desktop_sizes()[0]
+        # Cage owns fullscreen; an SDL exclusive-mode request can block on Wayland.
+        screen = pygame.display.set_mode(desktop, pygame.RESIZABLE)
+        pygame.display.set_caption('Kanlo')
+        pygame.mouse.set_visible(False)
+
+    def present(region=None):
+        if presenter:
+            presenter.present()
+        elif region is None:
+            pygame.display.flip()
+            first_frame()
+        else:
+            pygame.display.update(region)
+
     if marker:
-        print(f'Kanlo SDL video ready ({pygame.display.get_driver()}, {screen.get_size()}).',
+        driver = 'GTK Wayland' if presenter else pygame.display.get_driver()
+        print(f'Kanlo video ready ({driver}, {screen.get_size()}).',
               file=sys.stderr, flush=True)
     font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 
@@ -509,12 +542,18 @@ def main(size=None):
     try:
         while not stop.is_set():
             # An event-driven, capped loop: repaint only on data/page/connection changes.
-            event = pygame.event.wait(33 if transition else 250)
+            if presenter:
+                presenter.pump()
+                screen = presenter.surface
+            event = pygame.event.wait(33 if transition or presenter and marker else 250)
             dirty |= images.ready()
             if screen.get_size() != (width, height):
                 width, height, scale, margin, card_height, per_screen, rows, font, title_font, small = layout()
+                transition = None
                 dirty = True
                 footer_dirty = True
+            if event.type in (pygame.WINDOWEXPOSED, pygame.WINDOWSHOWN, pygame.WINDOWRESTORED):
+                dirty = footer_dirty = True
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 break
             if event.type == pygame.KEYDOWN and event.key in (pygame.K_RIGHT, pygame.K_LEFT, pygame.K_SPACE):
@@ -616,7 +655,7 @@ def main(size=None):
                 screen.blit(previous, (0, 0))
                 target.set_alpha(round(255 * fraction))
                 screen.blit(target, (0, 0))
-                pygame.display.flip()
+                present()
                 if fraction >= 1:
                     transition = None
                 continue
@@ -637,7 +676,7 @@ def main(size=None):
                 text(setup_hint() if online else 'Verbindung wird wiederhergestellt …', (margin, height - 3 * margin), small, '#9ca3af')
                 footer_dirty = False
             if not dirty:
-                pygame.display.update(footer)
+                present(footer)
                 continue
             dirty = False
             screen.fill('#101820', pygame.Rect(0, 0, width, footer.top))
@@ -784,11 +823,7 @@ def main(size=None):
             if previous is not None:
                 transition = (previous, screen.copy(), time.monotonic(), duration)
                 screen.blit(previous, (0, 0))
-            pygame.display.flip()
-            if marker:
-                Path(marker).touch()
-                print('Kanlo submitted its first board frame.', file=sys.stderr, flush=True)
-                marker = None
+            present()
             if state and 'instance' in state:
                 companion_page = None
                 if state.get('companion_ticket'):
@@ -803,6 +838,8 @@ def main(size=None):
                 break
     finally:
         stop.set()
+        if presenter:
+            presenter.close()
         pygame.quit()
 
 

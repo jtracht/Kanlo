@@ -50,6 +50,7 @@ echte Kernel-/systemd-Boots unter QEMU, keine simulierten Erfolgsmeldungen.
    Start kannst du zuerst das Tastaturlayout auswählen. Danach öffnet sich die
    WLAN-Einrichtung vor dem Board. Wähle **1** für WLAN
    oder **0 – Weiter zum Board**, beispielsweise bei Ethernet-Betrieb.
+   Kanlo aktiviert den WLAN-Adapter und scannt vor der Netzwerkauswahl.
    Nach erfolgreicher WLAN-Verbindung öffnet sich das Board automatisch.
    Geräte ohne Bildschirm und Images mit vorab eingetragenem WLAN starten direkt.
 5. Die Webadresse erscheint auf dem Board und in den Geräteeinstellungen.
@@ -130,6 +131,7 @@ Weiterleitungen. Ohne Freigabe bleiben Bildbeschreibungen sichtbar.
 ## Verhalten und Optimierungen
 
 - Server und native Anzeige sind getrennte, automatisch startende Dienste.
+  Das Board wird in Software gezeichnet und über GTK/Wayland an Cage übergeben.
   Ohne angeschlossenen Bildschirm bleibt der Server verfügbar. DRM-Hotplug
   kann einen noch nicht laufenden Anzeigedienst starten. Falls der Grafikstart
   fehlschlägt, zeigt Kanlo eine einfache Boardansicht auf der lokalen Konsole.

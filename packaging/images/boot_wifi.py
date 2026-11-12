@@ -5,6 +5,8 @@ import subprocess
 import tempfile
 import time
 
+from appliance import prepare_wifi_scan
+
 UNIT = 'kanlo-hotspot.service'
 CLIENT = 'kanlo-wifi-client'
 GUEST = ('ip', 'netns', 'exec', CLIENT)
@@ -34,6 +36,10 @@ def verify_hotspot(instance):
     command('modprobe', 'mac80211_hwsim', 'radios=2')
     radios = sorted(Path('/sys/class/ieee80211').glob('phy*'))
     assert len(radios) == 2
+    command('nmcli', 'radio', 'wifi', 'off')
+    command('rfkill', 'block', 'wifi')
+    prepare_wifi_scan()
+    assert command('env', 'LC_ALL=C', 'nmcli', 'radio', 'wifi') == 'enabled'
     station, = (radios[1] / 'device/net').iterdir()
     command('ip', 'netns', 'add', CLIENT)
     override = Path('/run/systemd/system') / (UNIT + '.d') / 'acceptance.conf'

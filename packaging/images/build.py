@@ -159,7 +159,7 @@ def install_overlay(root):
     shutil.copy2(ROOT / 'packaging/systemd/kanlo-server.service', root / 'etc/systemd/system/kanlo-server.service')
     (root / 'etc/systemd/system/kanlo-server.service').chmod(0o644)
     (root / 'usr/lib/kanlo').mkdir(parents=True, exist_ok=True)
-    for name in ['appliance.py', 'display.py', 'tv_markdown.py', 'customize.sh', 'update.py']:
+    for name in ['appliance.py', 'display.py', 'tv_markdown.py', 'tv_wayland.py', 'customize.sh', 'update.py']:
         shutil.copy2(ROOT / 'packaging/images' / name, root / 'usr/lib/kanlo' / name)
         (root / 'usr/lib/kanlo' / name).chmod(0o644)
     os.chmod(root / 'etc/NetworkManager/dispatcher.d/90-kanlo', 0o755)

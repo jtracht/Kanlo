@@ -229,11 +229,36 @@ def setup_wifi():
     country = input('WLAN-Land (z. B. DE, leer = unverändert): ').strip().upper()
     if country:
         set_wifi_country(country)
-    run('nmcli', 'radio', 'wifi', 'on')
+    print('WLAN wird aktiviert und nach Netzwerken gesucht …', flush=True)
+    prepare_wifi_scan()
     run('/usr/bin/nmtui-connect')
     run('systemctl', 'restart', 'kanlo-network.service')
     run('nmcli', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'device', 'status')
     print_web_addresses()
+
+
+def prepare_wifi_scan():
+    run('rfkill', 'unblock', 'wifi')
+    run('nmcli', '--wait', '5', 'radio', 'wifi', 'on')
+    env = {**os.environ, 'LC_ALL': 'C'}
+    for attempt in range(15):
+        devices = run('nmcli', '--wait', '5', '-t', '-f', 'TYPE,STATE', 'device', 'status',
+                      capture_output=True, env=env).stdout.splitlines()
+        if any(row.startswith('wifi:') and row not in ('wifi:unavailable', 'wifi:unmanaged')
+               for row in devices):
+            scan = subprocess.run(
+                ['nmcli', '--wait', '12', '-t', '-f', 'SSID', 'device', 'wifi', 'list', '--rescan', 'yes'],
+                capture_output=True, text=True, check=False, env=env,
+            )
+            if scan.returncode == 0:
+                return
+            # NetworkManager can report the device before scans are allowed.
+            # Avoid repeating a full scan that already used its entire timeout.
+            if scan.returncode == 3:
+                break
+        if attempt < 14:
+            time.sleep(1)
+    raise ValueError('WLAN-Adapter oder Netzwerksuche nicht verfügbar.')
 
 
 def needs_welcome():

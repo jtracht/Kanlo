@@ -130,7 +130,8 @@ def verify_independent_restarts(board_id):
             assert Path('/sys/class/tty/tty0/active').read_text().strip() == 'tty1'
             for _ in range(48):
                 runtime = Path('/run/kanlo-display')
-                if (runtime / 'first-frame').is_file() and any(
+                marker = runtime / 'first-frame'
+                if marker.is_file() and marker.read_text().strip() == 'gtk-wayland' and any(
                     path.is_socket() for path in runtime.glob('wayland-*')
                 ):
                     break
@@ -138,7 +139,7 @@ def verify_independent_restarts(board_id):
             else:
                 subprocess.run(['journalctl', '-b', '-u', tv, '-u', 'seatd.service',
                                 '-n', '35', '--no-pager'], check=False)
-                raise RuntimeError('Native Wayland display did not submit a board frame on tty1')
+                raise RuntimeError('Software Wayland display did not submit a board frame on tty1')
         assert service_pid(server) == server_before
         subprocess.run(['systemctl', 'kill', '--kill-whom=main', '--signal=KILL', tv], check=True)
         display_after = wait_for_new_pid(tv, display_before)

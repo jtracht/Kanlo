@@ -35,6 +35,7 @@ device's LAN IPv4 address. The web server uses HTTP port 80. If mDNS is blocked,
 inspect your router's DHCP list.
 On the first boot with a display, choose your keyboard layout before Wi-Fi setup.
 Select **1** to connect or **0** to continue, for example when using Ethernet.
+Kanlo enables the Wi-Fi adapter and scans before opening the network list.
 A successful connection opens the board. Headless and Wi-Fi-provisioned
 devices start directly.
 
@@ -61,7 +62,8 @@ to the internet. Configure external HTTPS/PWA through the separate protected
 ingress described in the server operating guide.
 
 The server and initial native read-only board viewer have separate services.
-The viewer uses SDL/Wayland/Cage without Chromium or a full desktop. Headless
+The viewer draws in software and presents the board through GTK/Wayland and
+Cage without Chromium or a full desktop. Headless
 operation remains available. Display hotplug can start the viewer, and a
 graphics startup failure falls back to a simple board on the local console. Full TV
 overlays/Markdown/statistics/control remain under development.
