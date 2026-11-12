@@ -2,8 +2,19 @@
 
 ## Private Integration
 
-Für die Abnahme eine Kanlo-Testinstanz mit zwei Boards und gleich benannten
-Tickets verwenden. In ChatGPT auf dem Web das Plugin über **Plugins → + →
+Für die Abnahme den Server mit einer frischen Testdatenbank starten.
+Der folgende Aufruf legt zwei Boards mit je einem Ticket namens `WLAN-Test`
+an und zeigt die lokale Adresse sowie die Ticketkennungen an.
+
+```sh
+python tests/chatgpt_fixture.py PFAD_ZUM_KANLO_SERVER
+```
+
+Die ausgegebene Adresse als `KANLO_URL` für den Tunnel-Client verwenden.
+Den Server und den Tunnel-Client während der Abnahme geöffnet lassen.
+Die [Tunnel-Einrichtung](../../plugins/kanlo/README.md#chatgpt) beschreibt die
+Registrierung und die getrennten Lese- und Schreibtests. In ChatGPT auf dem
+Web das Plugin über **Plugins → + →
 Add custom MCP server → Tunnel** verbinden. Der Tunnel muss dem Workspace
 zugeordnet sein. Die erkannten Werkzeuge anzeigen lassen und ein neues
 Gespräch mit dem Plugin öffnen. [OpenAI-Anleitung zur privaten Verbindung](https://developers.openai.com/plugins/deploy/connect-chatgpt)
@@ -12,7 +23,7 @@ Gespräch mit dem Plugin öffnen. [OpenAI-Anleitung zur privaten Verbindung](htt
 | --- | --- |
 | „Liste meine Kanlo-Boards auf.“ | ChatGPT ruft das Plugin auf und zeigt die Boards aus der Testinstanz. |
 | „Zeige das Ticket mit dem Titel WLAN-Test.“ | Bei identischen Titeln werden Board oder Ticketkennung abgefragt. |
-| „Zeige IMG-1 für 2 Minuten auf dem TV.“ | Der konfigurierte Bildschirm zeigt das richtige Ticket. Der Test erfordert Kanlo 0.2.0-dev.8. |
+| „Zeige NORD-1 für 2 Minuten auf dem TV.“ | Der mit der Testinstanz verbundene Bildschirm zeigt das richtige Ticket. |
 | „Mache die letzte Änderung rückgängig.“ | Die Vorschau erscheint. Bis zur separaten Bestätigung bleiben die Daten gleich. |
 | „Setze die Sprache von Deutsch auf Englisch.“ | Vorhandenen Wert lesen, eine Einstellung ändern und andere Werte erhalten. Eine Wiederholung mit dem alten Wert meldet einen Konflikt. |
 | „Setze das Undo-Limit dieses Boards auf 20.“ | Board auswählen, Wert lesen und ausschließlich diese Board-Regel ändern. |
