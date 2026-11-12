@@ -1,8 +1,8 @@
 # Entwicklungsstand
 
-Der lokale Stand 0.2.0-dev.10 umfasst **65 von 70 Originalaufgaben
-(92,9 %)**. Für mindestens 95 % müssen 67 Aufgaben abgenommen sein.
-Die Zählung baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md) auf.
+Der aktive Entwicklungsumfang umfasst **65 von 68 Aufgaben (95,6 %)**.
+KAN-057 und KAN-060 wurden auf Wunsch aus der aktiven Planung entfernt.
+Die ursprüngliche Zählung beträgt 65 von 70 Aufgaben (92,9 %).
 
 | Zusätzlich abgenommen | Lokaler Nachweis |
 | --- | --- |
@@ -26,5 +26,4 @@ Die Zählung baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md) au
 | KAN-070 · Offene Folgearbeiten | [Offene Originalabnahmen](../planning/OFFENE-ABNAHME.md) und getrennte lokale Post-1.0-Tickets. |
 
 Die [offenen Originalabnahmen](../planning/OFFENE-ABNAHME.md) umfassen
-weiterhin die Dauerlast auf den Zielgeräten, die ChatGPT-Abnahme im
-tatsächlichen Workspace und die Stable-Freigabe.
+weiterhin die Dauerlast auf den Zielgeräten und die Stable-Freigabe.
