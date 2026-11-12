@@ -1,6 +1,6 @@
 # Kanlo 0.2.0-dev.8
 
-Lokaler Entwicklungsstand **87,1 % (61 von 70 Originalaufgaben)**.
+Lokaler Entwicklungsstand **88,6 % (62 von 70 Originalaufgaben)**.
 
 Die versionierte API veröffentlicht ihren OpenAPI-3.1-Vertrag unter
 `/api/v1/openapi.json`. Der Integrationsassistent erzeugt daraus das GPT-Actions-

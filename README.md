@@ -5,7 +5,7 @@ nativer Geräteanzeige. **Lokale Entwicklungsversion 0.2.0-dev.8.**
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Der belegte
-Aufgabenstand liegt bei **87,1 % (61 von 70 Originalaufgaben)**.
+Aufgabenstand liegt bei **88,6 % (62 von 70 Originalaufgaben)**.
 [Abnahme und Zählweise](docs/de/FORTSCHRITT.md)
 
 ![Kanlo-Board mit Backlog, Suche und Tickets in drei Spalten](docs/screenshots/board-desktop.png)

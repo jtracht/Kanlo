@@ -581,11 +581,11 @@
     "title": "Ticketdetails, Markdown und Bildlinks auf TV",
     "milestone": "M4",
     "component": "kanlo-tv",
-    "status": "planned",
+    "status": "done",
     "depends_on_milestone": "M3",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. Ticketoverlay mit gedimmtem Hintergrund aufbauen.\n  2. Markdown-Tabellen, Code, Kommentare, Bilder sicher anzeigen.\n  3. Timeouts und Maximal-Overlayzahl umsetzen.\n- **Akzeptanz / Definition of Done:** 0–300 min; bei Platzmangel nur ein Overlay.",
-    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "validation": "Native Markdown-/Bildfenster, unabhängige Zeitlimits 0–300 Minuten, ein oder zwei Panels je nach Auflösung. Browser-, SDL-, Wayland-, Rücksprung-, Absturz- und Bild-Schutztests bestanden.",
     "remote_issue": {
       "number": 29,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/29"
@@ -1197,11 +1197,11 @@
     "title": "ChatGPT Sprachmodus und Public-Integration prüfen",
     "milestone": "M8",
     "component": "kanlo-api/integrations",
-    "status": "planned",
+    "status": "partial",
     "depends_on_milestone": "M7",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. Diktat-Text und Toolaufrufe im real verfügbaren Modus testen.\n  2. Live-Voice-Unterstützung separat dokumentieren.\n  3. Öffentliche Integration vorbereiten/Einreichvoraussetzungen prüfen.\n- **Akzeptanz / Definition of Done:** Keine erfundene Live-Voice- oder Verzeichnis-Freigabe.",
-    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "validation": "Getrennte Prüfabläufe für Diktat und Live-Voice sowie aktuelle OpenAI-Einreichvoraussetzungen dokumentiert. Reale Aufrufe im ChatGPT-Workspace ausstehend.",
     "remote_issue": {
       "number": 60,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/60"

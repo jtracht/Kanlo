@@ -17,3 +17,6 @@ Die Screenshots zeigen Kanlo 0.2.0-dev.2 mit Beispieltickets.
 ## API-Schlüssel für Integrationen
 
 ![Kanlo-Einstellungen mit dem Abschnitt Zugriff und Integrationen und dem Formular für API-Schlüssel](../../release/plugins/screenshots/api-keys.png)
+
+- [Zwei native Ticketfenster](tv-ticketpanels.png) mit Markdown-Tabelle und
+  Codeblock in einem SDL-Test bei 1920 × 1080 Pixeln.
