@@ -12,6 +12,29 @@ import urllib.request
 SERVICES = ('kanlo-server.service', 'kanlo-tv.service')
 
 
+def read_sysfs(path):
+    try:
+        return path.read_bytes().replace(b'\0', b'').decode(errors='replace').strip()
+    except OSError:
+        return None
+
+
+def display_state(drm=Path('/sys/class/drm')):
+    connectors = {}
+    for status in sorted(drm.glob('card*-*/status')):
+        connector = status.parent
+        modes = read_sysfs(connector / 'modes') or ''
+        connectors[connector.name] = {
+            'status': read_sysfs(status),
+            'enabled': read_sysfs(connector / 'enabled'),
+            'advertised_modes': modes.splitlines(),
+        }
+    return {
+        'foreground_console': read_sysfs(Path('/sys/class/tty/tty0/active')),
+        'connectors': connectors,
+    }
+
+
 def service_state(unit):
     pid = int(subprocess.check_output(
         ['systemctl', 'show', '--property=MainPID', '--value', unit], text=True))
@@ -46,6 +69,7 @@ def summarize(values):
 
 def main(seconds):
     start = time.monotonic()
+    display_at_start = display_state()
     latency, errors = [], 0
     samples = {service: [] for service in SERVICES}
     version = None
@@ -82,12 +106,17 @@ def main(seconds):
             'pss_kib': summarize([state['pss_kib'] for _, state in records]),
         }
     print(json.dumps({
+        'device_model': read_sysfs(Path('/proc/device-tree/model')) or
+                        read_sysfs(Path('/sys/class/dmi/id/product_name')),
         'kernel_machine': platform.machine(),
         'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(),
         'kanlo_version': version,
         'duration_seconds': seconds,
+        'elapsed_seconds': round(time.monotonic() - start, 2),
         'health_response_ms': summarize(latency) if latency else None,
         'health_failures': errors,
+        'display_at_start': display_at_start,
+        'display_at_end': display_state(),
         'services': processes,
     }, indent=2))
 

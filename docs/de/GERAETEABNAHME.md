@@ -53,5 +53,8 @@ zwei Ticketfenster öffnen, zwischen beiden Fenstern und dem Backlog wechseln
 und anschließend eine Leerlaufphase stehen lassen. Bei einer Auflösung
 unter 1152 × 600 Pixeln ist ein sichtbares Ticketfenster vorgesehen. Die
 JSON-Datei enthält lokale HTTP-Latenzen sowie CPU- und Speicherwerte für
-Server und TV-Dienst einschließlich ihrer Unterprozesse. Sichtbare Ruckler,
-erste Darstellung und Anschlusswechsel separat protokollieren.
+Server und TV-Dienst einschließlich ihrer Unterprozesse. Sie enthält auch
+das vom System gemeldete Gerätemodell und erfasst zu Beginn und am Ende
+die aktive Konsole sowie Anschlussstatus und angebotene Auflösungen. Die
+tatsächlich sichtbare Anzeige, Ruckler, erste Darstellung und Anschlusswechsel
+separat protokollieren.

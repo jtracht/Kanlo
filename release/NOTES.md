@@ -30,13 +30,16 @@ Die Weboberfläche zeigt die installierte Version auf Anfrage.
 Die Geräteanzeige erlaubt den Wechsel zwischen Board und lokaler Einrichtung.
 Bei einem Grafikfehler steht eine einfache Boardansicht auf der Konsole zur
 Verfügung. Beim ersten Start öffnet sich die WLAN-Ersteinrichtung vor dem
-Board. Die Geräteeinstellungen bieten WLAN, Bluetooth und die Anzeige-Diagnose. Composite hängt vom Pi-Modell und der Firmware-
+Board. Nach „Fertig“ wechselt Kanlo zur Board-Konsole. Systemmeldungen
+bleiben von den Menüs getrennt. Die Geräteeinstellungen bieten WLAN,
+Bluetooth und die Anzeige-Diagnose. Composite hängt vom Pi-Modell und der Firmware-
 Konfiguration ab. Die physische Anschlussprüfung steht noch aus.
 
 Die Kanlo-API liefert Ticketkommentare seitenweise. Die separat erhältlichen
-Kanlo-Plugins 0.6.0 für Claude Code und ChatGPT können Kommentare lesen und
+Kanlo-Plugins 0.6.1 für Claude Code und ChatGPT können Kommentare lesen und
 Tickets in Zielspalten oder ins Backlog verschieben. Sie bieten außerdem
-eine Vorschau mit separater Bestätigung für Rückgängig-Aktionen.
+eine Vorschau mit separater Bestätigung für Rückgängig-Aktionen und ändern
+einzelne Einstellungen mit Prüfung des zuvor gelesenen Werts.
 
 Private Geräte-Images / Private appliance development release.
 
