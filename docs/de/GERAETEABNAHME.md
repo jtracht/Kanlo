@@ -49,11 +49,13 @@ Die CSV im Web über den Importdialog für das Testboard öffnen, die
 Vorschau mit 1.200 neuen Tickets prüfen und bestätigen. Dieselbe Datei für
 Pi 3 B+ ARMHF, ein ARM64-Gerät und einen AMD64-PC verwenden.
 
-Das [Messskript](../../tests/images/physical_metrics.py) auf das Testgerät
-kopieren und über den eingerichteten Administratorzugang starten.
+Auf einem aktuellen Geräte-Image das mitgelieferte
+[Messskript](../../tests/images/physical_metrics.py) über den eingerichteten
+Administratorzugang starten. Bei älteren Images kann die Datei aus dem
+Repository kopiert werden.
 
 ```sh
-sudo python3 physical_metrics.py --seconds 600 --board Geräteabnahme > kanlo-geraet.json
+sudo python3 /usr/share/kanlo/diagnostics/physical_metrics.py --seconds 600 --board Geräteabnahme > kanlo-geraet.json
 ```
 
 Während der Messung auf dem TV durch Spalten und Ticketdetails blättern,

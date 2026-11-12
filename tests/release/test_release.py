@@ -122,6 +122,10 @@ class Packages(unittest.TestCase):
                     fixture['boot_test']['boots'][0]['wifi_hotspot_verified'] = True
                 evidence.write_text(json.dumps(fixture))
             original = evidence.read_text()
+            preview = json.loads(original) | {'local_preview_sha256': '1' * 64}
+            evidence.write_text(json.dumps(preview))
+            with self.assertRaisesRegex(ValueError, 'Local preview images'):
+                package.bundle(directory, tag)
             rejected = json.loads(original)
             rejected['boot_test']['status'] = 'failed'
             evidence.write_text(json.dumps(rejected))

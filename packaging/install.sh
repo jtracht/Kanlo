@@ -39,7 +39,8 @@ if [ "$mode" = --uninstall ]; then
     fi
     if [ -f /etc/systemd/system/kanlo-tv.service ]; then
         systemctl disable --now kanlo-tv.service
-        rm -f /etc/systemd/system/kanlo-tv.service /usr/lib/kanlo/display.py /usr/lib/kanlo/tv_markdown.py /usr/lib/kanlo/appliance.py
+        rm -f /etc/systemd/system/kanlo-tv.service /etc/systemd/system/kanlo-tv.service.d/standalone.conf \
+            /usr/lib/kanlo/display.py /usr/lib/kanlo/tv_markdown.py /usr/lib/kanlo/tv_wayland.py /usr/lib/kanlo/appliance.py
     fi
     if [ -f /etc/systemd/system/kanlo-server.service ]; then
         systemctl disable --now kanlo-server.service
@@ -56,8 +57,9 @@ if [ "$mode" = --kiosk ]; then
         printf '%s\n' 'Stop the active desktop display manager before installing the dedicated kiosk.' >&2
         exit 1
     fi
-    if ! command -v cage >/dev/null || ! command -v seatd >/dev/null || ! python3 -c 'import pygame' >/dev/null 2>&1; then
-        printf '%s\n' 'Install cage, seatd, python3-pygame and fonts-dejavu-core first.' >&2
+    if ! command -v weston >/dev/null || ! command -v cage >/dev/null || ! command -v seatd >/dev/null ||
+        ! python3 -c 'import cairo, gi, pygame; gi.require_version("Gtk", "3.0")' >/dev/null 2>&1; then
+        printf '%s\n' 'Install weston, cage, seatd, python3-pygame, python3-gi-cairo, gir1.2-gtk-3.0 and fonts-dejavu-core first.' >&2
         exit 1
     fi
 fi
@@ -82,8 +84,12 @@ if [ "$mode" = --kiosk ]; then
     usermod -a -G video,render kanlo-display
     install -Dm644 kiosk/display.py /usr/lib/kanlo/display.py
     install -Dm644 kiosk/tv_markdown.py /usr/lib/kanlo/tv_markdown.py
+    install -Dm644 kiosk/tv_wayland.py /usr/lib/kanlo/tv_wayland.py
     install -Dm644 kiosk/appliance.py /usr/lib/kanlo/appliance.py
     install -Dm644 kiosk/kanlo-tv.service /etc/systemd/system/kanlo-tv.service
+    install -d -m 0755 /etc/systemd/system/kanlo-tv.service.d
+    printf '%s\n' '[Service]' 'Environment=KANLO_DISPLAY_ORIGIN=http://127.0.0.1:8080' \
+        > /etc/systemd/system/kanlo-tv.service.d/standalone.conf
     if [ ! -e /etc/kanlo/display.json ]; then
         printf '%s\n' '{"enabled":true}' > /etc/kanlo/display.json
         chmod 0644 /etc/kanlo/display.json

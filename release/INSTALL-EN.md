@@ -40,7 +40,7 @@ On a dedicated Linux system with a free local console, the server installer
 can also install the display.
 
 ```sh
-sudo apt install cage seatd python3-pygame python3-markdown-it python3-pil fonts-dejavu-core
+sudo apt install weston cage seatd python3-pygame python3-gi-cairo gir1.2-gtk-3.0 python3-markdown-it python3-pil fonts-dejavu-core
 sudo ./install.sh --kiosk
 ```
 

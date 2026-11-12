@@ -33,6 +33,16 @@ def git(*args):
     return subprocess.check_output(['git', *args], cwd=ROOT).decode().strip()
 
 
+def preview_digest():
+    if git('ls-files', '--others', '--exclude-standard'):
+        raise ValueError('Local preview requires all source changes to be in tracked files')
+    diff = subprocess.check_output(
+        ['git', 'diff', '--no-ext-diff', '--binary', '--full-index', '--no-color', 'HEAD', '--'],
+        cwd=ROOT,
+    )
+    return hashlib.sha256(diff).hexdigest()
+
+
 def file_sha256(path):
     digest = hashlib.sha256()
     with path.open('rb') as stream:
@@ -51,6 +61,8 @@ def image_files(output, commit):
         if image.is_symlink() or evidence.is_symlink():
             raise ValueError('Image inputs must be regular files')
         report = json.loads(evidence.read_text())
+        if 'local_preview_sha256' in report:
+            raise ValueError('Local preview images cannot be bundled as releases')
         boot = report.get('boot_test', {})
         if report.get('source_commit') != commit or report.get('version') != version() or report.get('profile') != profile or report.get('base') != base or report.get('image') != image.name:
             raise ValueError('Image provenance/version/base mismatch')
@@ -150,6 +162,11 @@ def package(binary, target, output):
     arch = TARGETS[target][0]
     prefix = f'kanlo-{version()}-linux-{arch}'
     build = {'schema_version': 1, 'version': version(), 'target': target, 'arch': arch, 'source_commit': commit, 'source_date_epoch': epoch, 'binary_sha256': hashlib.sha256(data).hexdigest(), 'minimum_os': 'Debian 13', 'native_tv': True, 'physical_device_certified': False}
+    preview = os.environ.get('KANLO_LOCAL_PREVIEW_SHA256')
+    if preview is not None:
+        if not re.fullmatch(r'[0-9a-f]{64}', preview):
+            raise ValueError('Invalid local preview source digest')
+        build['local_preview_sha256'] = preview
     files = [(f'{prefix}/bin/kanlo-server', data, 0o755), (f'{prefix}/BUILD.json', (json.dumps(build, indent=2) + '\n').encode(), 0o644)]
     paths = {
         'LICENSE': 'LICENSE', 'NOTICE': 'NOTICE', 'CHANGELOG.md': 'CHANGELOG.md',
@@ -160,6 +177,7 @@ def package(binary, target, output):
         'docs/de/50-PROZENT.md': 'docs/de/50-PROZENT.md',
         'docs/de/INTEGRATIONEN.md': 'docs/de/INTEGRATIONEN.md',
         'docs/de/FORTSCHRITT.md': 'docs/de/FORTSCHRITT.md',
+        'docs/de/GERAETEABNAHME.md': 'docs/de/GERAETEABNAHME.md',
         'docs/planning/OFFENE-ABNAHME.md': 'docs/planning/OFFENE-ABNAHME.md',
         'docs/planning/issues.json': 'docs/planning/issues.json',
         'docs/planning/post-1.0.json': 'docs/planning/post-1.0.json',
@@ -170,7 +188,10 @@ def package(binary, target, output):
         'packaging/systemd/kanlo-server.service': 'systemd/kanlo-server.service', 'packaging/sysusers.d/kanlo.conf': 'sysusers.d/kanlo.conf',
         'packaging/images/display.py': 'kiosk/display.py',
         'packaging/images/tv_markdown.py': 'kiosk/tv_markdown.py',
+        'packaging/images/tv_wayland.py': 'kiosk/tv_wayland.py',
         'packaging/images/appliance.py': 'kiosk/appliance.py',
+        'tests/images/physical_metrics.py': 'diagnostics/physical_metrics.py',
+        'tests/images/physical_workload.py': 'diagnostics/physical_workload.py',
         'packaging/images/update.py': 'update.py',
         'packaging/images/overlay/etc/systemd/system/kanlo-tv.service': 'kiosk/kanlo-tv.service',
     }
@@ -212,7 +233,8 @@ def bundle(output, tag):
     packages = sorted(output.glob(f'kanlo-{version()}-linux-*.tar.gz'))
     builds = [inspect(path) for path in packages]
     commit = git('rev-parse', 'HEAD')
-    if len(builds) != 3 or {b['target'] for b in builds} != set(TARGETS) or any(b['source_commit'] != commit for b in builds):
+    if len(builds) != 3 or {b['target'] for b in builds} != set(TARGETS) or any(
+            b['source_commit'] != commit or 'local_preview_sha256' in b for b in builds):
         raise ValueError('Exactly three packages from this commit are required')
     image_assets, images = image_files(output, commit)
     epoch = int(git('log', '-1', '--format=%ct'))
@@ -233,10 +255,13 @@ if __name__ == '__main__':
     p = sub.add_parser('validate'); p.add_argument('--tag', required=True)
     p = sub.add_parser('package'); p.add_argument('--binary', type=Path, required=True); p.add_argument('--target', choices=TARGETS, required=True); p.add_argument('--output', type=Path, required=True)
     p = sub.add_parser('bundle'); p.add_argument('--output', type=Path, required=True); p.add_argument('--tag', required=True)
+    sub.add_parser('preview-digest')
     args = parser.parse_args()
     if args.command == 'validate':
         print('prerelease' if validate_tag(args.tag) else 'stable')
     elif args.command == 'package':
         print(package(args.binary, args.target, args.output))
+    elif args.command == 'preview-digest':
+        print(preview_digest())
     else:
         bundle(args.output, args.tag)

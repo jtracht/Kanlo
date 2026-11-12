@@ -42,10 +42,14 @@ fi
 test ! -e /etc/systemd/system/kanlo-tv.service
 ./install.sh --kiosk
 test -f /etc/systemd/system/kanlo-tv.service
+test -f /usr/lib/kanlo/tv_wayland.py
+grep -Fx 'Environment=KANLO_DISPLAY_ORIGIN=http://127.0.0.1:8080' /etc/systemd/system/kanlo-tv.service.d/standalone.conf
 test -f /usr/local/lib/kanlo/kanlo-server.previous
 grep -Fx 'enable --now seatd.service kanlo-tv.service' "$KANLO_TEST_LOG"
 ./install.sh --uninstall
 test ! -e /etc/systemd/system/kanlo-tv.service
+test ! -e /etc/systemd/system/kanlo-tv.service.d/standalone.conf
+test ! -e /usr/lib/kanlo/tv_wayland.py
 test ! -e /etc/systemd/system/kanlo-server.service
 test ! -e /usr/lib/kanlo/update.py
 test "$(cat /var/lib/kanlo/test-sentinel)" = 'persistent data'

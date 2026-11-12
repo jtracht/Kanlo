@@ -115,7 +115,7 @@ def checked_files(directory, tag):
     for path in files:
         if '-linux-' in path.name:
             build = inspect(path)
-            if build['source_commit'] != manifest['source_commit']:
+            if build['source_commit'] != manifest['source_commit'] or 'local_preview_sha256' in build:
                 raise ValueError('Package source commit mismatch')
     return [*files, directory / 'SHA256SUMS']
 
