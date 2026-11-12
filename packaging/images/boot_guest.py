@@ -124,6 +124,14 @@ def verify_independent_restarts(board_id):
         display_before = wait_for_new_pid(tv, 0)
         if os.uname().machine == 'x86_64':
             assert Path('/sys/class/tty/tty0/active').read_text().strip() == 'tty1'
+            for _ in range(12):
+                if any(path.is_socket() for path in Path('/run/kanlo-display').glob('wayland-*')):
+                    break
+                time.sleep(0.5)
+            else:
+                subprocess.run(['journalctl', '-b', '-u', tv, '-u', 'seatd.service',
+                                '-n', '35', '--no-pager'], check=False)
+                raise RuntimeError('Native Wayland display did not become ready on tty1')
         assert service_pid(server) == server_before
         subprocess.run(['systemctl', 'kill', '--kill-whom=main', '--signal=KILL', tv], check=True)
         display_after = wait_for_new_pid(tv, display_before)
