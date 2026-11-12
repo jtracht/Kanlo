@@ -26,7 +26,8 @@ apt-get update
 apt-get install -y --no-install-recommends python3 python3-pygame cage seatd \
     fonts-dejavu-core network-manager avahi-daemon systemd-resolved \
     cloud-guest-utils parted systemd-zram-generator sudo openssh-server iw \
-    wpasupplicant wireless-regdb dnsmasq-base python3-qrcode python3-markdown-it python3-pil curl ca-certificates "$@"
+    wpasupplicant wireless-regdb dnsmasq-base bluez rfkill kbd \
+    python3-qrcode python3-markdown-it python3-pil curl ca-certificates "$@"
 # No cloud-provider startup or first-user wizard in the dedicated appliance.
 install -d -m 0755 /etc/cloud
 : > /etc/cloud/cloud-init.disabled
@@ -42,7 +43,7 @@ done
 # SSH is disabled, but can be explicitly enabled by first-boot provisioning.
 systemctl unmask ssh.service
 systemctl disable ssh.service
-systemctl enable NetworkManager.service avahi-daemon.service systemd-resolved.service seatd.service
+systemctl enable NetworkManager.service avahi-daemon.service systemd-resolved.service seatd.service bluetooth.service
 systemctl disable systemd-networkd.service systemd-networkd-wait-online.service 2>/dev/null || true
 systemctl enable kanlo-firstboot.service kanlo-network.service kanlo-network.timer kanlo-server.service kanlo-tv.service kanlo-setup.service
 systemctl set-default multi-user.target

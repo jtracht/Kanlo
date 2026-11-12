@@ -46,28 +46,37 @@ echte Kernel-/systemd-Boots unter QEMU, keine simulierten Erfolgsmeldungen.
    Bei UEFI-Images ist dies die EFI-Systempartition; Windows zeigt sie häufig
    nicht automatisch als Laufwerk an. In diesem Fall die lokale Einrichtung
    unter Ctrl+Alt+F2 verwenden oder die gewählte EFI-Partition unter Linux öffnen.
-4. Gerät mit Ethernet oder konfiguriertem WLAN starten. Die Datenpartition
-   erweitert sich automatisch auf den Datenträger. Kanlo startet ohne Anmeldung
-   und ohne Internet. Ohne Konfiguration heißt das Gerät `kanlo-<Gerätekennung>`.
-5. Die Webadresse erscheint auf dem angeschlossenen Display bzw. unter
-   Ctrl+Alt+F2 auf der lokalen Konsole. Im selben LAN
-   `http://<hostname>.local:8080` oder `http://<IPv4-Adresse>:8080` öffnen.
-   mDNS muss im Clientnetz erlaubt sein; sonst die DHCP-Liste des Routers nutzen.
+4. Bildschirm und USB-Tastatur anschließen und den Pi starten. Beim ersten
+   Start öffnet sich die WLAN-Einrichtung vor dem Board. Wähle **1** für WLAN
+   oder **0 – Weiter zum Board**, beispielsweise bei Ethernet-Betrieb.
+   Nach erfolgreicher WLAN-Verbindung öffnet sich das Board automatisch.
+   Geräte ohne Bildschirm und Images mit vorab eingetragenem WLAN starten direkt.
+5. Die Webadresse erscheint auf dem Board und in den Geräteeinstellungen.
+   Im selben LAN `http://<hostname>.local:8080` oder
+   `http://<IPv4-Adresse>:8080` öffnen. Ist mDNS gesperrt, nutze die DHCP-Liste
+   des Routers.
 
-**Strg+Alt+F2** öffnet die lokale Einrichtung. Wähle **1 – WLAN auswählen und
-verbinden**, gib bei Bedarf das zweistellige WLAN-Land an und wähle mit den
-Pfeiltasten dein Netz. Gib das WLAN-Kennwort in der Netzwerkmaske ein.
-Schließe den Dialog nach der Verbindung. Kanlo zeigt den Netzwerkstatus und
-seine Webadresse. **Strg+Alt+F1** kehrt zum Board zurück.
+## Geräteeinstellungen nach dem Start
+
+**Strg+Alt+F2** öffnet die Geräteeinstellungen. **0 – Zurück zum Board**
+oder **Strg+Alt+F1** kehrt zur Anzeige zurück.
+
+- **1 – WLAN** öffnet die Netzwerkauswahl, gespeicherte Verbindungen und den
+  temporären Hotspot. In der Netzwerkauswahl können WLAN-Land und Zugangsdaten
+  aktualisiert werden. **WLAN → 3** öffnet den WPA2-Hotspot ohne bestehende
+  LAN-Verbindung. Name und Kennwort stehen auf der lokalen Konsole. Smartphone
+  oder PC verbinden und `http://10.42.0.1:8080` öffnen. **WLAN → 4** beendet ihn
+  manuell. Er endet automatisch nach spätestens zehn Minuten.
+- **2 – Bluetooth** zeigt Status und gekoppelte Geräte, schaltet Bluetooth
+  ein oder aus und öffnet die Geräteverwaltung. Zum Koppeln das Zubehör in
+  den Kopplungsmodus versetzen und dort `scan on`, `devices` und
+  `pair ADRESSE` verwenden. Mit `connect ADRESSE` verbinden, mit
+  `remove ADRESSE` eine Kopplung entfernen und mit `quit` zum Menü zurück.
+  PIN-Abfragen auf der Konsole bestätigen. [BlueZ-Befehle](https://manpages.debian.org/trixie/bluez/bluetoothctl.1.en.html)
+- **3 – Anzeige-Diagnose**, **4 – Board-Anzeige neu starten** und
+  **5 – Gerät einrichten** bleiben im Hauptmenü.
 
 Bei der ersten Board-Einrichtung zeigt das TV-Bild einen QR-Code zur Webadresse.
-Ohne bestehende LAN-Verbindung kann man mit **Strg+Alt+F2 → 5** ein
-temporäres WLAN öffnen. Name und zufälliges WPA2-Kennwort erscheinen auf
-der lokalen Konsole. Smartphone oder PC damit verbinden und
-`http://10.42.0.1:8080` aufrufen. **6** schaltet das WLAN ab. Der Dienst
-beendet den Hotspot nach spätestens zehn Minuten. **1** beendet ihn vor
-der Auswahl des regulären WLANs. Die Funkprüfung am Pi steht aus.
-
 
 Der Gerätebesitzer kann vor Ort Netzwerk, Host und Anzeige einrichten.
 Es gibt keine offene Root-Shell und kein gemeinsames

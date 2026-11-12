@@ -1,5 +1,5 @@
 [Unit]
-Description=Kanlo physical-console setup (Ctrl+Alt+F2)
+Description=Kanlo local device settings
 After=kanlo-firstboot.service NetworkManager.service
 Conflicts=getty@tty2.service
 

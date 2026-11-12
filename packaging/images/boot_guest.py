@@ -4,6 +4,7 @@ import io
 import os
 from pathlib import Path
 import queue
+import shutil
 import stat
 import subprocess
 import tarfile
@@ -168,6 +169,10 @@ def main():
     assert Path('/etc/cloud/cloud-init.disabled').is_file()
     assert Path('/usr/sbin/wpa_supplicant').is_file()
     assert os.access('/usr/bin/nmtui-connect', os.X_OK)
+    assert os.access('/usr/bin/nmtui-edit', os.X_OK)
+    assert shutil.which('bluetoothctl') and shutil.which('rfkill') and shutil.which('chvt')
+    assert Path('/etc/systemd/system/kanlo-welcome.service').is_file()
+    assert not Path('/var/lib/kanlo-appliance/welcome-complete').exists()
     assert os.access('/usr/sbin/dnsmasq', os.X_OK)
     assert Path('/etc/systemd/system/kanlo-hotspot.service').is_file()
     assert Path('/usr/lib/kanlo/update.py').is_file()

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-dev.9
+
+- The appliance opens Wi-Fi setup before the board on first interactive boot.
+- The local settings menu provides Wi-Fi editing, Bluetooth controls and display diagnostics.
+
 ## 0.2.0-dev.8
 
 - Native TV panels render Markdown tables, code blocks, comments and opt-in external images.

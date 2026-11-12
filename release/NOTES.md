@@ -1,4 +1,4 @@
-# Kanlo 0.2.0-dev.8
+# Kanlo 0.2.0-dev.9
 
 Lokaler Entwicklungsstand **88,6 % (62 von 70 Originalaufgaben)**.
 
@@ -25,8 +25,8 @@ Die Weboberfläche zeigt die installierte Version auf Anfrage.
 
 Die Geräteanzeige erlaubt den Wechsel zwischen Board und lokaler Einrichtung.
 Bei einem Grafikfehler steht eine einfache Boardansicht auf der Konsole zur
-Verfügung. Über Strg+Alt+F2 kann der Gerätebesitzer WLAN auswählen und die
-Anzeige diagnostizieren. Composite hängt vom Pi-Modell und der Firmware-
+Verfügung. Beim ersten Start öffnet sich die WLAN-Ersteinrichtung vor dem
+Board. Die Geräteeinstellungen bieten WLAN, Bluetooth und die Anzeige-Diagnose. Composite hängt vom Pi-Modell und der Firmware-
 Konfiguration ab. Die physische Anschlussprüfung steht noch aus.
 
 Die Kanlo-API liefert Ticketkommentare seitenweise. Die separat erhältlichen
@@ -42,8 +42,8 @@ Vier flashbare `.img.xz`-Varianten: `rpi-armhf`, `rpi-arm64`, `generic-amd64`
 und `generic-arm64`. Raspberry Pi OS Lite 13 bzw. Debian 13, vollständiger
 Kanlo-Server mit eingebetteter Weboberfläche, automatischer Start, eigene
 Dienstkonten, DHCP/mDNS und native SDL/Wayland-Boardanzeige ohne Chromium.
-Ersteinrichtung lokal mit Ctrl+Alt+F2 oder `KANLO_CONFIG.json` auf der FAT-
-Bootpartition. Keine gemeinsamen Kennwörter; SSH erst nach Public-Key-Einrichtung.
+WLAN-Ersteinrichtung auf dem Bildschirm oder vorab per `KANLO_CONFIG.json`
+auf der FAT-Bootpartition. Keine gemeinsamen Kennwörter; SSH erst nach Public-Key-Einrichtung.
 Automatische Dateisystemerweiterung, begrenzte flüchtige Logs und ZRAM.
 
 Each image must pass two QEMU kernel/systemd boots, a real ticket write, reboot

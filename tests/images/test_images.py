@@ -20,6 +20,50 @@ import tv_markdown
 
 
 class Appliance(unittest.TestCase):
+    def test_first_wifi_setup_runs_once_and_can_be_skipped(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            (state / 'provisioned.json').write_text('{}')
+            with patch.object(appliance, 'STATE', state), patch.object(appliance, 'has_display', return_value=True), patch.object(appliance, 'run') as command, patch('builtins.input', return_value='0'), patch('builtins.print'):
+                self.assertTrue(appliance.needs_welcome())
+                appliance.welcome()
+                command.assert_called_once_with('chvt', '1')
+                self.assertFalse(appliance.needs_welcome())
+            (state / 'welcome-complete').unlink()
+            (state / 'provisioned.json').write_text('{"wifi_configured": true}')
+            with patch.object(appliance, 'STATE', state), patch.object(appliance, 'has_display', return_value=True):
+                self.assertFalse(appliance.needs_welcome())
+            with patch.object(appliance, 'STATE', state), patch.object(appliance, 'has_display', return_value=False):
+                self.assertFalse(appliance.needs_welcome())
+
+    def test_successful_first_wifi_connection_continues_to_board(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            connected = subprocess.CompletedProcess([], 0, 'ethernet:unavailable\nwifi:connected\n', '')
+            with patch.object(appliance, 'STATE', state), patch.object(appliance, 'setup_wifi') as wifi, patch.object(appliance, 'run', return_value=connected), patch('builtins.input', return_value=''), patch('builtins.print'):
+                appliance.welcome()
+                wifi.assert_called_once()
+                self.assertTrue((state / 'welcome-complete').is_file())
+
+    def test_settings_menu_routes_to_wifi_and_bluetooth(self):
+        with patch.object(appliance, 'wifi_menu') as wifi, patch.object(appliance, 'bluetooth_menu') as bluetooth, patch('builtins.input', side_effect=['1', '2', EOFError]), patch('builtins.print') as output:
+            with self.assertRaises(EOFError):
+                appliance.setup()
+            wifi.assert_called_once()
+            bluetooth.assert_called_once()
+            self.assertNotIn('Strg+Alt', str(output.call_args_list))
+            self.assertNotIn('Strg+Alt', display.setup_hint())
+
+    def test_bluetooth_menu_controls_radio_and_opens_pairing_agent(self):
+        with patch.object(appliance, 'run') as command, patch('builtins.input', side_effect=['2', '', '3', '', '4', '', '0']), patch('builtins.print'):
+            appliance.bluetooth_menu()
+        self.assertEqual([call.args for call in command.call_args_list], [
+            ('rfkill', 'unblock', 'bluetooth'),
+            ('bluetoothctl', 'power', 'on'),
+            ('rfkill', 'block', 'bluetooth'),
+            ('bluetoothctl', '--agent', 'KeyboardDisplay'),
+        ])
+
     def test_companion_is_visible_only_with_space_and_before_its_deadline(self):
         now = datetime(2026, 11, 1, 10, 0, tzinfo=timezone.utc)
         active = {'kind': 'ticket', 'ticket_id': 'new'}

@@ -368,7 +368,7 @@ def web_addresses():
 
 
 def setup_hint():
-    return 'Strg+Alt+F2: WLAN und Einrichtung' if SETUP_AVAILABLE.is_file() else 'TV-Anzeige über Kanlo im Browser steuern'
+    return 'TV-Anzeige über Kanlo im Browser steuern'
 
 
 def setup_qr(url):
@@ -548,7 +548,7 @@ def main(size=None):
                 animate = True
                 last_rotate = time.monotonic()
                 last_scroll = last_rotate
-            urls = web_addresses() or 'Strg+Alt+F2: WLAN einrichten oder Ethernet anschließen'
+            urls = web_addresses() or 'Keine Netzwerkadresse verfügbar'
             if urls != last_urls:
                 last_urls = urls
                 qr_matrix = setup_qr(urls.split()[0]) if SETUP_AVAILABLE.is_file() else []

@@ -112,7 +112,7 @@ def apply(config):
         run('systemctl', 'enable', '--now', 'ssh.service')
     STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
     # Retain no Wi-Fi secret or private provision file on the FAT boot partition.
-    atomic(STATE / 'provisioned.json', json.dumps({'schema_version': 1, 'hostname': config['hostname'], 'configured_at': int(time.time()), 'ssh_enabled': bool(key)}))
+    atomic(STATE / 'provisioned.json', json.dumps({'schema_version': 1, 'hostname': config['hostname'], 'configured_at': int(time.time()), 'ssh_enabled': bool(key), 'wifi_configured': bool(wifi)}))
 
 
 def user_exists(name):
@@ -224,6 +224,93 @@ def setup_wifi():
     print_web_addresses()
 
 
+def needs_welcome():
+    if not has_display() or (STATE / 'welcome-complete').exists():
+        return False
+    try:
+        configured = json.loads((STATE / 'provisioned.json').read_text())
+    except (OSError, ValueError):
+        return False
+    return not configured.get('wifi_configured', False)
+
+
+def welcome():
+    run('chvt', '1')
+    while True:
+        print('\033[2J\033[HKanlo – WLAN-Ersteinrichtung')
+        print('1  WLAN auswählen und verbinden\n0  Weiter zum Board')
+        choice = input('\nAuswahl [1]: ').strip() or '1'
+        if choice == '1':
+            try:
+                setup_wifi()
+                connections = run('nmcli', '-t', '-f', 'TYPE,STATE', 'device', 'status',
+                                  capture_output=True, env={**os.environ, 'LC_ALL': 'C'}).stdout
+                if 'wifi:connected' in connections.splitlines():
+                    atomic(STATE / 'welcome-complete', '1\n')
+                    return
+            except (OSError, ValueError, subprocess.CalledProcessError):
+                print('WLAN konnte nicht eingerichtet werden.')
+            input('Enter für die WLAN-Ersteinrichtung …')
+        elif choice == '0':
+            atomic(STATE / 'welcome-complete', '1\n')
+            return
+
+
+def wifi_menu():
+    while True:
+        print('\033[2J\033[HKanlo – WLAN')
+        print_web_addresses()
+        print('\n1  WLAN auswählen und verbinden\n2  Gespeicherte Verbindungen bearbeiten'
+              '\n3  Temporären WLAN-Hotspot öffnen\n4  Hotspot schließen\n0  Zurück')
+        choice = input('\nAuswahl: ').strip()
+        if choice == '0':
+            return
+        try:
+            if choice == '1':
+                setup_wifi()
+            elif choice == '2':
+                run('systemctl', 'stop', HOTSPOT_SERVICE)
+                run('/usr/bin/nmtui-edit')
+                run('systemctl', 'restart', 'kanlo-network.service')
+            elif choice == '3':
+                setup_hotspot()
+            elif choice == '4':
+                run('systemctl', 'stop', HOTSPOT_SERVICE)
+            else:
+                continue
+        except (OSError, ValueError, subprocess.CalledProcessError):
+            print('WLAN-Aktion fehlgeschlagen. Adapter und Eingaben prüfen.')
+        input('Enter zurück zum WLAN-Menü …')
+
+
+def bluetooth_menu():
+    while True:
+        print('\033[2J\033[HKanlo – Bluetooth')
+        print('\n1  Status und gekoppelte Geräte anzeigen\n2  Bluetooth einschalten'
+              '\n3  Bluetooth ausschalten\n4  Geräte koppeln und verwalten\n0  Zurück')
+        choice = input('\nAuswahl: ').strip()
+        if choice == '0':
+            return
+        try:
+            if choice == '1':
+                run('bluetoothctl', 'show', timeout=8)
+                run('bluetoothctl', 'devices', 'Paired', timeout=8)
+            elif choice == '2':
+                run('rfkill', 'unblock', 'bluetooth')
+                run('bluetoothctl', 'power', 'on', timeout=8)
+            elif choice == '3':
+                run('rfkill', 'block', 'bluetooth')
+            elif choice == '4':
+                print('Gerät in den Kopplungsmodus versetzen. Mit „quit“ zum Menü zurück.')
+                print('Befehle: scan on · devices · pair ADRESSE · connect ADRESSE · remove ADRESSE')
+                run('bluetoothctl', '--agent', 'KeyboardDisplay')
+            else:
+                continue
+        except (OSError, subprocess.SubprocessError):
+            print('Bluetooth-Aktion fehlgeschlagen. Adapter und Funkstatus prüfen.')
+        input('Enter zurück zum Bluetooth-Menü …')
+
+
 def setup_device():
     run('systemctl', 'stop', HOTSPOT_SERVICE)
     current_host = Path('/etc/hostname').read_text().strip()
@@ -300,16 +387,18 @@ def setup_hotspot():
 
 def setup():
     while True:
-        print('\033[2J\033[HKanlo – lokale Einrichtung (Strg+Alt+F1: Board)')
+        print('\033[2J\033[HKanlo – Geräteeinstellungen')
         print_web_addresses()
-        print('\n1  WLAN auswählen und verbinden\n2  Gerät einrichten\n3  Anzeige-Diagnose\n4  Board-Anzeige neu starten'
-              '\n5  Temporären WLAN-Hotspot öffnen\n6  Hotspot schließen')
+        print('\n1  WLAN\n2  Bluetooth\n3  Anzeige-Diagnose\n4  Board-Anzeige neu starten'
+              '\n5  Gerät einrichten\n0  Zurück zum Board')
         choice = input('\nAuswahl: ').strip()
         try:
             if choice == '1':
-                setup_wifi()
+                wifi_menu()
+                continue
             elif choice == '2':
-                setup_device()
+                bluetooth_menu()
+                continue
             elif choice == '3':
                 for name, state, modes in display_connectors():
                     print(f'{name}: {state} ({", ".join(modes) or "keine Modi"})')
@@ -317,9 +406,10 @@ def setup():
             elif choice == '4':
                 run('systemctl', '--no-block', 'restart', 'kanlo-tv.service')
             elif choice == '5':
-                setup_hotspot()
-            elif choice == '6':
-                run('systemctl', 'stop', HOTSPOT_SERVICE)
+                setup_device()
+            elif choice == '0':
+                run('chvt', '1')
+                continue
             else:
                 continue
         except (OSError, ValueError, subprocess.CalledProcessError):
@@ -329,9 +419,12 @@ def setup():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=['firstboot', 'network', 'has-display', 'setup', 'hotspot-start', 'hotspot-stop'])
+    parser.add_argument('command', choices=['firstboot', 'network', 'has-display', 'setup',
+                                           'needs-welcome', 'welcome', 'hotspot-start', 'hotspot-stop'])
     command = parser.parse_args().command
     if command == 'has-display':
         raise SystemExit(0 if has_display() else 1)
+    if command == 'needs-welcome':
+        raise SystemExit(0 if needs_welcome() else 1)
     {'firstboot': firstboot, 'network': network, 'setup': setup,
-     'hotspot-start': hotspot_serve, 'hotspot-stop': hotspot_stop}[command]()
+     'welcome': welcome, 'hotspot-start': hotspot_serve, 'hotspot-stop': hotspot_stop}[command]()

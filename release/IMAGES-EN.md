@@ -32,9 +32,17 @@ The server starts offline, without login. Default hostnames are
 `kanlo-<device-identity>`. Open the address shown on the attached display or on
 the physical Ctrl+Alt+F2 setup console: `http://<hostname>.local:8080` or the
 device's LAN IPv4 address. If mDNS is blocked, inspect your router's DHCP list.
-Press **Ctrl+Alt+F2**, choose **1** to select a Wi-Fi network, set the country
-if prompted, then enter your password in the network dialog. After closing it,
-check the connection status and Kanlo address. **Ctrl+Alt+F1** returns to the board.
+On the first boot with a display, the Wi-Fi setup opens before the board.
+Select **1** to connect or **0** to continue, for example when using Ethernet.
+A successful connection opens the board. Headless and Wi-Fi-provisioned
+devices start directly.
+
+After boot, **Ctrl+Alt+F2** opens Device Settings. Choose **1** for Wi-Fi
+and saved connections or **2** for Bluetooth power, status and pairing.
+The Bluetooth device console accepts `scan on`, `devices`, `pair ADDRESS`,
+`connect ADDRESS`, `remove ADDRESS` and `quit`. Select **0** in Device
+Settings or use **Ctrl+Alt+F1** to return to the board.
+[BlueZ command reference](https://manpages.debian.org/trixie/bluez/bluetoothctl.1.en.html)
 
 Connect HDMI before boot and select the matching monitor input. A Raspberry Pi
 composite output requires a compatible connector and cable and may require
