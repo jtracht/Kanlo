@@ -67,7 +67,7 @@ def verify_hotspot(instance):
                     '-C', 'resolv.conf', '-C', 'hostname', station.name)
             addresses = json.loads(command(*GUEST, 'ip', '-j', '-4', 'addr', 'show', 'dev', station.name))
             assert any(info['local'].startswith('10.42.0.') for info in addresses[0]['addr_info'])
-            origin = 'http://10.42.0.1:8080'
+            origin = 'http://10.42.0.1'
             request = (*GUEST, 'curl', '-fsS', '--retry', '3', '--retry-connrefused', '--max-time', '3')
             assert json.loads(command(*request, origin + '/api/v1/bootstrap'))['instance_id'] == instance
             assert '<title>Kanlo</title>' in command(*request, origin + '/')

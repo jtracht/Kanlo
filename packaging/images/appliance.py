@@ -22,7 +22,16 @@ HOTSPOT = Path('/run/kanlo-hotspot')
 HOTSPOT_PROFILE = Path('/run/NetworkManager/system-connections/kanlo-setup.nmconnection')
 HOTSPOT_ID = 'kanlo-setup-hotspot'
 HOTSPOT_SERVICE = 'kanlo-hotspot.service'
-HOTSPOT_URL = 'http://10.42.0.1:8080'
+HOTSPOT_URL = 'http://10.42.0.1'
+KEYBOARD = Path('/etc/default/keyboard')
+KEYBOARD_LAYOUTS = (
+    ('de', '', 'Deutsch (Deutschland)'),
+    ('ch', '', 'Deutsch (Schweiz)'),
+    ('us', '', 'Englisch (USA)'),
+    ('gb', '', 'Englisch (UK)'),
+    ('fr', '', 'Französisch (Frankreich)'),
+    ('ch', 'fr', 'Französisch (Schweiz)'),
+)
 
 
 def run(*args, **kwargs):
@@ -151,11 +160,11 @@ def firstboot():
 
 
 def authorities(addresses, hostname):
-    hosts = {f'{hostname}:8080', f'{hostname}.local:8080'}
+    hosts = {hostname, f'{hostname}.local'}
     for value in addresses:
         address = ipaddress.ip_address(value)
         if address.version == 4 and (address.is_private or address.is_link_local) and not address.is_loopback:
-            hosts.add(f'{address}:8080')
+            hosts.add(str(address))
     return sorted(hosts)
 
 
@@ -165,11 +174,13 @@ def network():
     hostname = Path('/etc/hostname').read_text().strip()
     hosts = authorities(addresses, hostname)
     environment = Path('/run/kanlo-network/server.env')
-    content = 'KANLO_BIND=0.0.0.0:8080\nKANLO_ALLOWED_HOSTS=' + ','.join(hosts) + '\n'
+    content = 'KANLO_BIND=0.0.0.0:80\nKANLO_ALLOWED_HOSTS=' + ','.join(hosts) + '\n'
     changed = not environment.exists() or environment.read_text() != content
     if changed:
         atomic(environment, content, 0o644)
-    atomic(Path('/run/kanlo-network/urls.json'), json.dumps(['http://' + h for h in hosts if '.local:' not in h and not h.startswith(hostname + ':')] or ['http://' + hostname + '.local:8080']), 0o644)
+    local_hosts = {hostname, f'{hostname}.local'}
+    urls = ['http://' + host for host in hosts if host not in local_hosts]
+    atomic(Path('/run/kanlo-network/urls.json'), json.dumps(urls or [f'http://{hostname}.local']), 0o644)
     if changed and subprocess.run(['systemctl', 'is-active', '--quiet', 'kanlo-server.service']).returncode == 0:
         run('systemctl', '--no-block', 'try-restart', 'kanlo-server.service')
 
@@ -250,8 +261,40 @@ def wifi_ready():
     return False
 
 
+def keyboard_menu():
+    print('\nKanlo – Tastaturlayout')
+    for number, (_, _, label) in enumerate(KEYBOARD_LAYOUTS, 1):
+        print(f'{number}  {label}')
+    print('0  Aktuelles Layout behalten')
+    while True:
+        choice = input('\nAuswahl [0]: ').strip() or '0'
+        if choice == '0':
+            return
+        if choice not in {str(index) for index in range(1, len(KEYBOARD_LAYOUTS) + 1)}:
+            continue
+        layout, variant, label = KEYBOARD_LAYOUTS[int(choice) - 1]
+        previous = KEYBOARD.read_text() if KEYBOARD.exists() else None
+        atomic(KEYBOARD, f'XKBMODEL="pc105"\nXKBLAYOUT="{layout}"\nXKBVARIANT="{variant}"\n'
+                         'XKBOPTIONS=""\nBACKSPACE="guess"\n', 0o644)
+        try:
+            run('setupcon', '--keyboard-only', '--force', '--save')
+        except (OSError, subprocess.CalledProcessError):
+            if previous is None:
+                KEYBOARD.unlink(missing_ok=True)
+            else:
+                atomic(KEYBOARD, previous, 0o644)
+            raise
+        print(f'Tastaturlayout: {label}')
+        return
+
+
 def welcome():
     run('chvt', '1')
+    try:
+        keyboard_menu()
+    except (OSError, subprocess.CalledProcessError):
+        print('Tastaturlayout konnte nicht eingerichtet werden.')
+        input('Enter für die WLAN-Ersteinrichtung …')
     while True:
         print('\033[2J\033[HKanlo – WLAN-Ersteinrichtung')
         print('1  WLAN auswählen und verbinden\n0  Weiter zum Board')
@@ -415,7 +458,7 @@ def setup():
         print('\033[2J\033[HKanlo – Geräteeinstellungen')
         print_web_addresses()
         print('\n1  WLAN\n2  Bluetooth\n3  Anzeige-Diagnose\n4  Board-Anzeige neu starten'
-              '\n5  Gerät einrichten\n0  Zurück zum Board')
+              '\n5  Gerät einrichten\n6  Tastaturlayout\n0  Zurück zum Board')
         choice = input('\nAuswahl: ').strip()
         try:
             if choice == '1':
@@ -434,6 +477,8 @@ def setup():
                 continue
             elif choice == '5':
                 setup_device()
+            elif choice == '6':
+                keyboard_menu()
             elif choice == '0':
                 return_to_board()
                 continue

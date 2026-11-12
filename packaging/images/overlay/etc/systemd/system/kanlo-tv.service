@@ -20,8 +20,9 @@ Environment=XDG_RUNTIME_DIR=/run/kanlo-display
 Environment=LIBSEAT_BACKEND=seatd
 Environment=SDL_VIDEODRIVER=wayland
 Environment=SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR=0
+Environment=PYGAME_HIDE_SUPPORT_PROMPT=1
+Environment=KANLO_DISPLAY_ORIGIN=http://127.0.0.1
 Environment=XDG_CACHE_HOME=/run/kanlo-display/cache
-Environment=WLR_RENDERER=pixman
 Environment=LP_NUM_THREADS=2
 ExecStart=/usr/bin/python3 /usr/lib/kanlo/display.py --launch
 Restart=always

@@ -1,5 +1,5 @@
 [Unit]
-Description=Kanlo first-run Wi-Fi settings
+Description=Kanlo first-run keyboard and Wi-Fi settings
 After=kanlo-firstboot.service NetworkManager.service
 Wants=NetworkManager.service
 Before=kanlo-tv.service

@@ -48,11 +48,32 @@ class Appliance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory)
             connected = subprocess.CompletedProcess([], 0, 'ethernet:unavailable\nwifi:connected\n', '')
-            with patch.object(appliance, 'STATE', state), patch.object(appliance, 'setup_wifi') as wifi, patch.object(appliance, 'run', return_value=connected) as command, patch('builtins.input', return_value=''), patch('builtins.print'):
+            with patch.object(appliance, 'STATE', state), patch.object(appliance, 'setup_wifi') as wifi, patch.object(appliance, 'run', return_value=connected) as command, patch('builtins.input', side_effect=['0', '']), patch('builtins.print'):
                 appliance.welcome()
                 wifi.assert_called_once()
                 self.assertTrue((state / 'welcome-complete').is_file())
                 command.assert_called_with('systemctl', '--no-block', 'start', 'kanlo-tv.service')
+
+    def test_keyboard_choice_sets_xkb_layout_and_saves_console_map(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / 'keyboard'
+            with patch.object(appliance, 'KEYBOARD', config), patch.object(appliance, 'run') as command, patch('builtins.input', return_value='6'), patch('builtins.print'):
+                appliance.keyboard_menu()
+                command.assert_called_once_with('setupcon', '--keyboard-only', '--force', '--save')
+            self.assertIn('XKBLAYOUT="ch"\nXKBVARIANT="fr"', config.read_text())
+            with patch.object(appliance, 'KEYBOARD', config), patch.object(appliance, 'run', side_effect=OSError), patch('builtins.input', return_value='1'), patch('builtins.print'), self.assertRaises(OSError):
+                appliance.keyboard_menu()
+            self.assertIn('XKBLAYOUT="ch"\nXKBVARIANT="fr"', config.read_text())
+
+    def test_stalled_cage_is_stopped_without_a_first_frame(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / 'first-frame'
+            with patch.object(display.subprocess, 'Popen') as spawn, patch.object(display, 'FIRST_FRAME_TIMEOUT', 0), patch('sys.stderr'):
+                cage = spawn.return_value.__enter__.return_value
+                cage.poll.return_value = None
+                self.assertFalse(display.launch_graphical(marker, 'pixman'))
+                cage.terminate.assert_called_once()
+                self.assertEqual(spawn.call_args.kwargs['env']['WLR_RENDERER'], 'pixman')
 
     def test_return_to_board_activates_the_display_service_and_console(self):
         with patch.object(appliance, 'run') as command:
@@ -244,7 +265,7 @@ class Appliance(unittest.TestCase):
 
     def test_network_authorities_are_exact_local_hosts(self):
         hosts = appliance.authorities(['192.168.1.25', '10.0.2.15', '127.0.0.1', '8.8.8.8', 'fe80::1'], 'kanlo-ab12cd')
-        self.assertEqual(hosts, ['10.0.2.15:8080', '192.168.1.25:8080', 'kanlo-ab12cd.local:8080', 'kanlo-ab12cd:8080'])
+        self.assertEqual(hosts, ['10.0.2.15', '192.168.1.25', 'kanlo-ab12cd', 'kanlo-ab12cd.local'])
 
     def test_atomic_private_configuration_does_not_leave_temporary_secrets(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -274,22 +295,24 @@ class Appliance(unittest.TestCase):
         with (
             patch.object(appliance, 'graphical_output', return_value=True),
             patch.object(display, 'wait_for_seat'),
-            patch.object(display.subprocess, 'run') as cage,
+            patch.object(display, 'launch_graphical', return_value=False) as cage,
             patch.object(display, 'console_board') as fallback,
+            patch.dict(display.os.environ, {'XDG_RUNTIME_DIR': '/run/kanlo-display'}),
+            patch('sys.stderr'),
         ):
-            cage.return_value.returncode = 1
             display.launch()
-            self.assertEqual(cage.call_args.args[0][:3], ['/usr/bin/cage', '-s', '--'])
+            self.assertEqual([call.args[1] for call in cage.call_args_list], ['pixman', None])
             fallback.assert_called_once_with()
 
     def test_console_board_hands_off_to_cage_when_connector_appears(self):
         with (
             patch.object(appliance, 'graphical_output', side_effect=[False, True]) as output,
             patch.object(display, 'wait_for_seat'),
-            patch.object(display.subprocess, 'run') as cage,
+            patch.object(display, 'launch_graphical', return_value=True) as cage,
             patch.object(display, 'console_board') as fallback,
+            patch.dict(display.os.environ, {'XDG_RUNTIME_DIR': '/run/kanlo-display'}),
+            patch('sys.stderr'),
         ):
-            cage.return_value.returncode = 1
             display.launch()
         self.assertEqual(fallback.call_args_list[0].kwargs, {'until': output})
         cage.assert_called_once()

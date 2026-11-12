@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import queue
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -20,19 +21,20 @@ from tv_markdown import Images, markdown_rows
 
 SETUP_AVAILABLE = Path('/etc/systemd/system/kanlo-setup.service')
 RUNTIME_VIEW = Path('/var/lib/kanlo-display/view.json')
+ORIGIN = os.environ.get('KANLO_DISPLAY_ORIGIN', 'http://127.0.0.1:8080')
+FIRST_FRAME_TIMEOUT = 20
 ANIMATIONS = {'off': 0, 'subtle': 0.10, 'fluid': 0.20, 'dynamic': 0.32}
 
 
 def fetch(path):
-    with urllib.request.urlopen('http://127.0.0.1:8080/api/v1/' + path, timeout=4) as response:
+    with urllib.request.urlopen(ORIGIN + '/api/v1/' + path, timeout=4) as response:
         return json.load(response)
 
 
 def resume_timer(revision):
-    origin = 'http://127.0.0.1:8080'
-    request = urllib.request.Request(origin + '/api/v1/display',
+    request = urllib.request.Request(ORIGIN + '/api/v1/display',
         data=json.dumps({'kind': 'resume', 'revision': revision}).encode(),
-        headers={'Origin': origin, 'Content-Type': 'application/json'})
+        headers={'Origin': ORIGIN, 'Content-Type': 'application/json'})
     with urllib.request.urlopen(request, timeout=4) as response:
         return json.load(response)
 
@@ -125,7 +127,7 @@ def reader(updates, stop, display_updates=None):
             publish(True)
             refresh_display(bootstrap)
             with urllib.request.urlopen(
-                f'http://127.0.0.1:8080/api/v1/events?after={bootstrap["event_cursor"]}',
+                f'{ORIGIN}/api/v1/events?after={bootstrap["event_cursor"]}',
                 timeout=22,
             ) as response:
                 for change in event_changes(response):
@@ -365,7 +367,7 @@ def web_addresses():
     try:
         return '  '.join(json.loads(Path('/run/kanlo-network/urls.json').read_text()))
     except (OSError, ValueError):
-        return '' if SETUP_AVAILABLE.is_file() else 'http://127.0.0.1:8080'
+        return '' if SETUP_AVAILABLE.is_file() else ORIGIN
 
 
 def setup_hint():
@@ -393,11 +395,46 @@ def launch():
     if graphical_output():
         try:
             wait_for_seat()
-            result = subprocess.run(['/usr/bin/cage', '-s', '--', sys.executable, __file__])
-            print(f'Kanlo graphical display exited ({result.returncode}); using console board.', file=sys.stderr)
+            marker = Path(os.environ['XDG_RUNTIME_DIR']) / 'first-frame'
+            for renderer in ('pixman', None):
+                if launch_graphical(marker, renderer):
+                    break
         except OSError as error:
-            print(f'Kanlo graphical display could not start: {error}; using console board.', file=sys.stderr)
+            print(f'Kanlo graphical display could not start: {error}', file=sys.stderr, flush=True)
+    print('Kanlo using console board.', file=sys.stderr, flush=True)
     console_board()
+
+
+def launch_graphical(marker, renderer):
+    marker.unlink(missing_ok=True)
+    environment = {**os.environ, 'KANLO_FIRST_FRAME': str(marker),
+                   'PYGAME_HIDE_SUPPORT_PROMPT': '1'}
+    environment.pop('WLR_RENDERER', None)
+    if renderer:
+        environment['WLR_RENDERER'] = renderer
+    name = renderer or 'automatic'
+    print(f'Kanlo starting Cage ({name}).', file=sys.stderr, flush=True)
+    with subprocess.Popen(['/usr/bin/cage', '-s', '--', sys.executable, __file__],
+                          env=environment, stdout=sys.stderr, process_group=0) as process:
+        deadline = time.monotonic() + FIRST_FRAME_TIMEOUT
+        while process.poll() is None and not marker.is_file() and time.monotonic() < deadline:
+            time.sleep(0.2)
+        ready = marker.is_file()
+        if not ready and process.poll() is None:
+            print(f'Kanlo first frame timed out ({name}).', file=sys.stderr, flush=True)
+            # Let Cage release its seat and restore the console before forcing exit.
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        result = process.wait()
+    print(f'Kanlo Cage exited ({name}, status {result}, first frame: {ready}).',
+          file=sys.stderr, flush=True)
+    return ready
 
 
 def wait_for_seat():
@@ -417,6 +454,9 @@ def wait_for_seat():
 
 def main(size=None):
     import pygame
+    marker = os.environ.get('KANLO_FIRST_FRAME')
+    if marker:
+        print('Kanlo initializing SDL video.', file=sys.stderr, flush=True)
     pygame.display.init()
     pygame.font.init()
     pygame.mouse.set_visible(False)
@@ -424,6 +464,9 @@ def main(size=None):
     # Cage owns fullscreen; an SDL exclusive-mode request can block on Wayland.
     screen = pygame.display.set_mode(desktop, pygame.RESIZABLE)
     pygame.display.set_caption('Kanlo')
+    if marker:
+        print(f'Kanlo SDL video ready ({pygame.display.get_driver()}, {screen.get_size()}).',
+              file=sys.stderr, flush=True)
     font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 
     def layout():
@@ -742,6 +785,10 @@ def main(size=None):
                 transition = (previous, screen.copy(), time.monotonic(), duration)
                 screen.blit(previous, (0, 0))
             pygame.display.flip()
+            if marker:
+                Path(marker).touch()
+                print('Kanlo submitted its first board frame.', file=sys.stderr, flush=True)
+                marker = None
             if state and 'instance' in state:
                 companion_page = None
                 if state.get('companion_ticket'):

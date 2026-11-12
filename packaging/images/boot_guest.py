@@ -13,13 +13,17 @@ import threading
 import time
 import urllib.request
 import uuid
+from unittest.mock import patch
 
+import appliance
 import display
 import tv_markdown
 import update
 
+display.ORIGIN = 'http://127.0.0.1'
 
-def get(path, origin='http://127.0.0.1:8080'):
+
+def get(path, origin='http://127.0.0.1'):
     with urllib.request.urlopen(origin + path, timeout=5) as response:
         return json.load(response)
 
@@ -49,7 +53,7 @@ def verify_update_rollback():
 def mutate(command):
     health = get('/api/v1/health')
     body = {'op_id': str(uuid.uuid4()), 'client_id': 'image-boot-test', 'server_instance_id': health['instance_id'], 'base_epoch': health['epoch'], 'base_context': None, 'command': command}
-    request = urllib.request.Request('http://127.0.0.1:8080/api/v1/commands', data=json.dumps(body).encode(), headers={'Content-Type': 'application/json', 'Origin': 'http://127.0.0.1:8080'})
+    request = urllib.request.Request('http://127.0.0.1/api/v1/commands', data=json.dumps(body).encode(), headers={'Content-Type': 'application/json', 'Origin': 'http://127.0.0.1'})
     with urllib.request.urlopen(request, timeout=5) as response:
         return json.load(response)['result']['entity_id']
 
@@ -98,7 +102,7 @@ def verify_independent_restarts(board_id):
                        'description': '', 'importance': 0, 'column_id': None, 'parent_id': None, 'type_id': None})
 
     def show_ticket(ticket, minutes=None):
-        origin = 'http://127.0.0.1:8080'
+        origin = 'http://127.0.0.1'
         req = urllib.request.Request(origin + '/api/v1/display',
             data=json.dumps({'kind': 'show_ticket', 'ticket_id': ticket, 'minutes': minutes}).encode(),
             headers={'Content-Type': 'application/json', 'Origin': origin})
@@ -124,14 +128,17 @@ def verify_independent_restarts(board_id):
         display_before = wait_for_new_pid(tv, 0)
         if os.uname().machine == 'x86_64':
             assert Path('/sys/class/tty/tty0/active').read_text().strip() == 'tty1'
-            for _ in range(12):
-                if any(path.is_socket() for path in Path('/run/kanlo-display').glob('wayland-*')):
+            for _ in range(48):
+                runtime = Path('/run/kanlo-display')
+                if (runtime / 'first-frame').is_file() and any(
+                    path.is_socket() for path in runtime.glob('wayland-*')
+                ):
                     break
                 time.sleep(0.5)
             else:
                 subprocess.run(['journalctl', '-b', '-u', tv, '-u', 'seatd.service',
                                 '-n', '35', '--no-pager'], check=False)
-                raise RuntimeError('Native Wayland display did not become ready on tty1')
+                raise RuntimeError('Native Wayland display did not submit a board frame on tty1')
         assert service_pid(server) == server_before
         subprocess.run(['systemctl', 'kill', '--kill-whom=main', '--signal=KILL', tv], check=True)
         display_after = wait_for_new_pid(tv, display_before)
@@ -184,6 +191,7 @@ def main():
     assert os.access('/usr/bin/nmtui-connect', os.X_OK)
     assert os.access('/usr/bin/nmtui-edit', os.X_OK)
     assert shutil.which('bluetoothctl') and shutil.which('rfkill') and shutil.which('chvt')
+    assert shutil.which('setupcon')
     assert Path('/etc/systemd/system/kanlo-welcome.service').is_file()
     assert not Path('/var/lib/kanlo-appliance/welcome-complete').exists()
     assert os.access('/usr/sbin/dnsmasq', os.X_OK)
@@ -216,7 +224,7 @@ def main():
         addresses = [address['local'] for interface in interfaces if interface['ifname'] != 'lo' for address in interface.get('addr_info', []) if address.get('family') == 'inet']
         for address in addresses:
             try:
-                if get('/api/v1/bootstrap', 'http://' + address + ':8080')['instance_id'] == state['instance_id']:
+                if get('/api/v1/bootstrap', 'http://' + address)['instance_id'] == state['instance_id']:
                     lan_verified = True
                     break
             except OSError:
@@ -226,6 +234,10 @@ def main():
         time.sleep(1)
     assert lan_verified, 'DHCP LAN address must reach the real Kanlo listener'
     marker = Path('/var/lib/kanlo-appliance/test-identity.json')
+    if not marker.exists():
+        with patch('builtins.input', return_value='1'):
+            appliance.keyboard_menu()
+    assert 'XKBLAYOUT="de"' in appliance.KEYBOARD.read_text()
     if marker.exists():
         before = json.loads(marker.read_text())
         assert before['machine_id'] == identity

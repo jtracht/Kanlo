@@ -30,15 +30,17 @@ real configuration file from the boot partition; the example contains no secrets
 Connect Ethernet or provision Wi-Fi and boot. Storage expands automatically.
 The server starts offline, without login. Default hostnames are
 `kanlo-<device-identity>`. Open the address shown on the attached display or on
-the physical Ctrl+Alt+F2 setup console: `http://<hostname>.local:8080` or the
-device's LAN IPv4 address. If mDNS is blocked, inspect your router's DHCP list.
-On the first boot with a display, the Wi-Fi setup opens before the board.
+the physical Ctrl+Alt+F2 setup console: `http://<hostname>.local` or the
+device's LAN IPv4 address. The web server uses HTTP port 80. If mDNS is blocked,
+inspect your router's DHCP list.
+On the first boot with a display, choose your keyboard layout before Wi-Fi setup.
 Select **1** to connect or **0** to continue, for example when using Ethernet.
 A successful connection opens the board. Headless and Wi-Fi-provisioned
 devices start directly.
 
 After boot, **Ctrl+Alt+F2** opens Device Settings. Choose **1** for Wi-Fi
-and saved connections or **2** for Bluetooth power, status and pairing.
+and saved connections, **2** for Bluetooth power, status and pairing, or **6**
+to change and save the console keyboard layout.
 The Bluetooth device console accepts `scan on`, `devices`, `pair ADDRESS`,
 `connect ADDRESS`, `remove ADDRESS` and `quit`. Select **0** in Device
 Settings or use **Ctrl+Alt+F1** to return to the board.
@@ -54,7 +56,7 @@ for connector and service diagnostics or **4** to restart the board display.
 There is no shared password or open root shell. SSH stays off until you supply
 your own public key. That key grants full device administration as
 `kanlo-admin` with sudo. The physical-console owner can reconfigure network,
-hostname, timezone and display settings locally. Do not expose LAN port 8080
+hostname, timezone and display settings locally. Do not expose LAN port 80
 to the internet. Configure external HTTPS/PWA through the separate protected
 ingress described in the server operating guide.
 

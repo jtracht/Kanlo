@@ -47,13 +47,14 @@ echte Kernel-/systemd-Boots unter QEMU, keine simulierten Erfolgsmeldungen.
    nicht automatisch als Laufwerk an. In diesem Fall die lokale Einrichtung
    unter Ctrl+Alt+F2 verwenden oder die gewählte EFI-Partition unter Linux öffnen.
 4. Bildschirm und USB-Tastatur anschließen und den Pi starten. Beim ersten
-   Start öffnet sich die WLAN-Einrichtung vor dem Board. Wähle **1** für WLAN
+   Start kannst du zuerst das Tastaturlayout auswählen. Danach öffnet sich die
+   WLAN-Einrichtung vor dem Board. Wähle **1** für WLAN
    oder **0 – Weiter zum Board**, beispielsweise bei Ethernet-Betrieb.
    Nach erfolgreicher WLAN-Verbindung öffnet sich das Board automatisch.
    Geräte ohne Bildschirm und Images mit vorab eingetragenem WLAN starten direkt.
 5. Die Webadresse erscheint auf dem Board und in den Geräteeinstellungen.
-   Im selben LAN `http://<hostname>.local:8080` oder
-   `http://<IPv4-Adresse>:8080` öffnen. Ist mDNS gesperrt, nutze die DHCP-Liste
+   Der Webserver verwendet HTTP-Port 80. Im selben LAN `http://<hostname>.local` oder
+   `http://<IPv4-Adresse>` öffnen. Ist mDNS gesperrt, nutze die DHCP-Liste
    des Routers.
 
 ## Geräteeinstellungen nach dem Start
@@ -65,7 +66,7 @@ oder **Strg+Alt+F1** kehrt zur Anzeige zurück.
   temporären Hotspot. In der Netzwerkauswahl können WLAN-Land und Zugangsdaten
   aktualisiert werden. **WLAN → 3** öffnet den WPA2-Hotspot ohne bestehende
   LAN-Verbindung. Name und Kennwort stehen auf der lokalen Konsole. Smartphone
-  oder PC verbinden und `http://10.42.0.1:8080` öffnen. **WLAN → 4** beendet ihn
+  oder PC verbinden und `http://10.42.0.1` öffnen. **WLAN → 4** beendet ihn
   manuell. Er endet automatisch nach spätestens zehn Minuten.
 - **2 – Bluetooth** zeigt Status und gekoppelte Geräte, schaltet Bluetooth
   ein oder aus und öffnet die Geräteverwaltung. Zum Koppeln das Zubehör in
@@ -75,6 +76,7 @@ oder **Strg+Alt+F1** kehrt zur Anzeige zurück.
   PIN-Abfragen auf der Konsole bestätigen. [BlueZ-Befehle](https://manpages.debian.org/trixie/bluez/bluetoothctl.1.en.html)
 - **3 – Anzeige-Diagnose**, **4 – Board-Anzeige neu starten** und
   **5 – Gerät einrichten** bleiben im Hauptmenü.
+- **6 – Tastaturlayout** ändert die Konsolenbelegung sofort und speichert sie.
 
 Bei der ersten Board-Einrichtung zeigt das TV-Bild einen QR-Code zur Webadresse.
 

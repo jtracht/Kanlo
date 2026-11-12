@@ -20,7 +20,7 @@ BINARY = Path('/usr/local/lib/kanlo/kanlo-server')
 DATABASE = Path('/var/lib/kanlo/kanlo.sqlite3')
 STATE = Path('/var/lib/kanlo-updates')
 SERVICE = 'kanlo-server.service'
-HEALTH = 'http://127.0.0.1:8080/api/v1/health'
+HEALTH = 'http://127.0.0.1/api/v1/health'
 
 
 def checksum(path):

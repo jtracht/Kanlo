@@ -76,7 +76,7 @@ def main(seconds):
     while time.monotonic() - start < seconds:
         tick = time.monotonic()
         try:
-            with urllib.request.urlopen('http://127.0.0.1:8080/api/v1/health', timeout=2) as response:
+            with urllib.request.urlopen('http://127.0.0.1/api/v1/health', timeout=2) as response:
                 version = json.load(response)['version']
             latency.append((time.monotonic() - tick) * 1000)
         except (OSError, KeyError, ValueError):

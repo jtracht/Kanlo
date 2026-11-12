@@ -10,7 +10,7 @@ Versionsstand des benutzten Images gehören zum Ergebnis.
    zur WLAN-Ersteinrichtung und anschließend zum sichtbaren Kanlo-Board
    notieren. Beim Neustart sollte das Board direkt erscheinen.
 2. Ohne Ethernet **Strg+Alt+F2 → WLAN → 3** öffnen, Smartphone oder PC mit dem
-   angezeigten temporären WLAN verbinden und `http://10.42.0.1:8080` öffnen.
+   angezeigten temporären WLAN verbinden und `http://10.42.0.1` öffnen.
    Nach zehn Minuten prüfen, ob das Netz verschwunden ist. Das angezeigte
    Passwort bleibt am Gerät.
 3. Über **Strg+Alt+F2 → WLAN → 1** das reguläre WLAN einrichten. Die Webadresse vom
