@@ -1,6 +1,6 @@
 # Kanlo 0.2.0-dev.10
 
-Lokaler Entwicklungsstand **88,6 % (62 von 70 Originalaufgaben)**.
+Lokaler Entwicklungsstand **90 % (63 von 70 Originalaufgaben)**.
 
 Kanlo liefert für ChatGPT und Claude Code zuerst Einstellungskategorien,
 dann Namen in Fünferseiten. Werte werden ausdrücklich abgerufen. Bei

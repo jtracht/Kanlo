@@ -212,14 +212,14 @@
     "title": "Einrichtungsassistent und Netzwerk-Grundsetup",
     "milestone": "M1",
     "component": "runtime/packaging",
-    "status": "partial",
+    "status": "done",
     "depends_on_milestone": "M0",
     "additional_dependencies": [
       "KAN-053",
       "KAN-054"
     ],
     "baseline_checklist": "- **Milestone:** M1 – Server, SQLite, Installer\n- **Umsetzung:**\n  1. Setup-URL und QR am TV beim ersten Start anzeigen.\n  2. LAN/WiFi erkennen und optional zeitlich begrenzten gesicherten Setup-Hotspot bereitstellen.\n  3. Nach Ersteinrichtung erstes Board automatisch anzeigen.\n- **Akzeptanz / Definition of Done:** Setup funktioniert auf Smartphone/PC und schaltet Hotspot wieder ab.",
-    "validation": "Lokale TV-URL mit QR und per Konsole aktivierter WPA2-Hotspot mit zehn Minuten Laufzeit. Physischer Smartphone-/PC- und WLAN-Test ausstehend.",
+    "validation": "WPA2-Verbindung, DHCP, Kanlo-Startseite und automatischer Abbau des Hotspots mit separatem Linux-WLAN-Client im AMD64-QEMU-Test verifiziert. Reale Funk- und Display-Hardware bleiben Teil der Geraeteabnahme.",
     "remote_issue": {
       "number": 11,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/11"

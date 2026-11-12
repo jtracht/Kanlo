@@ -14,6 +14,8 @@ def verify(image, profile, directory):
     run('truncate', '-s', '16G', test)
     with mounted(test, directory) as (root, root_part, parts):
         shutil.copy2(ROOT / 'packaging/images/boot_guest.py', root / 'usr/lib/kanlo/boot_guest.py')
+        if profile == 'generic-amd64':
+            shutil.copy2(ROOT / 'packaging/images/boot_wifi.py', root / 'usr/lib/kanlo/boot_wifi.py')
         unit = root / 'etc/systemd/system/kanlo-image-test.service'
         unit.write_text('[Unit]\nAfter=kanlo-server.service kanlo-setup.service\nWants=kanlo-server.service kanlo-setup.service\n[Service]\nType=oneshot\nExecStart=/usr/bin/python3 /usr/lib/kanlo/boot_guest.py\nStandardOutput=journal+console\nStandardError=journal+console\nTimeoutStartSec=240\n[Install]\nWantedBy=multi-user.target\n')
         wants = root / 'etc/systemd/system/multi-user.target.wants'

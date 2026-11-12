@@ -1,12 +1,13 @@
 # Entwicklungsstand
 
-Der lokale Stand 0.2.0-dev.10 umfasst **62 von 70 Originalaufgaben
-(88,6 %)**. Er baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md)
-auf. Das Ziel von mindestens 85 % liegt bei 60 Aufgaben.
+Der lokale Stand 0.2.0-dev.10 umfasst **63 von 70 Originalaufgaben
+(90 %)**. Er baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md)
+auf. Das Ziel von mindestens 90 % ist mit 63 Aufgaben erreicht.
 
 | Zusätzlich abgenommen | Lokaler Nachweis |
 | --- | --- |
 | KAN-009 · Standalone-Installer | Isolierter Pakettest prüft Architektur, unveränderten Desktop im Standardmodus, gezielte Kiosk-Aktivierung, vorherige Binärdatei bei Upgrade und Datenerhalt bei Deinstallation. |
+| KAN-011 · Netzwerkeinrichtung | Das AMD64-Image startet den Setup-Hotspot in QEMU. Ein separater Linux-Client verbindet sich per WPA2, erhält DHCP und lädt Kanlo. Das verkürzte Test-Zeitlimit trennt den Client und entfernt das Profil. Desktop- und Mobil-Browsertests ergänzen den Netzwerktest. |
 | KAN-021 · Responsive Navigation | Board- und TV-Auswahl im Web. Desktop- und Mobiltests öffnen und bedienen die TV-Steuerung. |
 | KAN-022 · Ticketmodal und TV-Aktion | Desktop und Mobil prüfen, dass das Öffnen des Webmodals die TV-Auswahl erhält und nur der ausdrückliche TV-Befehl eine Einblendung setzt. |
 | KAN-029 · Native Ticketfenster | Markdown, Tabellen, Code, Kommentare und optionale begrenzte HTTPS-Bilder. Tests prüfen unabhängige Dauer, Wechsel auf zwei bzw. ein Fenster, beide Scrollpositionen nach erzwungenem Absturz und 600 Sekunden Wayland-Dauerlauf. |

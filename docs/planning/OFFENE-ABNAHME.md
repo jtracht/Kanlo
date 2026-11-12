@@ -7,8 +7,7 @@ verpflichtenden 1.0-Abnahme und werden lokal geführt.
 
 | Offene Originalaufgaben | Fehlender Nachweis |
 | --- | --- |
-| KAN-011 | QR und temporärer WPA2-Hotspot sind implementiert. Smartphone-/PC-Verbindung, automatische Abschaltung und WLAN-Wechsel auf dem Gerät prüfen. |
-| KAN-027, KAN-062, KAN-066 | Physischer Pi 3 B+, Erstinstallation von SD sowie Benchmarks und Dauerbetrieb auf realen Geräten. |
+| KAN-027, KAN-062, KAN-066 | Physischer Pi 3 B+, Erstinstallation von SD, HDMI, Composite, WLAN und Bluetooth sowie Benchmarks und Dauerbetrieb auf realen Geräten. |
 | KAN-057, KAN-060 | OpenAPI-Toolauswahl, Undo und die Einstellungsabfrage in Fünferseiten sind lokal geprüft. Einrichtung im ChatGPT-Workspace, Aktionsschema und Sprachmodus dort prüfen. |
 | KAN-068, KAN-069 | Lizenz-, Sicherheits- und Markenfreigabe sowie veröffentlichter Stable-Release. |
 

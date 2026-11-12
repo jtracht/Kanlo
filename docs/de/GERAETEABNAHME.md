@@ -23,6 +23,16 @@ Versionsstand des benutzten Images gehören zum Ergebnis.
 5. Über **Strg+Alt+F2 → Bluetooth** den Status prüfen und ein verfügbares
    Zubehör koppeln, verbinden und wieder entfernen.
 
+## Automatisierter WLAN-Test
+
+Das AMD64-Image verwendet im QEMU-Test zwei virtuelle Linux-WLAN-Adapter.
+Ein separater Client verbindet sich per WPA2, erhält DHCP und liest
+die Kanlo-Startseite und den initialen Board-Stand. Der Test setzt das
+Zeitlimit im isolierten Gast von zehn Minuten auf 30 Sekunden und prüft,
+dass die Verbindung getrennt und das temporäre Profil entfernt wird.
+Die Prüfung ist Bestandteil der Image-Pipeline.
+[Linux-WLAN-Simulation](https://wireless.docs.kernel.org/en/latest/en/users/drivers/mac80211_hwsim.html)
+
 ## Ressourcen und Dauerlast
 
 Pro Gerät Image, Architektur, Auflösung, Anschluss und Dauer angeben.

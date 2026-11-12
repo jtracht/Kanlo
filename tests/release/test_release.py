@@ -118,6 +118,8 @@ class Packages(unittest.TestCase):
                 fixture['boot_test'].update(emulator_binary_sha256='0' * 64, emulator_source_commit=None if base['arch'] == 'amd64' else '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5')
                 for boot in fixture['boot_test']['boots']:
                     boot.update(lan_http_verified=True, ram_swap_verified=True, independent_service_restarts=True, live_display_verified=True)
+                if profile == 'generic-amd64':
+                    fixture['boot_test']['boots'][0]['wifi_hotspot_verified'] = True
                 evidence.write_text(json.dumps(fixture))
             original = evidence.read_text()
             rejected = json.loads(original)
@@ -126,6 +128,14 @@ class Packages(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Two successful image boots'):
                 package.bundle(directory, tag)
             evidence.write_text(original)
+            wifi_report = directory / f'kanlo-{package.version()}-generic-amd64.image.json'
+            original_wifi = wifi_report.read_text()
+            missing_wifi = json.loads(original_wifi)
+            missing_wifi['boot_test']['boots'][0].pop('wifi_hotspot_verified')
+            wifi_report.write_text(json.dumps(missing_wifi))
+            with self.assertRaisesRegex(ValueError, 'Wi-Fi hotspot acceptance'):
+                package.bundle(directory, tag)
+            wifi_report.write_text(original_wifi)
             package.bundle(directory, tag)
             self.assertEqual(len(publisher.checked_files(directory, tag)), 14)
             archive = next(directory.glob('*-linux-amd64.tar.gz'))

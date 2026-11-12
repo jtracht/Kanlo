@@ -241,10 +241,15 @@ def main():
     if phase == 'reboot':
         verify_update_rollback()
         assert get('/api/v1/tickets/' + before['ticket_id'])['title'] == 'Survives an image reboot'
+    hotspot_verified = False
+    if phase == 'firstboot' and Path(__file__).with_name('boot_wifi.py').is_file():
+        from boot_wifi import verify_hotspot
+        verify_hotspot(state['instance_id'])
+        hotspot_verified = True
     subprocess.run(['systemctl', 'stop', 'kanlo-server.service'], check=True)
     checked = subprocess.run(['runuser', '-u', 'kanlo', '--', 'env', 'KANLO_DATA_DIR=/var/lib/kanlo', '/usr/local/lib/kanlo/kanlo-server', '--check'], check=True, capture_output=True, text=True)
     assert checked.stdout.strip() == 'ok'
-    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'kernel_machine': os.uname().machine, 'kernel_release': os.uname().release, 'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(), 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True, 'independent_service_restarts': True, 'live_display_verified': True, 'update_rollback_verified': phase == 'reboot'}), flush=True)
+    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'kernel_machine': os.uname().machine, 'kernel_release': os.uname().release, 'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(), 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True, 'independent_service_restarts': True, 'live_display_verified': True, 'update_rollback_verified': phase == 'reboot', 'wifi_hotspot_verified': hotspot_verified}), flush=True)
 
 
 try:
