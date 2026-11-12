@@ -555,7 +555,7 @@ dependencies = [
 
 [[package]]
 name = "kanlo-api"
-version = "0.2.0-dev.6"
+version = "0.2.0-dev.7"
 dependencies = [
  "async-stream",
  "axum",
@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "kanlo-core"
-version = "0.2.0-dev.6"
+version = "0.2.0-dev.7"
 dependencies = [
  "chrono",
  "chrono-tz",
@@ -587,7 +587,7 @@ dependencies = [
 
 [[package]]
 name = "kanlo-db"
-version = "0.2.0-dev.6"
+version = "0.2.0-dev.7"
 dependencies = [
  "argon2",
  "chrono",

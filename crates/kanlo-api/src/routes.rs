@@ -20,6 +20,7 @@ pub fn routes() -> Router<Database> {
                 .layer(DefaultBodyLimit::max(16 * 1024)),
         )
         .route("/api/v1/overview", get(overview))
+        .route("/api/v1/system/update", get(update_status))
         .route("/api/v1/integrations/verify", get(verify_integration))
         .route("/api/v1/boards/{id}/snapshot", get(snapshot))
         .route("/api/v1/commands", post(command))
@@ -57,6 +58,22 @@ pub fn routes() -> Router<Database> {
         .route("/api/v1/security/keys/{id}/revoke", post(revoke_key))
         .route("/api/v1/security/sessions/revoke", post(revoke_sessions))
 }
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct UpdateStatus {
+    version: &'static str,
+    manual_updater_installed: bool,
+}
+
+async fn update_status() -> Json<UpdateStatus> {
+    Json(UpdateStatus {
+        version: env!("CARGO_PKG_VERSION"),
+        manual_updater_installed: cfg!(target_os = "linux")
+            && tokio::fs::try_exists("/usr/lib/kanlo/update.py")
+                .await
+                .unwrap_or(false),
+    })
+}
+
 async fn bootstrap(State(db): State<Database>) -> Result<Json<Value>, ApiError> {
     Ok(Json(database(db,|db|{let state=db.workspace()?;let (instance,epoch)=db.identity()?;Ok(json!({"boards":state.boards,"types":state.types,"labels":state.labels,"settings":state.settings,"board_options":state.board_options,"views":state.views,"revision":db.revision()?,"event_cursor":db.event_cursor()?,"instance_id":instance,"epoch":epoch,"passcode_configured":db.has_passcode()?}))}).await?))
 }

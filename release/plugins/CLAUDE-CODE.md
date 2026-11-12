@@ -30,3 +30,10 @@ mit npm. Das ZIP enthält den Plugin-Quellcode und die Abhängigkeitsliste.
 6. Wenn das Plugin Tickets anlegen, bearbeiten, kommentieren oder verschieben soll, setze `KANLO_ENABLE_WRITES` in
    derselben Umgebung auf `1` und starte Claude Code neu. Ohne diese
    Einstellung bietet das Plugin nur Lesezugriff an.
+
+Der MCP-Adapter liest beim Start die verfügbaren Kanlo-Operationen aus
+OpenAPI. Verwende einen laufenden Server ab `0.2.0-dev.6` mit
+`/api/v1/openapi.json`. Bei gleichen Titeln liefert die Titelsuche die
+passenden Kennungen für die Auswahl. Mit aktiviertem Schreibzugriff zeigt
+`kanlo_preview_undo` die geplante Rückgängig-Aktion. Erst nach deiner
+ausdrücklichen Bestätigung kann `kanlo_confirm_undo` sie ausführen.

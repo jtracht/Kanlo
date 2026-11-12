@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { registerRecoveryTools } from "./recovery.mjs";
 
 const origin = URL.parse(process.env.KANLO_URL ?? "http://127.0.0.1:8080");
 if (!origin) throw new Error("KANLO_URL ist ungÃ¼ltig.");
@@ -53,6 +54,30 @@ async function mutate(command) {
 }
 
 const server = new McpServer({ name: "kanlo", version });
+const contract = await request("openapi.json");
+const operations = new Set(Object.values(contract.paths)
+  .flatMap((methods) => Object.values(methods).map(({ operationId }) => operationId)));
+const toolOperations = {
+  kanlo_list_boards: "listBoards",
+  kanlo_list_columns: "listColumns",
+  kanlo_list_tickets: "searchTickets",
+  kanlo_resolve_ticket_title: "searchTickets",
+  kanlo_get_ticket: "getTicket",
+  kanlo_list_comments: "listComments",
+  kanlo_get_display: "getDisplay",
+  kanlo_select_display: "controlDisplay",
+  kanlo_show_on_display: "controlDisplay",
+  kanlo_close_display_overlay: "controlDisplay",
+  kanlo_highlight_on_display: "controlDisplay",
+  kanlo_scroll_display: "controlDisplay",
+  kanlo_create_ticket: "executeCommand",
+  kanlo_update_ticket: "executeCommand",
+  kanlo_add_comment: "executeCommand",
+  kanlo_move_ticket: "executeCommand",
+  kanlo_list_undo: "getUndoHistory",
+  kanlo_preview_undo: "previewUndo",
+  kanlo_confirm_undo: "confirmRecovery",
+};
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const paging = {
   offset: z.number().int().min(0).default(0),
@@ -68,6 +93,7 @@ function page(items, { offset, limit }, project) {
 }
 
 function tool(name, description, inputSchema, execute, { readOnlyHint = true, destructiveHint = false } = {}) {
+  if (!operations.has(toolOperations[name])) return;
   server.registerTool(name, {
     description,
     inputSchema,
@@ -98,6 +124,27 @@ tool("kanlo_list_tickets", "Kanlo-Tickets durchsuchen. Ohne Board-ID wird boardÃ
   status: z.enum(["active", "open", "done", "blocked", "backlog", "overdue", "archive", "trash", "all"]).optional(),
   ...paging,
 }, async (input) => request(`ticket-search?${new URLSearchParams(input)}`));
+
+tool("kanlo_resolve_ticket_title", "Sucht einen exakten Titel. Bei mehreren Treffern erst den Nutzer nach Board oder Ticketkennung fragen.", {
+  title: z.string().trim().min(1).max(200),
+  board_id: id.optional(),
+}, async ({ title, board_id }) => {
+  const items = [];
+  const query = new URLSearchParams({ query: title, status: "active", limit: "25" });
+  if (board_id) query.set("board_id", board_id);
+  const normalized = title.normalize("NFC").toLowerCase();
+  let offset = 0;
+  for (let batch = 0; batch < 4; batch += 1) {
+    query.set("offset", String(offset));
+    const page = await request(`ticket-search?${query}`);
+    items.push(...page.items.filter((item) => item.title.normalize("NFC").toLowerCase() === normalized));
+    if (page.next_offset === null) {
+      return { resolution: items.length === 1 ? "unique" : items.length ? "ambiguous" : "not_found", items };
+    }
+    offset = page.next_offset;
+  }
+  return { resolution: "incomplete", items };
+});
 
 tool("kanlo_get_ticket", "Ein Ticket per interner ID oder sichtbarer Ticketkennung abrufen.", {
   ticket_id: id,
@@ -197,4 +244,5 @@ if (writesEnabled) {
   }, { readOnlyHint: false, destructiveHint: true });
 }
 
+registerRecoveryTools(tool, request, id, clientId, writesEnabled);
 await server.connect(new StdioServerTransport());

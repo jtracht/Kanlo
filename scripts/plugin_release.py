@@ -11,6 +11,7 @@ from release_package import ROOT, file_sha256, git
 
 COMMON = {
     'server.mjs': 'plugins/kanlo/server.mjs',
+    'recovery.mjs': 'plugins/kanlo/recovery.mjs',
     'package.json': 'plugins/kanlo/package.json',
     'package-lock.json': 'plugins/kanlo/package-lock.json',
     'LICENSE': 'LICENSE',

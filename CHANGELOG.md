@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0-dev.7
+
+- Local setup offers a QR code and a temporary WPA2 hotspot.
+- The explicit Linux updater validates a package and backs up the executable and database before migration.
+- Settings show the installed version and manual updater availability.
+
 ## 0.2.0-dev.6 (lokale Entwicklung)
 
 - TV-Anzeige mit Ansichtswechsel, Rotation, Ticket-, Backlog- und

@@ -57,3 +57,12 @@ test("integration setup verifies a bearer key and exports a credential-free Acti
     await request.post(`${origin}/api/v1/security/keys/${id}/revoke`, { headers: { Origin: origin }, data: {} });
   }
 });
+
+test("manual update settings show the installed server version on request", async ({ page, request }) => {
+  const health = await (await request.get(`${origin}/api/v1/health`)).json();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Einstellungen", exact: true }).click();
+  await page.getByText("Manuelles Server-Update", { exact: true }).click();
+  await page.getByRole("button", { name: "Installierten Stand anzeigen" }).click();
+  await expect(page.getByText(`Installierte Version ${health.version}`, { exact: true })).toBeVisible();
+});

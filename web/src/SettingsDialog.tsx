@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { IntegrationSetup } from "./IntegrationSetup";
+import { UpdateStatus } from "./UpdateStatus";
 import type {
   BoardOptions,
   Bootstrap,
@@ -881,6 +882,7 @@ export function SettingsDialog({
             </button>
           </div>
           <IntegrationSetup />
+          <UpdateStatus />
           {secret && (
             <div class="secret">
               <strong>

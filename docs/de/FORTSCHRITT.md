@@ -1,7 +1,7 @@
 # Entwicklungsstand
 
-Der lokale Stand 0.2.0-dev.6 umfasst **60 von 70 Originalaufgaben
-(85,7 %)**. Er baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md)
+Der lokale Stand 0.2.0-dev.7 umfasst **61 von 70 Originalaufgaben
+(87,1 %)**. Er baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md)
 auf. Das Ziel von mindestens 85 % liegt bei 60 Aufgaben.
 
 | Zusätzlich abgenommen | Lokaler Nachweis |
@@ -23,5 +23,5 @@ auf. Das Ziel von mindestens 85 % liegt bei 60 Aufgaben.
 
 Die [offenen Originalabnahmen](../planning/OFFENE-ABNAHME.md) umfassen
 weiterhin den physischen Raspberry-Pi-Start samt HDMI-, Composite- und WLAN-Prüfung,
-vollständige native Markdown- und Bilddarstellung, den Update-Rollback und die
+vollständige native Markdown- und Bilddarstellung, und die
 ChatGPT-Abnahme im tatsächlichen Workspace.

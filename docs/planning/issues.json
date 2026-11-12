@@ -1146,11 +1146,11 @@
     "title": "MCP-Adapter und GPT-Actions-Schema",
     "milestone": "M8",
     "component": "kanlo-api/integrations",
-    "status": "planned",
+    "status": "partial",
     "depends_on_milestone": "M7",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. MCP-Toolliste aus OpenAPI ableiten.\n  2. GPT-Actions-Schema und Tooloperationen erstellen.\n  3. Ambiguität, Undo, Displaysteuerung und Listenführung testen.\n- **Akzeptanz / Definition of Done:** Selbst konfigurierbare End-to-End-ChatGPT-Steuerung bereit.",
-    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "validation": "MCP-Toolliste aus OpenAPI-Funktionen abgeleitet. Lokaler Test deckt Listen, mehrdeutige Titel, Anzeige und zweistufiges Undo ab. ChatGPT-Workspace-Abnahme offen.",
     "remote_issue": {
       "number": 57,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/57"
@@ -1212,11 +1212,11 @@
     "title": "Manueller Updateprozess mit Backup und Rollback",
     "milestone": "M9",
     "component": "packaging/releases",
-    "status": "partial",
+    "status": "done",
     "depends_on_milestone": "M8",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M9 – Releasepakete und OS-Image\n- **Umsetzung:**\n  1. Update-CLI/Web/API-Aktionen integrieren.\n  2. Backup vor Migration und Recovery automatisieren.\n  3. Keine automatische Updateprüfung implementieren.\n- **Akzeptanz / Definition of Done:** Update nur auf explizite Aktion und mit getesteter Recovery.",
-    "validation": "Expliziter Linux-Updater mit Paketprüfung, SQLite-Vorabmigration, privatem Snapshot und getestetem Rollback. Abnahme mit systemd auf einem Gerät und Web-/API-Einbindung offen.",
+    "validation": "Update per explizitem Administratorbefehl. Paket- und Backup-Prüfung, simulierte Schema-Migration mit Rücksetzen sowie echter systemd-Update-/Rollback-Test in QEMU. Abrufbarer Versionsstatus in Web und API.",
     "remote_issue": {
       "number": 61,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/61"

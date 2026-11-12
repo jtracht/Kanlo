@@ -52,7 +52,7 @@ test("MCP tools manage tickets through an isolated Kanlo instance", { timeout: 3
 
   const reader = await connect(false);
   const { tools } = await reader.listTools();
-  assert.equal(tools.length, 6);
+  assert.equal(tools.length, 8);
   assert.ok(tools.every((tool) => tool.annotations.readOnlyHint));
   const boards = await reader.callTool({ name: "kanlo_list_boards" });
   assert.equal(boards.isError, undefined, JSON.stringify(boards));
@@ -167,4 +167,25 @@ test("MCP tools manage tickets through an isolated Kanlo instance", { timeout: 3
   assert.deepEqual(new Set([...firstPage.structuredContent.items, ...secondPage.structuredContent.items].map(item => item.id)),
     new Set([ticket.id, next.structuredContent.id]));
   assert.equal(secondPage.structuredContent.next_offset, null);
+
+  const history = await reader.callTool({ name: "kanlo_list_undo", arguments: { board_id } });
+  assert.ok(history.structuredContent.items.length > 0);
+  const preview = await writer.callTool({
+    name: "kanlo_preview_undo",
+    arguments: { board_id, revision: history.structuredContent.revision },
+  });
+  assert.equal(preview.isError, undefined, JSON.stringify(preview));
+  assert.ok(preview.structuredContent.summary);
+  assert.equal(preview.structuredContent.token, undefined);
+  const request = { name: "kanlo_confirm_undo", arguments: { preview_id: preview.structuredContent.preview_id } };
+  assert.equal((await writer.callTool(request)).structuredContent.applied, true);
+  assert.equal((await writer.callTool(request)).structuredContent.applied, false);
+  const gone = await reader.callTool({ name: "kanlo_get_ticket", arguments: { ticket_id: next.structuredContent.id } });
+  assert.equal(gone.isError, true);
+  const duplicate = await writer.callTool({ name: "kanlo_create_ticket", arguments: { board_id, column_id, title } });
+  assert.equal(duplicate.isError, undefined, JSON.stringify(duplicate));
+  const resolved = await reader.callTool({ name: "kanlo_resolve_ticket_title", arguments: { title } });
+  assert.equal(resolved.structuredContent.resolution, "ambiguous");
+  assert.deepEqual(new Set(resolved.structuredContent.items.map(({ id }) => id)),
+    new Set([ticket.id, duplicate.structuredContent.id]));
 });

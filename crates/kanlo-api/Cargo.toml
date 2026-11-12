@@ -12,7 +12,7 @@ path = "src/main.rs"
 kanlo-core = { path = "../kanlo-core" }
 kanlo-db = { path = "../kanlo-db" }
 axum = "0.8"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
 serde_json.workspace = true
 serde.workspace = true
 schemars.workspace = true

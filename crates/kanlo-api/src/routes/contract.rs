@@ -405,6 +405,7 @@ fn document() -> Value {
         }};
     }
     read!("/api/v1/openapi.json", "getOpenApi", Value);
+    read!("/api/v1/system/update", "getUpdateStatus", UpdateStatus);
     read!("/api/v1/health", "getHealth", responses::Health);
     read!("/api/v1/bootstrap", "bootstrap", responses::Bootstrap);
     read!("/api/v1/display", "getDisplay", tv::DisplayState);

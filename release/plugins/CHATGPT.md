@@ -46,3 +46,10 @@ Der Tunnel-Client läuft auf einem Rechner, der Kanlo erreichen kann.
 7. Gib das Plugin nur Personen frei, die auf die angebundene Kanlo-Instanz
    zugreifen dürfen. Die freigegebenen Personen nutzen dieselbe konfigurierte
    Verbindung.
+
+Der MCP-Adapter liest beim Start die verfügbaren Kanlo-Operationen aus
+OpenAPI. Verwende einen laufenden Server ab `0.2.0-dev.6` mit
+`/api/v1/openapi.json`. Bei gleichen Titeln liefert die Titelsuche die
+passenden Kennungen für die Auswahl. Mit aktiviertem Schreibzugriff zeigt
+`kanlo_preview_undo` die geplante Rückgängig-Aktion. Erst nach deiner
+ausdrücklichen Bestätigung kann `kanlo_confirm_undo` sie ausführen.
