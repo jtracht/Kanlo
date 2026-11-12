@@ -1,7 +1,7 @@
 # Kanlo
 
 Lokales Kanban für ein Debian-/Raspberry-Pi-Gerät mit einer Weboberfläche und
-nativer Geräteanzeige. **Lokale Entwicklungsversion 0.2.0-dev.7.**
+nativer Geräteanzeige. **Lokale Entwicklungsversion 0.2.0-dev.8.**
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Der belegte

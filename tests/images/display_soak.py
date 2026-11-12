@@ -24,21 +24,30 @@ def child(path, seconds, resume):
               'details': {'archived': False, 'trashed': False, 'rank': 1}}
     workspace = {'boards': [{'id': 'board', 'name': 'Soak test board'}],
                  'columns': [{'id': 'todo', 'name': 'Open', 'position': 0}],
-                 'tickets': [ticket]}
+                 'tickets': [ticket, {**ticket, 'id': 'companion', 'public_id': 'KAN-2'}]}
     overlay = {'kind': 'ticket', 'ticket_id': 'ticket'}
 
     def feed(updates, stop, display_updates):
         display.offer(updates, ([workspace], True))
         state = {'preferences': {'view': 'board', 'rotation': []},
                  'revision': 8 if resume else 7, 'instance': ['fixture', 'epoch'],
-                 'scroll_offset': 3 if resume else 0, 'animation': 'off',
-                 'overlays': [overlay]}
-        display.offer(display_updates, state)
+                 'scroll_offset': 5, 'animation': 'off', 'overlays': [overlay],
+                 'companion_ticket': {'ticket_id': 'companion', 'expires_at': None}}
         if not resume:
+            display.offer(display_updates, {**state, 'revision': 5, 'scroll_offset': 0,
+                          'overlays': [{'kind': 'ticket', 'ticket_id': 'companion'}],
+                          'companion_ticket': None})
+            stop.wait(0.6)
+            display.offer(display_updates, {**state, 'revision': 6, 'scroll_offset': 2,
+                          'overlays': [{'kind': 'ticket', 'ticket_id': 'companion'}],
+                          'companion_ticket': None})
+            stop.wait(0.6)
+            display.offer(display_updates, {**state, 'scroll_offset': 2})
             stop.wait(1)
-            display.offer(display_updates, {**state, 'revision': 8, 'scroll_offset': 3})
+            display.offer(display_updates, {**state, 'revision': 8})
             stop.wait(seconds)
         else:
+            display.offer(display_updates, state)
             stop.wait(2)
             saved = json.loads(path.read_text())
             (path.parent / 'restored.json').write_text(json.dumps(saved))
@@ -84,7 +93,8 @@ def parent(seconds):
         command = ['cage', '--', sys.executable, __file__, '--state', str(path)]
         first = subprocess.Popen(command + ['--seconds', '60'], env=env, start_new_session=True)
         try:
-            wait_json(path, lambda value: value['overlay_page'] == 3, 15)
+            wait_json(path, lambda value: value['overlay_page'] == 3
+                      and value.get('companion_page') == ['companion', 2], 15)
         finally:
             if first.poll() is None:
                 os.killpg(first.pid, signal.SIGKILL)
@@ -92,7 +102,8 @@ def parent(seconds):
         second = subprocess.Popen(command + ['--resume', '--seconds', str(seconds)],
                                   env=env, start_new_session=True)
         try:
-            wait_json(Path(directory) / 'restored.json', lambda value: value['overlay_page'] == 3, 15)
+            wait_json(Path(directory) / 'restored.json', lambda value: value['overlay_page'] == 3
+                      and value.get('companion_page') == ['companion', 2], 15)
             assert second.wait(timeout=seconds + 20) == 0
         finally:
             if second.poll() is None:

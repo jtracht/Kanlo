@@ -42,7 +42,7 @@ Auf einem dedizierten Linux-System mit freier lokaler Konsole kann der
 Serverinstaller auch die Anzeige installieren.
 
 ```sh
-sudo apt install cage seatd python3-pygame fonts-dejavu-core
+sudo apt install cage seatd python3-pygame python3-markdown-it python3-pil fonts-dejavu-core
 sudo ./install.sh --kiosk
 ```
 

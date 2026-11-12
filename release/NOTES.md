@@ -1,4 +1,4 @@
-# Kanlo 0.2.0-dev.7
+# Kanlo 0.2.0-dev.8
 
 Lokaler Entwicklungsstand **87,1 % (61 von 70 Originalaufgaben)**.
 
@@ -12,6 +12,9 @@ Die Weboberfläche und beide MCP-Plugins steuern die native TV-Anzeige.
 Sie bietet Board, Gesamtübersicht, Statistik, Rotation, Hervorhebungen
 und Einblendungen für Tickets, Backlog und Untertickets.
 Die Weboberfläche enthält einen Einrichtungsdialog für MCP und GPT Actions.
+Ticketfenster nutzen natives Markdown und eigene Zeitlimits. Bei ausreichender
+Auflösung stehen zwei Fenster nebeneinander. Externe Bilder sind lokal
+freischaltbar.
 
 Die native Anzeige verarbeitet Live-Änderungen und gleicht ihre Boards
 nach einem Serverneustart erneut ab. Die Serverpakete enthalten
@@ -27,7 +30,7 @@ Anzeige diagnostizieren. Composite hängt vom Pi-Modell und der Firmware-
 Konfiguration ab. Die physische Anschlussprüfung steht noch aus.
 
 Die Kanlo-API liefert Ticketkommentare seitenweise. Die separat erhältlichen
-Kanlo-Plugins 0.5.0 für Claude Code und ChatGPT können Kommentare lesen und
+Kanlo-Plugins 0.5.1 für Claude Code und ChatGPT können Kommentare lesen und
 Tickets in Zielspalten oder ins Backlog verschieben. Sie bieten außerdem
 eine Vorschau mit separater Bestätigung für Rückgängig-Aktionen.
 
@@ -63,14 +66,12 @@ Read `IMAGES-DE.md` / `IMAGES-EN.md` for compatible hardware and flashing/setup.
 
 ## Grenzen / Known limits
 
-Entwicklungsversion. Vollständige native Markdown- und Bilddarstellung,
-die ChatGPT-Abnahme im Workspace
+Entwicklungsversion. Die ChatGPT-Abnahme im Workspace
 sowie physische Raspberry-Pi-Tests stehen aus. Die QEMU-Prüfung erfasst den
 emulierten Systemstart. Tests für HDMI, Composite und WLAN am Gerät stehen aus.
 Die öffentliche Verteilung erfordert die ausstehende Lizenz- und Markenfreigabe.
 
-Development prerelease. Full native Markdown and image rendering,
-ChatGPT workspace acceptance and physical Raspberry Pi testing
+Development prerelease. ChatGPT workspace acceptance and physical Raspberry Pi testing
 are pending. QEMU verifies the emulated boot. On-device HDMI, composite and
 Wi-Fi testing remain pending. Public distribution requires licensing and
 trademark clearance.

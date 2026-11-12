@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-dev.8
+
+- Native TV panels render Markdown tables, code blocks, comments and opt-in external images.
+- The TV can show two independent tickets with individual durations and restores both scroll positions after a restart.
+
 ## 0.2.0-dev.7
 
 - Local setup offers a QR code and a temporary WPA2 hotspot.

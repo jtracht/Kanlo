@@ -39,7 +39,7 @@ if [ "$mode" = --uninstall ]; then
     fi
     if [ -f /etc/systemd/system/kanlo-tv.service ]; then
         systemctl disable --now kanlo-tv.service
-        rm -f /etc/systemd/system/kanlo-tv.service /usr/lib/kanlo/display.py /usr/lib/kanlo/appliance.py
+        rm -f /etc/systemd/system/kanlo-tv.service /usr/lib/kanlo/display.py /usr/lib/kanlo/tv_markdown.py /usr/lib/kanlo/appliance.py
     fi
     if [ -f /etc/systemd/system/kanlo-server.service ]; then
         systemctl disable --now kanlo-server.service
@@ -81,6 +81,7 @@ if [ "$mode" = --kiosk ]; then
     id kanlo-display >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin kanlo-display
     usermod -a -G video,render kanlo-display
     install -Dm644 kiosk/display.py /usr/lib/kanlo/display.py
+    install -Dm644 kiosk/tv_markdown.py /usr/lib/kanlo/tv_markdown.py
     install -Dm644 kiosk/appliance.py /usr/lib/kanlo/appliance.py
     install -Dm644 kiosk/kanlo-tv.service /etc/systemd/system/kanlo-tv.service
     if [ ! -e /etc/kanlo/display.json ]; then

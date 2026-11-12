@@ -1,7 +1,7 @@
 use crate::{Error, Result, Ticket, Workspace};
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(
     Clone,
@@ -67,11 +67,19 @@ pub enum Overlay {
     Children { ticket_id: String },
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, schemars::JsonSchema)]
+pub struct CompanionTicket {
+    pub ticket_id: String,
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize, schemars::JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct DisplayState {
     pub preferences: Preferences,
     pub overlays: Vec<Overlay>,
+    pub companion_ticket: Option<CompanionTicket>,
+    pub ticket_minutes: BTreeMap<String, u16>,
     pub expires_at: Option<DateTime<Utc>>,
     pub revision: u64,
     pub highlights: Vec<String>,
@@ -92,6 +100,7 @@ pub enum Action {
     },
     ShowTicket {
         ticket_id: String,
+        minutes: Option<u16>,
     },
     ShowBacklog {
         board_id: String,
@@ -130,6 +139,38 @@ fn require_board(workspace: &Workspace, id: &str) -> Result<()> {
 }
 
 impl DisplayState {
+    fn deadline(&self, overlay: &Overlay, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
+        let minutes = match overlay {
+            Overlay::Ticket { ticket_id } => self.ticket_minutes.get(ticket_id).copied(),
+            _ => None,
+        }
+        .unwrap_or(self.preferences.overlay_minutes);
+        (minutes > 0).then(|| now + Duration::minutes(minutes.into()))
+    }
+
+    fn refresh_companion_deadline(&mut self, now: DateTime<Utc>) {
+        let minutes = self.companion_ticket.as_ref().map(|ticket| {
+            self.ticket_minutes
+                .get(&ticket.ticket_id)
+                .copied()
+                .unwrap_or(self.preferences.overlay_minutes)
+        });
+        if let (Some(ticket), Some(minutes)) = (&mut self.companion_ticket, minutes) {
+            ticket.expires_at = (minutes > 0).then(|| now + Duration::minutes(minutes.into()));
+        }
+    }
+
+    fn prune_ticket_minutes(&mut self) {
+        self.ticket_minutes.retain(|id, _| {
+            self.companion_ticket
+                .as_ref()
+                .is_some_and(|ticket| &ticket.ticket_id == id)
+                || self.overlays.iter().any(
+                    |overlay| matches!(overlay, Overlay::Ticket { ticket_id } if ticket_id == id),
+                )
+        });
+    }
+
     pub fn reconcile(&mut self, workspace: &Workspace, now: DateTime<Utc>) {
         self.highlights.retain(|id| active(workspace, id).is_ok());
         if self
@@ -155,10 +196,30 @@ impl DisplayState {
                 .as_deref()
                 .is_none_or(|id| require_board(workspace, id).is_ok())
         });
+        if self.companion_ticket.as_ref().is_some_and(|ticket| {
+            active(workspace, &ticket.ticket_id).is_err()
+                || (self.overlays.len() == 1 && ticket.expires_at.is_some_and(|end| end <= now))
+        }) {
+            self.companion_ticket = None;
+        }
         while let Some(expires) = self.expires_at.filter(|expires| *expires <= now) {
             self.overlays.pop();
-            self.expires_at = (!self.overlays.is_empty() && self.preferences.overlay_minutes > 0)
-                .then(|| expires + Duration::minutes(self.preferences.overlay_minutes.into()));
+            if self.overlays.is_empty()
+                && let Some(ticket) = self.companion_ticket.take()
+            {
+                self.overlays.push(Overlay::Ticket {
+                    ticket_id: ticket.ticket_id,
+                });
+                self.expires_at = ticket.expires_at;
+                continue;
+            }
+            self.expires_at = self
+                .overlays
+                .last()
+                .and_then(|overlay| self.deadline(overlay, expires));
+            if self.overlays.len() == 1 {
+                self.refresh_companion_deadline(expires);
+            }
         }
         if let Some(first_missing) = self.overlays.iter().position(|overlay| match overlay {
             Overlay::Ticket { ticket_id } | Overlay::Children { ticket_id } => {
@@ -168,9 +229,19 @@ impl DisplayState {
         }) {
             self.overlays.truncate(first_missing);
         }
+        if self.overlays.is_empty()
+            && let Some(ticket) = self.companion_ticket.take()
+        {
+            self.overlays.push(Overlay::Ticket {
+                ticket_id: ticket.ticket_id,
+            });
+            self.expires_at = ticket.expires_at;
+        }
         if self.overlays.is_empty() {
             self.expires_at = None;
+            self.companion_ticket = None;
         }
+        self.prune_ticket_minutes();
     }
 
     pub fn apply(
@@ -180,6 +251,8 @@ impl DisplayState {
         now: DateTime<Utc>,
     ) -> Result<()> {
         self.reconcile(workspace, now);
+        let was_nested = self.overlays.len() > 1;
+        let mut reset_timer = true;
         match action {
             Action::Configure {
                 preferences,
@@ -221,8 +294,10 @@ impl DisplayState {
                     || preferences.board_id != self.preferences.board_id
                 {
                     self.overlays.clear();
+                    self.companion_ticket = None;
                 }
                 self.preferences = preferences;
+                self.refresh_companion_deadline(now);
             }
             Action::Select { view, board_id } => {
                 if let Some(id) = &board_id {
@@ -231,6 +306,7 @@ impl DisplayState {
                 self.preferences.view = view;
                 self.preferences.board_id = board_id;
                 self.overlays.clear();
+                self.companion_ticket = None;
                 self.highlights.clear();
                 self.highlights_expire_at = None;
             }
@@ -261,10 +337,16 @@ impl DisplayState {
                     self.overlays = vec![Overlay::Ticket {
                         ticket_id: ticket_id.clone(),
                     }];
+                    self.companion_ticket = None;
                 }
                 self.overlays.push(Overlay::Children { ticket_id });
             }
-            Action::ShowTicket { ticket_id } => {
+            Action::ShowTicket { ticket_id, minutes } => {
+                if minutes.is_some_and(|value| value > 300) {
+                    return Err(Error::Validation(
+                        "Ticket overlay duration must be 0–300 minutes".into(),
+                    ));
+                }
                 let ticket = active(workspace, &ticket_id)?;
                 match self.overlays.last() {
                     Some(Overlay::Backlog { board_id })
@@ -274,20 +356,54 @@ impl DisplayState {
                     {
                         self.overlays.pop();
                     }
+                    Some(Overlay::Ticket {
+                        ticket_id: previous,
+                    }) if self.overlays.len() == 1
+                        && active(workspace, previous)?.details.parent_id.is_none()
+                        && ticket.details.parent_id.is_none() =>
+                    {
+                        if previous != &ticket.id {
+                            self.companion_ticket = Some(CompanionTicket {
+                                ticket_id: previous.clone(),
+                                expires_at: self.expires_at,
+                            });
+                        }
+                        self.preferences.view = View::Board;
+                        self.preferences.board_id = Some(ticket.board_id.clone());
+                        self.overlays.clear();
+                    }
                     _ => {
                         self.preferences.view = View::Board;
                         self.preferences.board_id = Some(ticket.board_id.clone());
                         self.overlays.clear();
+                        self.companion_ticket = None;
                     }
                 }
                 self.overlays.push(Overlay::Ticket {
                     ticket_id: ticket.id.clone(),
                 });
+                if let Some(minutes) = minutes {
+                    self.ticket_minutes.insert(ticket.id.clone(), minutes);
+                } else {
+                    self.ticket_minutes.remove(&ticket.id);
+                }
             }
             Action::Back => {
                 self.overlays.pop();
+                if self.overlays.is_empty()
+                    && let Some(ticket) = self.companion_ticket.take()
+                {
+                    self.overlays.push(Overlay::Ticket {
+                        ticket_id: ticket.ticket_id,
+                    });
+                    self.expires_at = ticket.expires_at;
+                    reset_timer = false;
+                }
             }
-            Action::Close => self.overlays.clear(),
+            Action::Close => {
+                self.overlays.clear();
+                self.companion_ticket = None;
+            }
             Action::Highlight {
                 ticket_ids,
                 seconds,
@@ -316,6 +432,9 @@ impl DisplayState {
                     self.preferences.board_id = Some(board_id);
                     self.preferences.view = View::Board;
                     self.overlays.clear();
+                    self.companion_ticket = None;
+                } else {
+                    reset_timer = false;
                 }
                 self.highlights = ids.into_iter().collect();
                 self.highlights_expire_at = (!self.highlights.is_empty() && seconds > 0)
@@ -331,15 +450,25 @@ impl DisplayState {
                     .scroll_offset
                     .checked_add(i64::from(delta))
                     .ok_or(Error::Storage)?;
+                reset_timer = false;
             }
             Action::Resume { revision } => {
                 if revision != self.revision {
                     return Err(Error::Conflict("Display context changed".into()));
                 }
+                self.refresh_companion_deadline(now);
             }
         }
-        self.expires_at = (!self.overlays.is_empty() && self.preferences.overlay_minutes > 0)
-            .then(|| now + Duration::minutes(self.preferences.overlay_minutes.into()));
+        if reset_timer {
+            self.expires_at = self
+                .overlays
+                .last()
+                .and_then(|overlay| self.deadline(overlay, now));
+        }
+        if was_nested && self.overlays.len() == 1 {
+            self.refresh_companion_deadline(now);
+        }
+        self.prune_ticket_minutes();
         self.revision = self.revision.checked_add(1).ok_or(Error::Storage)?;
         Ok(())
     }
@@ -349,6 +478,65 @@ impl DisplayState {
 mod tests {
     use super::*;
     use crate::Command;
+
+    #[test]
+    fn two_independent_tickets_expire_separately_and_third_replaces_oldest() {
+        let now = DateTime::parse_from_rfc3339("2026-11-01T10:00:00Z")
+            .unwrap()
+            .to_utc();
+        let mut workspace = Workspace::initial();
+        let board_id = workspace.boards[0].id.clone();
+        let tickets: Vec<_> = ["First", "Second", "Third"]
+            .into_iter()
+            .map(|title| {
+                workspace
+                    .apply(Command::CreateTicket {
+                        board_id: board_id.clone(),
+                        title: title.into(),
+                        description: String::new(),
+                        importance: 0,
+                        column_id: None,
+                        parent_id: None,
+                        type_id: None,
+                    })
+                    .unwrap()
+                    .entity_id
+                    .unwrap()
+            })
+            .collect();
+        let mut state = DisplayState::default();
+        for (index, ticket_id) in tickets.iter().enumerate() {
+            state
+                .apply(
+                    Action::ShowTicket {
+                        ticket_id: ticket_id.clone(),
+                        minutes: (index == 2).then_some(9),
+                    },
+                    &workspace,
+                    now + Duration::minutes(index as i64),
+                )
+                .unwrap();
+        }
+        assert_eq!(
+            state.companion_ticket.as_ref().unwrap().ticket_id,
+            tickets[1]
+        );
+        assert_eq!(
+            state.companion_ticket.as_ref().unwrap().expires_at,
+            Some(now + Duration::minutes(6))
+        );
+        assert_eq!(state.expires_at, Some(now + Duration::minutes(11)));
+        state.reconcile(&workspace, now + Duration::minutes(6));
+        assert!(state.companion_ticket.is_none());
+        assert_eq!(
+            state.overlays,
+            vec![Overlay::Ticket {
+                ticket_id: tickets[2].clone()
+            }]
+        );
+        state.reconcile(&workspace, now + Duration::minutes(11));
+        assert!(state.overlays.is_empty());
+    }
 
     #[test]
     fn timed_child_overlay_returns_to_parent_unless_context_changes() {
@@ -389,6 +577,7 @@ mod tests {
             .apply(
                 Action::ShowTicket {
                     ticket_id: child.clone(),
+                    minutes: None,
                 },
                 &workspace,
                 now,
@@ -413,6 +602,7 @@ mod tests {
             .apply(
                 Action::ShowTicket {
                     ticket_id: independent.clone(),
+                    minutes: None,
                 },
                 &workspace,
                 now + Duration::minutes(11),

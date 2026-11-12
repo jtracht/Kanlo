@@ -16,6 +16,7 @@ import textwrap
 import urllib.parse
 import urllib.request
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from tv_markdown import Images, markdown_rows
 
 SETUP_AVAILABLE = Path('/etc/systemd/system/kanlo-setup.service')
 RUNTIME_VIEW = Path('/var/lib/kanlo-display/view.json')
@@ -212,7 +213,7 @@ def display_content(boards, preferences, overlay, mode):
                     if child['details'].get('parent_id') == ticket_id and not child['details']['trashed']
                     and not child['details']['archived']
                 ]
-            details = [(None, line) for line in ticket['description'].splitlines()]
+            details = [(None, ticket['description'])]
             comments = sorted((comment for comment in workspace.get('comments', [])
                                if comment['ticket_id'] == ticket_id), key=lambda comment: comment['created_at'])
             details.extend(('Kommentar', comment['markdown']) for comment in comments)
@@ -224,19 +225,38 @@ def display_content(boards, preferences, overlay, mode):
     return board['boards'][0]['name'], []
 
 
-def active_overlay(state, now):
+def local_overlays(state, now):
     overlays = state.get('overlays', [])
     if not overlays:
+        return None, None
+    default = state.get('preferences', {}).get('overlay_minutes', 5)
+    overrides = state.get('ticket_minutes', {})
+    expires = datetime.fromisoformat(state['expires_at']) if state.get('expires_at') else None
+    companion = state.get('companion_ticket')
+    side = {'kind': 'ticket', 'ticket_id': companion['ticket_id']} if companion else None
+    side_expires = datetime.fromisoformat(companion['expires_at']) if companion and companion['expires_at'] else None
+    for index in range(len(overlays) - 1, -1, -1):
+        overlay = overlays[index]
+        if expires is None or expires > now:
+            return overlay, side if index == 0 and (side_expires is None or side_expires > now) else None
+        if index > 0:
+            restored = overlays[index - 1]
+            minutes = overrides.get(restored.get('ticket_id'), default) if restored['kind'] == 'ticket' else default
+            if index == 1 and side:
+                side_minutes = overrides.get(side['ticket_id'], default)
+                side_expires = expires + timedelta(minutes=side_minutes) if side_minutes else None
+            expires = expires + timedelta(minutes=minutes) if minutes else None
+    return (side if side_expires is None or side_expires > now else None), None
+
+
+def active_overlay(state, now):
+    return local_overlays(state, now)[0]
+
+
+def visible_companion(state, active, now, width, height):
+    if not active or width < 1152 or height < 600:
         return None
-    if not state.get('expires_at'):
-        return overlays[-1]
-    expires = datetime.fromisoformat(state['expires_at'])
-    duration = timedelta(minutes=state['preferences']['overlay_minutes'])
-    for overlay in reversed(overlays):
-        if expires > now:
-            return overlay
-        expires += duration
-    return None
+    return local_overlays(state, now)[1]
 
 
 def read_runtime_view():
@@ -247,14 +267,14 @@ def read_runtime_view():
         return {}
 
 
-def write_runtime_view(state, mode, page, overlay, overlay_page, rotation_index):
+def write_runtime_view(state, mode, page, overlay, overlay_page, rotation_index, companion_page):
     from appliance import atomic
 
     if not RUNTIME_VIEW.parent.is_dir():
         return
     data = {'instance': state['instance'], 'revision': state['revision'], 'mode': mode,
             'page': page, 'overlay': overlay, 'overlay_page': overlay_page,
-            'rotation_index': rotation_index}
+            'rotation_index': rotation_index, 'companion_page': companion_page}
     try:
         atomic(RUNTIME_VIEW, json.dumps(data))
     except OSError as error:
@@ -410,6 +430,7 @@ def main(size=None):
         return width, height, scale, margin, card, columns, rows, *fonts
 
     width, height, scale, margin, card_height, per_screen, rows, font, title_font, small = layout()
+    images = Images(os.environ.get('KANLO_TV_EXTERNAL_IMAGES') == '1')
     updates = queue.Queue(maxsize=1)
     display_updates = queue.Queue(maxsize=1)
     stop = threading.Event()
@@ -419,6 +440,7 @@ def main(size=None):
     qr_matrix = []
     last_scroll = last_rotate
     state, preferences, mode, overlay = {}, {}, 'board', None
+    companion = None
     overlay_page, board_page_before_overlay = 0, 0
     overlay_pages = {}
     highlights = set()
@@ -442,6 +464,7 @@ def main(size=None):
         while not stop.is_set():
             # An event-driven, capped loop: repaint only on data/page/connection changes.
             event = pygame.event.wait(33 if transition else 250)
+            dirty |= images.ready()
             if screen.get_size() != (width, height):
                 width, height, scale, margin, card_height, per_screen, rows, font, title_font, small = layout()
                 dirty = True
@@ -481,6 +504,10 @@ def main(size=None):
                             rotation_index = saved['rotation_index']
                         if isinstance(saved.get('overlay'), dict) and isinstance(saved.get('overlay_page'), int):
                             overlay_pages[tuple(saved['overlay'].items())] = max(0, saved['overlay_page'])
+                        if isinstance(saved.get('companion_page'), list) and len(saved['companion_page']) == 2:
+                            saved_id, saved_page = saved['companion_page']
+                            if isinstance(saved_id, str) and isinstance(saved_page, int):
+                                overlay_pages[(('kind', 'ticket'), ('ticket_id', saved_id))] = max(0, saved_page)
                     scroll = new_state.get('scroll_offset', 0) - state.get('scroll_offset', 0)
                     if state and scroll:
                         if overlay:
@@ -496,6 +523,9 @@ def main(size=None):
             if minute != last_minute:
                 dirty, last_minute = True, minute
             next_overlay = active_overlay(state, now)
+            next_companion = visible_companion(state, next_overlay, now, width, height)
+            if next_companion != companion:
+                companion, dirty = next_companion, True
             next_highlights = set(state.get('highlights', []))
             if state.get('highlights_expire_at') and datetime.fromisoformat(state['highlights_expire_at']) <= now:
                 next_highlights.clear()
@@ -647,30 +677,76 @@ def main(size=None):
                                 pygame.draw.rect(screen, '#000000', (
                                     x + column * module, y + row * module, module, module))
             if overlay:
-                title, contents = display_content(boards, preferences, overlay, mode)
                 shade = pygame.Surface((width, footer.top), pygame.SRCALPHA)
                 shade.fill((0, 0, 0, 150))
                 screen.blit(shade, (0, 0))
                 panel = pygame.Rect(margin, margin * 2, width - 2 * margin, footer.top - margin * 3)
-                pygame.draw.rect(screen, '#22313d', panel, border_radius=8)
-                text(title, (panel.x + margin, panel.y + margin), title_font, max_width=panel.width - 2 * margin)
                 line_height = max(18, round(31 * scale))
-                max_width = panel.width - 2 * margin
-                wrapped = [line for label, content in contents for line in textwrap.wrap(
-                    f'{label} · {content}' if label else content, width=max(10, max_width // max(6, font.size('M')[0])),
-                ) or ['']]
-                visible_rows = max(1, (panel.height - 4 * margin) // line_height)
-                overlay_page = min(overlay_page, max(0, (len(wrapped) - 1) // visible_rows))
-                for row, line in enumerate(wrapped[overlay_page * visible_rows:(overlay_page + 1) * visible_rows]):
-                    text(line, (panel.x + margin, panel.y + 3 * margin + row * line_height), max_width=max_width)
+
+                def draw_panel(bounds, entry, selected_page):
+                    title, contents = display_content(boards, preferences, entry, mode)
+                    pygame.draw.rect(screen, '#22313d', bounds, border_radius=8)
+                    max_width = bounds.width - 2 * margin
+                    text(title, (bounds.x + margin, bounds.y + margin), title_font, max_width=max_width)
+                    visible_rows = max(1, (bounds.height - 4 * margin) // line_height)
+                    width_chars = max(10, max_width // max(6, font.size('M')[0]))
+                    pages, used = [[]], 0
+                    for label, content in contents:
+                        if entry['kind'] == 'ticket' and label in (None, 'Kommentar'):
+                            rows = list(markdown_rows(content))
+                            if label:
+                                rows.insert(0, ('heading', label, None))
+                        else:
+                            rows = [('text', f'{label} · {content}' if label else content, None)]
+                        for style, value, url in rows:
+                            if style == 'image' and not images.enabled:
+                                continue
+                            lines = [value] if style == 'image' else textwrap.wrap(
+                                value, width=width_chars, replace_whitespace=False,
+                                drop_whitespace=style != 'code') or ['']
+                            for line in lines:
+                                size = min(visible_rows, 5) if style == 'image' else 1
+                                if used + size > visible_rows:
+                                    pages.append([])
+                                    used = 0
+                                pages[-1].append((used, size, style, line, url))
+                                used += size
+                    selected_page = min(selected_page, len(pages) - 1)
+                    for row, size, style, line, url in pages[selected_page]:
+                        x, y = bounds.x + margin, bounds.y + 3 * margin + row * line_height
+                        image = images.get(url) if style == 'image' else None
+                        if image:
+                            pixels, resolution = image
+                            source = pygame.image.frombytes(pixels, resolution, 'RGB')
+                            factor = min(1, max_width / resolution[0], size * line_height / resolution[1])
+                            image_size = (max(1, round(resolution[0] * factor)), max(1, round(resolution[1] * factor)))
+                            screen.blit(pygame.transform.smoothscale(source, image_size), (x, y))
+                            continue
+                        color = '#9bc7e9' if style in ('table', 'heading') else '#e5e7eb'
+                        if style in ('code', 'table'):
+                            pygame.draw.rect(screen, '#17252f', (x, y, max_width, line_height - 1))
+                        text(line, (x, y), color=color, max_width=max_width)
+                    return selected_page
+
+                if companion:
+                    half = (panel.width - margin) // 2
+                    left = pygame.Rect(panel.x, panel.y, half, panel.height)
+                    draw_panel(left, companion, overlay_pages.get(tuple(companion.items()), 0))
+                    panel.left += half + margin
+                    panel.width = half
+                overlay_page = draw_panel(panel, overlay, overlay_page)
             if previous is not None:
                 transition = (previous, screen.copy(), time.monotonic(), duration)
                 screen.blit(previous, (0, 0))
             pygame.display.flip()
             if state and 'instance' in state:
-                current = state['revision'], mode, page, overlay, overlay_page, rotation_index
+                companion_page = None
+                if state.get('companion_ticket'):
+                    identifier = state['companion_ticket']['ticket_id']
+                    companion_page = [identifier, overlay_pages.get((('kind', 'ticket'), ('ticket_id', identifier)), 0)]
+                current = state['revision'], mode, page, overlay, overlay_page, rotation_index, companion_page
                 if current != last_saved:
-                    write_runtime_view(state, mode, page, overlay, overlay_page, rotation_index)
+                    write_runtime_view(state, mode, page, overlay, overlay_page, rotation_index, companion_page)
                     last_saved = current
             if os.environ.get('KANLO_DISPLAY_TEST') == '1' and boards:
                 pygame.image.save(screen, os.environ.get('KANLO_DISPLAY_SCREENSHOT', '/tmp/kanlo-display.png'))

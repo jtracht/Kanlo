@@ -166,7 +166,7 @@ if (writesEnabled) {
 
   tool("kanlo_show_on_display", "Auf Nutzerwunsch ein Ticket, Untertickets oder das Backlog auf dem TV zeigen.", {
     target: z.discriminatedUnion("kind", [
-      z.strictObject({ kind: z.literal("show_ticket"), ticket_id: id }),
+      z.strictObject({ kind: z.literal("show_ticket"), ticket_id: id, minutes: z.number().int().min(0).max(300).optional() }),
       z.strictObject({ kind: z.literal("show_children"), ticket_id: id }),
       z.strictObject({ kind: z.literal("show_backlog"), board_id: id }),
     ]),

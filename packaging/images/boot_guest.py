@@ -14,6 +14,7 @@ import urllib.request
 import uuid
 
 import display
+import tv_markdown
 import update
 
 
@@ -95,10 +96,10 @@ def verify_independent_restarts(board_id):
         return mutate({'kind': 'create_ticket', 'board_id': board_id, 'title': 'Live display probe',
                        'description': '', 'importance': 0, 'column_id': None, 'parent_id': None, 'type_id': None})
 
-    def show_ticket(ticket):
+    def show_ticket(ticket, minutes=None):
         origin = 'http://127.0.0.1:8080'
         req = urllib.request.Request(origin + '/api/v1/display',
-            data=json.dumps({'kind': 'show_ticket', 'ticket_id': ticket}).encode(),
+            data=json.dumps({'kind': 'show_ticket', 'ticket_id': ticket, 'minutes': minutes}).encode(),
             headers={'Content-Type': 'application/json', 'Origin': origin})
         with urllib.request.urlopen(req, timeout=5) as response:
             assert response.status == 200
@@ -106,7 +107,7 @@ def verify_independent_restarts(board_id):
         while time.monotonic() < deadline:
             state = display_updates.get(timeout=max(0.1, deadline - time.monotonic()))
             if state['overlays'] and state['overlays'][-1].get('ticket_id') == ticket:
-                return
+                return state
         raise RuntimeError('Display did not receive the overlay action')
 
     try:
@@ -124,6 +125,7 @@ def verify_independent_restarts(board_id):
         subprocess.run(['systemctl', 'kill', '--kill-whom=main', '--signal=KILL', server], check=True)
         wait_for_new_pid(server, server_before)
         assert service_pid(tv) == display_after
+        previous = ticket
         for _ in range(15):
             try:
                 ticket = create_display_ticket()
@@ -133,7 +135,9 @@ def verify_independent_restarts(board_id):
         else:
             raise RuntimeError('Server did not accept writes after restarting')
         wait_for_display(ticket)
-        show_ticket(ticket)
+        pair = show_ticket(ticket, minutes=0)
+        assert pair['companion_ticket']['ticket_id'] == previous
+        assert pair['expires_at'] is None
     finally:
         stop.set()
         subprocess.run(['systemctl', 'stop', tv], check=True)
@@ -167,6 +171,7 @@ def main():
     assert os.access('/usr/sbin/dnsmasq', os.X_OK)
     assert Path('/etc/systemd/system/kanlo-hotspot.service').is_file()
     assert Path('/usr/lib/kanlo/update.py').is_file()
+    assert ('table', 'row', None) in tv_markdown.markdown_rows('| Header |\n|---|\n| row |')
     subprocess.run(['/usr/bin/python3', '-c',
                     'import qrcode; assert qrcode.QRCode(border=4).get_matrix()'], check=True)
     assert Path('/lib/firmware/regulatory.db').is_file()

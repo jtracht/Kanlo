@@ -14,10 +14,13 @@ test("opening a web ticket preserves the independent TV view until explicitly se
   const details = page.getByRole("dialog", { name: /Ticketdetails/ });
   await expect(details).toBeVisible();
   expect(await read()).toEqual(before);
+  await details.getByLabel("TV-Dauer in Minuten").fill("0");
   await details.getByRole("button", { name: "Auf TV anzeigen", exact: true }).click();
   await expect.poll(async () => (await read()).overlays.at(-1)).toEqual({
     kind: "ticket", ticket_id: ticket.id,
   });
+  expect((await read()).ticket_minutes[ticket.id]).toBe(0);
+  expect((await read()).expires_at).toBeNull();
   await expect(details).toBeVisible();
   await details.getByRole("button", { name: "Schließen", exact: true }).last().click();
   await page.getByRole("button", { name: "TV-Anzeige", exact: true }).click();

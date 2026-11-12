@@ -1,5 +1,7 @@
 from contextlib import nullcontext
 from datetime import datetime, timezone
+from email.message import Message
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -14,9 +16,75 @@ sys.path.insert(0, str(ROOT / 'packaging/images'))
 import appliance
 import display
 import build
+import tv_markdown
 
 
 class Appliance(unittest.TestCase):
+    def test_companion_is_visible_only_with_space_and_before_its_deadline(self):
+        now = datetime(2026, 11, 1, 10, 0, tzinfo=timezone.utc)
+        active = {'kind': 'ticket', 'ticket_id': 'new'}
+        state = {'overlays': [active], 'preferences': {'overlay_minutes': 5},
+                 'companion_ticket': {'ticket_id': 'old', 'expires_at': None}}
+        self.assertEqual(display.visible_companion(state, active, now, 1920, 1080),
+                         {'kind': 'ticket', 'ticket_id': 'old'})
+        self.assertIsNone(display.visible_companion(state, active, now, 1024, 600))
+        state['companion_ticket']['expires_at'] = now.isoformat()
+        self.assertIsNone(display.visible_companion(state, active, now, 1920, 1080))
+
+    @unittest.skipUnless(tv_markdown.PARSER, 'Install python3-markdown-it to test rich Markdown')
+    def test_native_markdown_has_table_code_and_inert_image_tokens(self):
+        rows = tv_markdown.markdown_rows(
+            '# Heading\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n'
+            '```js\nalert(1)\n```\n\n- List item\n\n![photo](https://images.example/a.png)\n'
+            '<script>throw 1</script>')
+        self.assertIn(('heading', 'Heading', None), rows)
+        self.assertIn(('table', '1  │  2', None), rows)
+        self.assertIn(('code', 'alert(1)', None), rows)
+        self.assertIn(('text', '• List item', None), rows)
+        self.assertIn(('image', 'photo', 'https://images.example/a.png'), rows)
+
+    def test_external_image_destination_rejects_mixed_and_non_https_addresses(self):
+        def endpoints(*addresses):
+            return [(None, None, None, None, (address, 443)) for address in addresses]
+        with patch.object(tv_markdown.socket, 'getaddrinfo', return_value=endpoints('8.8.8.8', '127.0.0.1')):
+            with self.assertRaisesRegex(ValueError, 'non-public'):
+                tv_markdown.public_destination('https://images.example/a.png')
+        with patch.object(tv_markdown.socket, 'getaddrinfo', return_value=endpoints('8.8.8.8')):
+            self.assertEqual(tv_markdown.public_destination('https://images.example/a.png?key=1'),
+                             ('images.example', '8.8.8.8', '/a.png?key=1'))
+        for url in ('http://images.example/a.png', 'https://user@images.example/a.png',
+                    'https://images.example:8080/a.png', 'file:///tmp/image.png'):
+            with self.assertRaises(ValueError):
+                tv_markdown.public_destination(url)
+
+    def test_external_image_accepts_bounded_png_and_rejects_redirect(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest('Install python3-pil to verify decoding')
+        png = io.BytesIO()
+        Image.new('RGB', (800, 600), '#ab5142').save(png, format='PNG')
+        headers = Message()
+        headers['Content-Type'] = 'image/png'
+
+        class Response(io.BytesIO):
+            status = 200
+            length = len(png.getvalue())
+
+        for status in (200, 302):
+            response = Response(png.getvalue())
+            response.status, response.headers = status, headers
+            with patch.object(tv_markdown, 'public_destination', return_value=(
+                'images.example', '8.8.8.8', '/image.png'
+            )), patch.object(tv_markdown.http.client, 'HTTPSConnection') as connection:
+                connection.return_value.getresponse.return_value = response
+                if status == 302:
+                    with self.assertRaisesRegex(ValueError, 'Invalid image response'):
+                        tv_markdown.fetch_image('https://images.example/image.png')
+                else:
+                    pixels, size = tv_markdown.fetch_image('https://images.example/image.png')
+                    self.assertEqual(size, (427, 320))
+                    self.assertEqual(len(pixels), 427 * 320 * 3)
     def test_hotspot_uses_private_ephemeral_wpa2_profile_and_removes_it(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

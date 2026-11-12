@@ -90,6 +90,27 @@ Geräteverwaltung als `kanlo-admin` mit sudo; ohne Schlüssel bleibt SSH aus.
   Dort erscheinen erkannte Anschlüsse und die letzten Meldungen des
   Anzeigedienstes. **4** startet die Board-Anzeige neu.
 
+## Ticketdetails am TV
+
+Im Ticketdialog kann man für **Auf TV anzeigen** 0 bis 300 Minuten einstellen.
+Leer verwendet die TV-Standardeinstellung. 0 lässt das Fenster geöffnet.
+Ab 1152 × 600 Pixeln zeigt Kanlo bis zu zwei unabhängige Tickets
+nebeneinander. Auf kleineren Anzeigen bleibt das zuletzt geöffnete Ticket sichtbar.
+
+Markdown-Absätze, Listen, Tabellen, Code und Kommentare werden direkt dargestellt.
+Für externe Bilder kann der Geräteadministrator in einem systemd-Drop-in
+für `kanlo-tv.service` die folgende Einstellung setzen und den Dienst
+neu starten. Der Bildanbieter erhält dann Anfragen vom Gerät.
+
+```ini
+[Service]
+Environment=KANLO_TV_EXTERNAL_IMAGES=1
+```
+
+Die Anzeige verwendet öffentliche HTTPS-Bildadressen und unterstützt PNG,
+JPEG und WebP. Sie begrenzt Dateigröße und Pixelzahl und folgt keinen
+Weiterleitungen. Ohne Freigabe bleiben Bildbeschreibungen sichtbar.
+
 ## Verhalten und Optimierungen
 
 - Server und native Anzeige sind getrennte, automatisch startende Dienste.

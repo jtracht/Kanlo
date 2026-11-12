@@ -23,6 +23,8 @@ pub(crate) fn reset_context(tx: &Transaction<'_>) -> Result<()> {
     }
     state.overlays.clear();
     state.expires_at = None;
+    state.companion_ticket = None;
+    state.ticket_minutes.clear();
     state.highlights.clear();
     state.highlights_expire_at = None;
     state.revision = state.revision.checked_add(1).ok_or(Error::Storage)?;
