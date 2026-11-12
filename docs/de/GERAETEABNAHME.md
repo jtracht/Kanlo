@@ -36,10 +36,18 @@ Die Prüfung ist Bestandteil der Image-Pipeline.
 ## Ressourcen und Dauerlast
 
 Pro Gerät Image, Architektur, Auflösung, Anschluss und Dauer angeben.
-In einer isolierten Testinstallation mindestens 1.000 Tickets, mehrere
-sichtbare Spalten und zwei Tickets mit langen Markdown-Details vorbereiten.
-Den gleichen Stand für Pi 3 B+ ARMHF, ein ARM64-Gerät und einen AMD64-PC
-verwenden.
+In einer isolierten Testinstallation ein leeres Board mit den drei
+Spalten `Offen`, `In Arbeit` und `Erledigt` anlegen. Die [Testdaten](../../tests/images/physical_workload.py)
+erzeugen 1.200 Tickets, davon je 300 in jeder Spalte und 300 im Backlog.
+Die ersten beiden Tickets enthalten lange Markdown-Details.
+
+```sh
+python3 tests/images/physical_workload.py kanlo-dauerlast.csv --columns Offen "In Arbeit" Erledigt
+```
+
+Die CSV im Web über den Importdialog für das Testboard öffnen, die
+Vorschau mit 1.200 neuen Tickets prüfen und bestätigen. Dieselbe Datei für
+Pi 3 B+ ARMHF, ein ARM64-Gerät und einen AMD64-PC verwenden.
 
 Das [Messskript](../../tests/images/physical_metrics.py) auf das Testgerät
 kopieren und über den eingerichteten Administratorzugang starten.
