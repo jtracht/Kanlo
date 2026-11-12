@@ -478,7 +478,8 @@ function Main({
     <>
       <header class="app-header">
         <a class="brand" href="/" aria-label="Kanlo">
-          kanlo<span>{t("Entwicklung", "Development")}</span>
+          <span aria-hidden="true" class="brand-mark">K</span>
+          Kanlo
         </a>
         <label class="board-picker">
           {t("Board", "Board")}
@@ -508,7 +509,7 @@ function Main({
             ＋
           </button>
           <button
-            class="secondary status-button"
+            class={`secondary status-button ${client.connection.online && !client.connection.authRequired && !entries.length ? "is-synced" : ""}`}
             onClick={() => {
               if (client.connection.authRequired) setAuthDismissed(false);
               else setPanel("queue");
@@ -517,13 +518,13 @@ function Main({
             <span
               class={client.connection.online ? "online-dot" : "offline-dot"}
             />
-            {client.connection.authRequired
+            <span class="status-label">{client.connection.authRequired
               ? t("Anmelden", "Sign in")
               : entries.length
                 ? `${entries.length} ${t("lokal", "local")}`
                 : client.connection.online
                   ? t("Synchronisiert", "Synced")
-                  : t("Offline", "Offline")}
+                  : t("Offline", "Offline")}</span>
             {conflicts > 0 && <b class="count">!</b>}
           </button>
           <button
@@ -539,19 +540,16 @@ function Main({
       <main class="app-main">
         <div class="intro">
           <div>
-            <p class="eyebrow">{t("DEIN ÜBERBLICK", "YOUR OVERVIEW")}</p>
             <h1>
               {current?.boards[0]?.name ??
                 (loading
                   ? t("Kanlo wird geladen …", "Loading Kanlo…")
                   : "Kanlo")}
             </h1>
-            <p>
-              {t(
-                "Ein Platz für die nächsten Schritte.",
-                "A place for your next steps.",
-              )}
-            </p>
+            {current && <p>{t(
+              `${columns.length} Spalten · ${roots.length} sichtbare Tickets`,
+              `${columns.length} columns · ${roots.length} visible tickets`,
+            )}</p>}
           </div>
           <button class="secondary" onClick={() => setPanel("statistics")}>
             {t("Übersicht & Verlauf", "Overview & history")}
@@ -1234,7 +1232,7 @@ function Main({
               }
             </span>
           )}
-          <span>P {ticket.importance}</span>
+          <span class="ticket-priority">{t("Priorität", "Priority")} {ticket.importance}</span>
           {ticket.details.deadline && (
             <span
               class={
@@ -1297,48 +1295,46 @@ function Main({
             {t("Untertickets", "subtickets")}
           </p>
         )}
-        {!ticket.details.trashed && !ticket.details.archived && (
-          <label class="move-label">
-            {t("Verschieben nach", "Move to")}
-            <select
-              aria-label={`${ticket.public_id} ${t("verschieben nach", "move to")}`}
-              value={ticket.column_id ?? ""}
-              onChange={(event) =>
-                move(ticket, event.currentTarget.value || null)
-              }
-            >
-              <option value="">Backlog</option>
-              {columns.map((column) => (
-                <option key={column.id} value={column.id}>
-                  {column.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        {((!ticket.details.trashed && !ticket.details.archived) || view.sort === "manual") && (
+          <div class="card-actions">
+            {!ticket.details.trashed && !ticket.details.archived && (
+              <label class="move-label">
+                <select
+                  aria-label={`${ticket.public_id} ${t("verschieben nach", "move to")}`}
+                  value={ticket.column_id ?? ""}
+                  onChange={(event) =>
+                    move(ticket, event.currentTarget.value || null)
+                  }
+                >
+                  <option value="">Backlog</option>
+                  {columns.map((column) => (
+                    <option key={column.id} value={column.id}>
+                      {column.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {view.sort === "manual" && (
+              <>
+                <button
+                  class="icon-button"
+                  aria-label={`${ticket.public_id} ${t("nach oben", "move up")}`}
+                  onClick={() => reorder(ticket, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  class="icon-button"
+                  aria-label={`${ticket.public_id} ${t("nach unten", "move down")}`}
+                  onClick={() => reorder(ticket, 1)}
+                >
+                  ↓
+                </button>
+              </>
+            )}
+          </div>
         )}
-        <div class="card-actions">
-          <button class="text-button" onClick={() => open(ticket.id)}>
-            {t("Details", "Details")}
-          </button>
-          {view.sort === "manual" && (
-            <>
-              <button
-                class="icon-button"
-                aria-label={`${ticket.public_id} ${t("nach oben", "move up")}`}
-                onClick={() => reorder(ticket, -1)}
-              >
-                ↑
-              </button>
-              <button
-                class="icon-button"
-                aria-label={`${ticket.public_id} ${t("nach unten", "move down")}`}
-                onClick={() => reorder(ticket, 1)}
-              >
-                ↓
-              </button>
-            </>
-          )}
-        </div>
       </article>
     ));
   }

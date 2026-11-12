@@ -1,6 +1,7 @@
 """Native, read-only appliance board display. SDL/Wayland, no browser engine."""
 import argparse
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from http.client import HTTPException
 import json
 import os
@@ -24,6 +25,14 @@ RUNTIME_VIEW = Path('/var/lib/kanlo-display/view.json')
 ORIGIN = os.environ.get('KANLO_DISPLAY_ORIGIN', 'http://127.0.0.1:8080')
 FIRST_FRAME_TIMEOUT = 20
 ANIMATIONS = {'off': 0, 'subtle': 0.10, 'fluid': 0.20, 'dynamic': 0.32}
+CANVAS = '#0d1322'
+PANEL = '#19243a'
+CARD = '#24324d'
+INK = '#f1f4fb'
+MUTED = '#aebbd2'
+ACCENT = '#b9b1ff'
+DIVIDER = '#354564'
+LANE_COLORS = ('#a397ff', '#78b7ff', '#6fdbbb', '#f5c483')
 
 
 def fetch(path):
@@ -323,10 +332,10 @@ def paginate(workspace, per_screen, rows):
 
 def layout_metrics(width, height):
     scale = max(0.6, min(height / 900, width / 960, 1.75))
-    margin = round(28 * scale)
+    margin = round(32 * scale)
     card = round(100 * scale)
     columns = max(1, (width - 2 * margin) // round(280 * scale))
-    rows = max(1, (height - round(230 * scale)) // card)
+    rows = max(1, (height - round(238 * scale)) // card)
     return scale, margin, card, columns, rows
 
 
@@ -490,9 +499,9 @@ def main(size=None):
         pygame.display.set_caption('Kanlo')
         pygame.mouse.set_visible(False)
 
-    def present(region=None):
+    def present(region=None, duration=0):
         if presenter:
-            presenter.present()
+            presenter.present(duration)
         elif region is None:
             pygame.display.flip()
             first_frame()
@@ -519,6 +528,7 @@ def main(size=None):
     threading.Thread(target=reader, args=(updates, stop, display_updates), daemon=True).start()
     boards, page, page_count, online = [], 0, 1, False
     dirty, footer_dirty, last_rotate, last_urls = True, True, time.monotonic(), ''
+    next_address_check = 0
     qr_matrix = []
     last_scroll = last_rotate
     state, preferences, mode, overlay = {}, {}, 'board', None
@@ -531,28 +541,41 @@ def main(size=None):
     saved = read_runtime_view()
     last_saved = None
     transition = None
+    page_cache = {}
     animate = False
     rotation_index = -1
-    def text(value, position, face=None, color='#e5e7eb', max_width=None):
-        face = font if face is None else face
-        value = str(value)
-        if max_width:
-            while value and face.size(value)[0] > max_width:
-                value = value[:-2] + '…' if not value.endswith('…') else value[:-2] + '…'
-                if len(value) <= 1:
-                    break
-        screen.blit(face.render(value, True, color), position)
+    @lru_cache(maxsize=192)
+    def render_text(value, face, color, max_width):
+        if max_width and face.size(value)[0] > max_width:
+            low, high = 0, len(value)
+            while low < high:
+                middle = (low + high + 1) // 2
+                if face.size(value[:middle] + '…')[0] <= max_width:
+                    low = middle
+                else:
+                    high = middle - 1
+            value = value[:low] + '…'
+        return face.render(value, True, color)
+
+    def text(value, position, face=None, color=INK, max_width=None):
+        screen.blit(render_text(str(value), font if face is None else face, color, max_width), position)
     try:
         while not stop.is_set():
             # An event-driven, capped loop: repaint only on data/page/connection changes.
             if presenter:
                 presenter.pump()
                 screen = presenter.surface
-            event = pygame.event.wait(33 if transition or presenter and marker else 250)
+            if presenter:
+                wait = 8 if presenter.tick_id is not None else 33 if marker else 100
+            else:
+                wait = 33 if transition else 250
+            event = pygame.event.wait(wait)
             dirty |= images.ready()
             if screen.get_size() != (width, height):
                 width, height, scale, margin, card_height, per_screen, rows, font, title_font, small = layout()
                 transition = None
+                page_cache.clear()
+                render_text.cache_clear()
                 dirty = True
                 footer_dirty = True
             if event.type in (pygame.WINDOWEXPOSED, pygame.WINDOWSHOWN, pygame.WINDOWRESTORED):
@@ -569,7 +592,10 @@ def main(size=None):
                 dirty = True
             try:
                 new_boards, new_online = updates.get_nowait()
-                dirty |= boards != new_boards
+                changed = boards != new_boards
+                if changed:
+                    page_cache.clear()
+                dirty |= changed
                 footer_dirty |= online != new_online
                 boards, online = new_boards, new_online
             except queue.Empty:
@@ -636,12 +662,13 @@ def main(size=None):
                 animate = True
                 last_rotate = time.monotonic()
                 last_scroll = last_rotate
-            urls = web_addresses() or 'Keine Netzwerkadresse verfügbar'
-            if urls != last_urls:
-                last_urls = urls
-                qr_matrix = setup_qr(urls.split()[0]) if SETUP_AVAILABLE.is_file() else []
-                dirty = True
-                footer_dirty = True
+            if time.monotonic() >= next_address_check:
+                next_address_check = time.monotonic() + 1
+                urls = web_addresses() or 'Keine Netzwerkadresse verfügbar'
+                if urls != last_urls:
+                    last_urls = urls
+                    qr_matrix = setup_qr(urls.split()[0]) if SETUP_AVAILABLE.is_file() else []
+                    dirty = footer_dirty = True
             rotation = preferences.get('rotation', [])
             if not overlay and rotation and time.monotonic() - last_rotate >= preferences['rotation_seconds']:
                 rotation_index = (rotation_index + 1) % len(rotation)
@@ -669,34 +696,42 @@ def main(size=None):
                 target.set_alpha(None)
                 screen.blit(target, (0, 0))
             transition = None
-            duration = ANIMATIONS.get(state.get('animation'), 0)
-            previous = screen.copy() if animate and duration else None
+            duration = ANIMATIONS.get(state.get('animation'), 0) if animate else 0
+            previous = screen.copy() if duration and presenter is None else None
             animate = False
             footer = pygame.Rect(0, height - 4 * margin, width, 4 * margin)
             if footer_dirty:
-                screen.fill('#101820', footer)
-                text(urls, (margin, height - 2 * margin), small, max_width=width - 2 * margin)
-                text(setup_hint() if online else 'Verbindung wird wiederhergestellt …', (margin, height - 3 * margin), small, '#9ca3af')
+                screen.fill(CANVAS, footer)
+                pygame.draw.line(screen, DIVIDER, (margin, footer.top + margin // 3),
+                                 (width - margin, footer.top + margin // 3))
+                text(last_urls, (margin, height - 2 * margin), small, max_width=width - 2 * margin)
+                text(setup_hint() if online else 'Verbindung wird wiederhergestellt …', (margin, height - 3 * margin), small, MUTED)
                 footer_dirty = False
             if not dirty:
                 present(footer)
                 continue
             dirty = False
-            screen.fill('#101820', pygame.Rect(0, 0, width, footer.top))
-            text('Kanlo', (margin, margin), title_font)
+            screen.fill(CANVAS, pygame.Rect(0, 0, width, footer.top))
+            brand = 'KANLO'
+            brand_width = small.size(brand)[0]
+            text(brand, (width - margin - brand_width, margin), small, ACCENT)
             if not boards:
+                text('Board-Anzeige', (margin, margin), title_font)
                 text('Bereit – Board über die Weboberfläche einrichten.', (margin, height // 2), max_width=width - 2 * margin)
             elif mode == 'board':
                 board_id = rotation[rotation_index].get('board_id') if rotation_index >= 0 else preferences.get('board_id')
                 workspace = next((board for board in boards if board['boards'][0]['id'] == board_id), boards[0])
                 board = workspace['boards'][0]
-                text(board['name'], (round(190 * scale), margin), title_font, max_width=width - round(230 * scale))
-                columns = visible(workspace)
+                text(board['name'], (margin, margin), title_font, max_width=width - 4 * margin - brand_width)
+                cache_key = board['id'], per_screen, rows
+                if cache_key not in page_cache:
+                    columns = visible(workspace)
+                    shown = min(len(columns), per_screen)
+                    page_cache[cache_key] = (shown, paginate_columns(columns, shown, rows) if shown else [])
+                shown_columns, pages = page_cache[cache_key]
                 page_count = 1
-                if columns:
-                    shown_columns = min(len(columns), per_screen)
+                if pages:
                     column_width = (width - margin * 2) // shown_columns
-                    pages = paginate_columns(columns, shown_columns, rows)
                     page_count = len(pages)
                     if focus_highlight:
                         page = next((index for index, group in enumerate(pages)
@@ -705,24 +740,35 @@ def main(size=None):
                     selected = pages[page % page_count]
                     for index, (column, tickets, total) in enumerate(selected):
                         x = margin + index * column_width
+                        inset = max(7, round(12 * scale))
+                        lane_width = column_width - inset
+                        lane_y = round(88 * scale)
+                        lane_color = LANE_COLORS[(column['position'] + 1) % len(LANE_COLORS)]
+                        pygame.draw.rect(screen, PANEL, (x, lane_y, lane_width, footer.top - lane_y - inset),
+                                         border_radius=inset)
+                        pygame.draw.rect(screen, lane_color, (x + inset, lane_y + inset,
+                                         max(3, round(4 * scale)), round(27 * scale)), border_radius=2)
                         limit = column.get('wip_limit')
                         full = limit is not None and column.get('root_count', 0) >= limit
                         label = f"{column['name']} · {total}" + (f' · WIP {column["root_count"]}/{limit}' if full else '')
-                        text(label, (x, round(100 * scale)), color='#e7bf82' if full else '#e5e7eb', max_width=column_width - margin)
+                        text(label, (x + 2 * inset, round(100 * scale)), color='#f5c483' if full else INK,
+                             max_width=lane_width - 3 * inset)
                         for row, ticket in enumerate(tickets):
                             y = round(150 * scale) + row * card_height
                             highlighted = ticket.get('id') in highlights
-                            background = '#28514b' if highlighted else '#17232d' if highlights else '#22313d'
-                            foreground = '#a3adb4' if highlights and not highlighted else '#e5e7eb'
-                            pygame.draw.rect(screen, background, (x, y, column_width - 12, card_height - 10), border_radius=8)
-                            text(ticket['public_id'], (x + 10, y + 8), small, '#67e8c9' if foreground == '#e5e7eb' else foreground)
-                            text(ticket['title'], (x + 10, y + round(38 * scale)), color=foreground, max_width=column_width - 32)
+                            background = '#294664' if highlighted else PANEL if highlights else CARD
+                            foreground = MUTED if highlights and not highlighted else INK
+                            pygame.draw.rect(screen, background, (x + inset, y, lane_width - 2 * inset, card_height - inset),
+                                             border_radius=inset)
+                            text(ticket['public_id'], (x + 2 * inset, y + round(8 * scale)), small, lane_color)
+                            text(ticket['title'], (x + 2 * inset, y + round(34 * scale)), color=foreground,
+                                 max_width=lane_width - 4 * inset)
                             warning = due_warning(ticket, workspace, now)
                             if warning:
-                                text(warning[0], (x + 10, y + round(68 * scale)), small, warning[1])
+                                text(warning[0], (x + 2 * inset, y + round(65 * scale)), small, warning[1])
             elif mode == 'overview':
                 overview = state.get('overview', [])
-                text('Gesamtübersicht', (round(190 * scale), margin), title_font)
+                text('Gesamtübersicht', (margin, margin), title_font)
                 page_count = max(1, (len(overview) + rows - 1) // rows)
                 offset = (page % page_count) * rows
                 for index, board in enumerate(overview[offset:offset + rows]):
@@ -733,7 +779,7 @@ def main(size=None):
                     text(summary, (margin, y + round(32 * scale)), small, max_width=width - 2 * margin)
             else:
                 text(f"Statistik · {preferences.get('statistics_days', 7)} Tage",
-                     (round(190 * scale), margin), title_font, max_width=width - round(230 * scale))
+                     (margin, margin), title_font, max_width=width - 4 * margin - brand_width)
                 series = state.get('statistics', [])
                 legend = [('Erstellt', '#67e8c9'), ('Abgeschlossen', '#7bbaff'), ('Backlog', '#e7bf82'), ('Blockiert', '#f09098')]
                 bar_width = max(3, (width - 2 * margin) // 42)
@@ -773,9 +819,13 @@ def main(size=None):
 
                 def draw_panel(bounds, entry, selected_page):
                     title, contents = display_content(boards, preferences, entry, mode)
-                    pygame.draw.rect(screen, '#22313d', bounds, border_radius=8)
+                    radius = round(14 * scale)
+                    pygame.draw.rect(screen, PANEL, bounds, border_radius=radius)
+                    pygame.draw.rect(screen, DIVIDER, bounds, width=1, border_radius=radius)
                     max_width = bounds.width - 2 * margin
                     text(title, (bounds.x + margin, bounds.y + margin), title_font, max_width=max_width)
+                    pygame.draw.line(screen, DIVIDER, (bounds.x + margin, bounds.y + 3 * margin - 6),
+                                     (bounds.right - margin, bounds.y + 3 * margin - 6))
                     visible_rows = max(1, (bounds.height - 4 * margin) // line_height)
                     width_chars = max(10, max_width // max(6, font.size('M')[0]))
                     pages, used = [[]], 0
@@ -826,7 +876,7 @@ def main(size=None):
             if previous is not None:
                 transition = (previous, screen.copy(), time.monotonic(), duration)
                 screen.blit(previous, (0, 0))
-            present()
+            present(duration=duration)
             if state and 'instance' in state:
                 companion_page = None
                 if state.get('companion_ticket'):

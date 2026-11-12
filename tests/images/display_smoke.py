@@ -44,7 +44,9 @@ with tempfile.TemporaryDirectory() as directory:
         assert width >= 640 and height >= 480
         assert screenshot.stat().st_size > 3000
         scale, margin, _, _, _ = display.layout_metrics(width, height)
-        assert surface.get_at((margin + 12, round(130 * scale))) != surface.get_at((margin + 12, round(225 * scale)))
+        x = margin + round(30 * scale)
+        assert surface.get_at((x, round(130 * scale)))[:3] == pygame.Color(display.PANEL)[:3]
+        assert surface.get_at((x, round(215 * scale)))[:3] == pygame.Color(display.CARD)[:3]
         print(f'PASS: native board and ticket at {width}x{height}')
     if '--formats' in sys.argv:
         for mode, overlay in [('overview', None), ('statistics', None),
@@ -61,7 +63,7 @@ with tempfile.TemporaryDirectory() as directory:
             display.main(size)
             surface = pygame.image.load(str(screenshot))
             center_color = surface.get_at((size[0] // 2, size[1] // 2))[:3]
-            assert (center_color == (34, 49, 61)) == expected
+            assert (center_color == pygame.Color(display.PANEL)[:3]) == expected
             print(f'PASS: native overlay layout at {size[0]}x{size[1]}')
 peak_mib = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
 limit = 100 if '--formats' in sys.argv else 192

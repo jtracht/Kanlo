@@ -1,6 +1,6 @@
 # Kanlo in Bildern
 
-Die Screenshots zeigen Kanlo 0.2.0-dev.2 mit Beispieltickets.
+Die Aufnahmen zeigen das aktuelle Board-Design mit Beispieltickets.
 
 ## Board am Desktop
 
@@ -8,15 +8,24 @@ Die Screenshots zeigen Kanlo 0.2.0-dev.2 mit Beispieltickets.
 
 ## Board auf dem Smartphone
 
-![Mobile Kanlo-Ansicht mit Board-Auswahl, Suche und der ersten Backlog-Karte](board-mobile.png)
+![Mobile Kanlo-Ansicht mit Board-Auswahl, Suche und Ticketspalten](board-mobile.png)
 
 ## Ticket bearbeiten
 
-![Ticketdetails mit Titel, Priorität, Fälligkeit und Markdown-Beschreibung](ticket-details.png)
+![Ticketdetails mit Titel, Priorität, Fälligkeit und Beschreibungsfeld](ticket-details.png)
+
+## Lokale Anzeige
+
+![TV-Board in Weston mit farblich markierten Spalten und großer Schrift](tv-board.png)
+
+Für die lokale Anzeige dienten die [Android-TV-Layoutleitlinien](https://developer.android.com/training/tv/playback/compose/layouts)
+als Referenz für aus der Entfernung lesbare Schrift. Das Web-Board orientiert
+sich an der kompakten Navigation und Informationshierarchie in
+[Linears UI-Redesign](https://linear.app/now/how-we-redesigned-the-linear-ui).
 
 ## API-Schlüssel für Integrationen
 
 ![Kanlo-Einstellungen mit dem Abschnitt Zugriff und Integrationen und dem Formular für API-Schlüssel](../../release/plugins/screenshots/api-keys.png)
 
 - [Zwei native Ticketfenster](tv-ticketpanels.png) mit Markdown-Tabelle und
-  Codeblock in einem SDL-Test bei 1920 × 1080 Pixeln.
+  Checkliste in Weston bei 1280 × 720 Pixeln.
