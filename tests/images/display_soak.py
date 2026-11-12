@@ -22,9 +22,17 @@ def child(path, seconds, resume):
               'column_id': 'todo', 'title': 'Soak test ticket', 'done': False,
               'description': '\n'.join(f'Line {n}' for n in range(180)),
               'details': {'archived': False, 'trashed': False, 'rank': 1}}
+    columns = [{'id': key, 'name': label, 'position': position}
+               for position, (key, label) in enumerate(
+                   [('todo', 'Open'), ('doing', 'In progress'), ('done', 'Done')])]
+    tickets = [ticket, {**ticket, 'id': 'companion', 'public_id': 'KAN-2'}]
+    for number in range(3, 1201):
+        tickets.append({**ticket, 'id': str(number), 'public_id': f'KAN-{number}',
+                        'title': f'Benchmark ticket {number}', 'description': '',
+                        'column_id': ('todo', 'doing', 'done', None)[number % 4],
+                        'details': {**ticket['details'], 'rank': number}})
     workspace = {'boards': [{'id': 'board', 'name': 'Soak test board'}],
-                 'columns': [{'id': 'todo', 'name': 'Open', 'position': 0}],
-                 'tickets': [ticket, {**ticket, 'id': 'companion', 'public_id': 'KAN-2'}]}
+                 'columns': columns, 'tickets': tickets}
     overlay = {'kind': 'ticket', 'ticket_id': 'ticket'}
 
     def feed(updates, stop, display_updates):
@@ -86,30 +94,36 @@ def parent(seconds):
         runtime = Path(directory) / 'wayland'
         runtime.mkdir(mode=0o700)
         path = Path(directory) / 'view.json'
-        env = {**os.environ, 'XDG_RUNTIME_DIR': str(runtime), 'WLR_BACKENDS': 'headless',
-               'WLR_HEADLESS_OUTPUTS': '1', 'WLR_RENDERER': 'pixman',
-               'SDL_VIDEODRIVER': 'wayland', 'SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR': '0',
-               'LP_NUM_THREADS': '2'}
-        command = ['cage', '--', sys.executable, __file__, '--state', str(path)]
+        marker = runtime / 'first-frame'
+        env = {**os.environ, 'XDG_RUNTIME_DIR': str(runtime),
+               'KANLO_WAYLAND_SOFTWARE': '1', 'KANLO_FIRST_FRAME': str(marker),
+               'PYGAME_HIDE_SUPPORT_PROMPT': '1'}
+        command = ['weston', '--backend=headless', '--renderer=pixman', '--shell=kiosk',
+                   '--width=1920', '--height=1080', '--no-config', '--idle-time=0',
+                   '--', sys.executable, __file__, '--state', str(path)]
         first = subprocess.Popen(command + ['--seconds', '60'], env=env, start_new_session=True)
         try:
             wait_json(path, lambda value: value['overlay_page'] == 3
-                      and value.get('companion_page') == ['companion', 2], 15)
+                      and value.get('companion_page') == ['companion', 2]
+                      and marker.is_file(), 15)
         finally:
             if first.poll() is None:
                 os.killpg(first.pid, signal.SIGKILL)
             first.wait()
+        marker.unlink()
         second = subprocess.Popen(command + ['--resume', '--seconds', str(seconds)],
                                   env=env, start_new_session=True)
         try:
             wait_json(Path(directory) / 'restored.json', lambda value: value['overlay_page'] == 3
-                      and value.get('companion_page') == ['companion', 2], 15)
+                      and value.get('companion_page') == ['companion', 2]
+                      and marker.is_file(), 15)
             assert second.wait(timeout=seconds + 20) == 0
         finally:
             if second.poll() is None:
                 os.killpg(second.pid, signal.SIGKILL)
                 second.wait()
-        print(f'PASS: previous overlay position restored after process kill, {seconds}s native soak')
+        print(f'PASS: previous overlay position restored after process kill, '
+              f'{seconds}s Weston soak with 1200 tickets')
 
 
 if __name__ == '__main__':

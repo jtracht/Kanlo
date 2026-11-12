@@ -1,8 +1,8 @@
 # Entwicklungsstand
 
-Der lokale Stand 0.2.0-dev.10 umfasst **63 von 70 Originalaufgaben
-(90 %)**. Er baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md)
-auf. Das Ziel von mindestens 90 % ist mit 63 Aufgaben erreicht.
+Der lokale Stand 0.2.0-dev.10 umfasst **65 von 70 Originalaufgaben
+(92,9 %)**. Für mindestens 95 % müssen 67 Aufgaben abgenommen sein.
+Die Zählung baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md) auf.
 
 | Zusätzlich abgenommen | Lokaler Nachweis |
 | --- | --- |
@@ -10,6 +10,7 @@ auf. Das Ziel von mindestens 90 % ist mit 63 Aufgaben erreicht.
 | KAN-011 · Netzwerkeinrichtung | Das AMD64-Image startet den Setup-Hotspot in QEMU. Ein separater Linux-Client verbindet sich per WPA2, erhält DHCP und lädt Kanlo. Das verkürzte Test-Zeitlimit trennt den Client und entfernt das Profil. Desktop- und Mobil-Browsertests ergänzen den Netzwerktest. |
 | KAN-021 · Responsive Navigation | Board- und TV-Auswahl im Web. Desktop- und Mobiltests öffnen und bedienen die TV-Steuerung. |
 | KAN-022 · Ticketmodal und TV-Aktion | Desktop und Mobil prüfen, dass das Öffnen des Webmodals die TV-Auswahl erhält und nur der ausdrückliche TV-Befehl eine Einblendung setzt. |
+| KAN-027 · Grafik auf Pi 3 B+ | Der Anwender bestätigte das lokal sichtbare Board auf dem ARM32-Gerät. Docker prüfte die sichtbare Weston-Ausgabe mit denselben ARM-Paketen. |
 | KAN-029 · Native Ticketfenster | Markdown, Tabellen, Code, Kommentare und optionale begrenzte HTTPS-Bilder. Tests prüfen unabhängige Dauer, Wechsel auf zwei bzw. ein Fenster, beide Scrollpositionen nach erzwungenem Absturz und 600 Sekunden Wayland-Dauerlauf. |
 | KAN-030 · Backlog-Einblendung | API-Test für Backlog → Ticket → Backlog, Ablaufprüfung und nativer Rendertest. Die Anzeige merkt sich die Seitenposition des Backlogs beim Öffnen eines Tickets. |
 | KAN-031 · Untertickets und Elternkontext | Domänentest für Elternansicht, Unterticket, Ablauf und Ersetzen des Kontexts durch ein fremdes Ticket. Native Unterticketansicht im SDL-Test. |
@@ -21,8 +22,9 @@ auf. Das Ziel von mindestens 90 % ist mit 63 Aufgaben erreicht.
 | KAN-049 · Historische Statistik | Bestehender Test für Statistik bei Undo-Tiefe 0, hinzugekommen sind Tagesaggregation und nativer Diagrammtest. |
 | KAN-058 · Integrationsassistent | Getrennte Anleitungen für MCP und GPT Actions auf Deutsch und Englisch. Desktop und Mobil prüfen den Schlüsseltest und den Export ohne Zugangsdaten. |
 | KAN-059 · Sicherheits- und Datenschutzprüfung | [Lokale Prüfmatrix](SICHERHEITSPRUEFUNG.md) mit HTTP-, Browser- und Abhängigkeitstests. |
+| KAN-062 · Raspberry-Pi-Flash-Image | Der Anwender bestätigte SD-Erststart, WLAN-Liste, Board und Neustart mit dem [Weston-Image](PI3-ABNAHME.md). |
 | KAN-070 · Offene Folgearbeiten | [Offene Originalabnahmen](../planning/OFFENE-ABNAHME.md) und getrennte lokale Post-1.0-Tickets. |
 
 Die [offenen Originalabnahmen](../planning/OFFENE-ABNAHME.md) umfassen
-weiterhin die physische Raspberry-Pi-Abnahme mit HDMI, Composite und WLAN
-sowie die ChatGPT-Abnahme im tatsächlichen Workspace.
+weiterhin die Dauerlast auf den Zielgeräten, die ChatGPT-Abnahme im
+tatsächlichen Workspace und die Stable-Freigabe.

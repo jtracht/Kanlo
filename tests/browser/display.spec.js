@@ -31,7 +31,9 @@ test("opening a web ticket preserves the independent TV view until explicitly se
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(board.name);
 });
 
-test("integration setup verifies a bearer key and exports a credential-free Actions schema", async ({ page, request }) => {
+test("integration setup exports a credential-free Actions schema whose reads work with a bearer key", async ({ page, request }) => {
+  const board = await fixture(request, "GPT Actions");
+  const ticket = await create(request, board, `Actions fixture ${board.prefix}`);
   const response = await request.post(`${origin}/api/v1/security/keys`, {
     headers: { Origin: origin }, data: { name: "Browser integration test" },
   });
@@ -57,6 +59,36 @@ test("integration setup verifies a bearer key and exports a credential-free Acti
     expect(schema.components.securitySchemes.kanloKey.scheme).toBe("bearer");
     expect(schema.paths["/api/v1/settings/categories"].get.operationId).toBe("readKanloSettings");
     expect(body).not.toContain(token);
+    const paths = new Map(Object.entries(schema.paths).map(([path, methods]) => {
+      expect(Object.keys(methods)).toEqual(["get"]);
+      expect(methods.get.security).toEqual([{ kanloKey: [] }]);
+      return [methods.get.operationId, path];
+    }));
+    expect([...paths.keys()].sort()).toEqual([
+      "getKanloTicket", "listKanloBoards", "readKanloSettings",
+      "searchKanloTickets", "verifyKanloConnection",
+    ]);
+    const get = async (operation, { id, params } = {}) => {
+      const path = paths.get(operation).replace("{id}", encodeURIComponent(id ?? ""));
+      const result = await request.get(origin + path, {
+        params, headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(result.ok(), operation).toBeTruthy();
+      return result.json();
+    };
+    await get("verifyKanloConnection");
+    expect(await get("listKanloBoards")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: board.id }),
+    ]));
+    const results = await get("searchKanloTickets", { params: { query: ticket.title } });
+    expect(results.items.map(({ id }) => id)).toEqual([ticket.id]);
+    expect(await get("getKanloTicket", { id: ticket.public_id })).toMatchObject({
+      id: ticket.id, title: ticket.title,
+    });
+    const settingPage = await get("readKanloSettings", { params: { category: "boards", board_id: board.id } });
+    expect(settingPage.names).toHaveLength(5);
+    expect(settingPage.next_offset).toBe(5);
+    expect(settingPage.values).toBeUndefined();
   } finally {
     await request.post(`${origin}/api/v1/security/keys/${id}/revoke`, { headers: { Origin: origin }, data: {} });
   }

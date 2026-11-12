@@ -21,7 +21,10 @@ Gespräch mit dem Plugin öffnen. [OpenAI-Anleitung zur privaten Verbindung](htt
 | GPT Actions mit exportiertem Leseschema | Schlüsselprüfung, Ticketsuche und Ticketabruf auf derselben Testinstanz. |
 
 Die lokale MCP-Integration prüft Werkzeugaufrufe gegen einen isolierten
-Kanlo-Server. Die Testreihe im tatsächlichen ChatGPT-Workspace steht aus.
+Kanlo-Server. Der Browser-Test lädt das aus Kanlo exportierte GPT-Actions-Schema
+auf Desktop und Mobil herunter und führt alle fünf darin enthaltenen
+Leseoperationen mit einem Testschlüssel gegen den lokalen Server aus. Die
+Testreihe im tatsächlichen ChatGPT-Workspace steht aus.
 
 ## Diktat und Live-Voice
 

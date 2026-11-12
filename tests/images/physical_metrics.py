@@ -10,6 +10,16 @@ import time
 import urllib.request
 
 SERVICES = ('kanlo-server.service', 'kanlo-tv.service')
+IMAGE = Path('/usr/share/kanlo/IMAGE.json')
+FIRST_FRAME = Path('/run/kanlo-display/first-frame')
+
+
+def image_identity():
+    try:
+        manifest = json.loads(IMAGE.read_text())
+        return {field: manifest[field] for field in ('profile', 'version', 'source_commit')}
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
 
 
 def read_sysfs(path):
@@ -31,6 +41,7 @@ def display_state(drm=Path('/sys/class/drm')):
         }
     return {
         'foreground_console': read_sysfs(Path('/sys/class/tty/tty0/active')),
+        'renderer_first_frame': read_sysfs(FIRST_FRAME),
         'connectors': connectors,
     }
 
@@ -67,20 +78,44 @@ def summarize(values):
             'max': round(ordered[-1], 2)}
 
 
-def main(seconds):
+def read_api(path):
+    with urllib.request.urlopen('http://127.0.0.1/api/v1/' + path, timeout=2) as response:
+        return json.load(response)
+
+
+def workload(name):
+    board = next((item for item in read_api('boards') if item['name'] == name), None)
+    if board is None:
+        raise ValueError(f'Test board {name!r} not found')
+    tickets = read_api(f"boards/{board['id']}/snapshot")['workspace']['tickets']
+    return {'board': name, 'tickets': len(tickets)}
+
+
+def main(seconds, board=None):
+    fixture = workload(board) if board else None
     start = time.monotonic()
     display_at_start = display_state()
     latency, errors = [], 0
     samples = {service: [] for service in SERVICES}
     version = None
+    overlay_modes = set()
+    display_api_failures = 0
     while time.monotonic() - start < seconds:
         tick = time.monotonic()
         try:
-            with urllib.request.urlopen('http://127.0.0.1/api/v1/health', timeout=2) as response:
-                version = json.load(response)['version']
+            version = read_api('health')['version']
             latency.append((time.monotonic() - tick) * 1000)
         except (OSError, KeyError, ValueError):
             errors += 1
+        if fixture:
+            try:
+                state = read_api('display')
+                overlays = state['overlays']
+                overlay_modes.add(overlays[-1]['kind'] if overlays else 'board')
+                if state.get('companion_ticket'):
+                    overlay_modes.add('companion_ticket')
+            except (OSError, KeyError, ValueError):
+                display_api_failures += 1
         for service, records in samples.items():
             try:
                 state = service_state(service)
@@ -110,11 +145,15 @@ def main(seconds):
                         read_sysfs(Path('/sys/class/dmi/id/product_name')),
         'kernel_machine': platform.machine(),
         'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(),
+        'image': image_identity(),
+        'workload': fixture,
         'kanlo_version': version,
         'duration_seconds': seconds,
         'elapsed_seconds': round(time.monotonic() - start, 2),
         'health_response_ms': summarize(latency) if latency else None,
         'health_failures': errors,
+        'observed_display_modes': sorted(overlay_modes) if fixture else None,
+        'display_api_failures': display_api_failures if fixture else None,
         'display_at_start': display_at_start,
         'display_at_end': display_state(),
         'services': processes,
@@ -124,7 +163,8 @@ def main(seconds):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--seconds', type=int, default=600)
+    parser.add_argument('--board', help='Exact name of the imported test board')
     args = parser.parse_args()
     if os.geteuid() != 0 or args.seconds < 10:
         parser.error('Run with sudo and select at least ten seconds')
-    main(args.seconds)
+    main(args.seconds, args.board)

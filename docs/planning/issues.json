@@ -548,15 +548,17 @@
     "title": "Grafik-Prototyp auf realem Raspberry Pi 3 B+",
     "milestone": "M4",
     "component": "kanlo-tv",
-    "status": "planned",
+    "status": "done",
     "depends_on_milestone": "M3",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M4 – Native TV-Laufzeit\n- **Umsetzung:**\n  1. SDL2-/KMS-/Fallbacks prüfen.\n  2. Font-/Bild-/Textperformance messen.\n  3. Ausgewählte Architektur per Benchmark dokumentieren.\n- **Akzeptanz / Definition of Done:** Pi 3 B+ mit ARM32 erreicht nachweisbar nutzbare Darstellung.",
-    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "validation": "Anwenderbestätigung zur sichtbaren lokalen Anzeige auf dem Pi 3 B+ mit dem ARMHF-Weston-Image; sichtbare Ausgabe mit denselben ARM-Paketen in Docker überprüft.",
     "remote_issue": {
       "number": 27,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/27"
-    }
+    },
+    "evidence": ["docs/de/PI3-ABNAHME.md"],
+    "acceptance_commit": "6b47c7fdaef72d813e069f630381f020c839ad7d"
   },
   {
     "planning_id": "KAN-028",
@@ -1227,15 +1229,17 @@
     "title": "Raspberry-Pi-Flash-Image",
     "milestone": "M9",
     "component": "packaging/releases",
-    "status": "planned",
+    "status": "done",
     "depends_on_milestone": "M8",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M9 – Releasepakete und OS-Image\n- **Umsetzung:**\n  1. Pi OS 13 Imagebau definieren.\n  2. Kiosk-Start, Setup-Assistent und Services integrieren.\n  3. Image frisch flashen und Boot/Setup testen.\n- **Akzeptanz / Definition of Done:** Erstinstallation auf realer SD-Karte funktioniert.",
-    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "validation": "Anwenderbestätigung zu SD-Erststart, WLAN-Liste, sichtbarem Board und Neustart; ARMHF-Image zusätzlich unter QEMU geprüft.",
     "remote_issue": {
       "number": 62,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/62"
-    }
+    },
+    "evidence": ["docs/de/PI3-ABNAHME.md"],
+    "acceptance_commit": "6b47c7fdaef72d813e069f630381f020c839ad7d"
   },
   {
     "planning_id": "KAN-063",

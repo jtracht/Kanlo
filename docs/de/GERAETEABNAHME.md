@@ -36,7 +36,7 @@ Die Prüfung ist Bestandteil der Image-Pipeline.
 ## Ressourcen und Dauerlast
 
 Pro Gerät Image, Architektur, Auflösung, Anschluss und Dauer angeben.
-In einer isolierten Testinstallation ein leeres Board mit den drei
+In einer isolierten Testinstallation das leere Board `Geräteabnahme` mit den drei
 Spalten `Offen`, `In Arbeit` und `Erledigt` anlegen. Die [Testdaten](../../tests/images/physical_workload.py)
 erzeugen 1.200 Tickets, davon je 300 in jeder Spalte und 300 im Backlog.
 Die ersten beiden Tickets enthalten lange Markdown-Details.
@@ -53,7 +53,7 @@ Das [Messskript](../../tests/images/physical_metrics.py) auf das Testgerät
 kopieren und über den eingerichteten Administratorzugang starten.
 
 ```sh
-sudo python3 physical_metrics.py --seconds 600 > kanlo-geraet.json
+sudo python3 physical_metrics.py --seconds 600 --board Geräteabnahme > kanlo-geraet.json
 ```
 
 Während der Messung auf dem TV durch Spalten und Ticketdetails blättern,
@@ -62,7 +62,16 @@ und anschließend eine Leerlaufphase stehen lassen. Bei einer Auflösung
 unter 1152 × 600 Pixeln ist ein sichtbares Ticketfenster vorgesehen. Die
 JSON-Datei enthält lokale HTTP-Latenzen sowie CPU- und Speicherwerte für
 Server und TV-Dienst einschließlich ihrer Unterprozesse. Sie enthält auch
-das vom System gemeldete Gerätemodell und erfasst zu Beginn und am Ende
-die aktive Konsole sowie Anschlussstatus und angebotene Auflösungen. Die
+das vom System gemeldete Gerätemodell, die Build-ID des installierten Images,
+die Ticketanzahl des Testboards und die während der Messung abgerufenen
+Einblendungsarten.
+Zu Beginn und am Ende erfasst sie den Renderer, der das erste Bild gemeldet
+hat, die aktive Konsole sowie Anschlussstatus und angebotene Auflösungen. Die
 tatsächlich sichtbare Anzeige, Ruckler, erste Darstellung und Anschlusswechsel
 separat protokollieren.
+
+Im lokalen Docker-Test vom 12. November 2026 lief die Weston-Anzeige bei
+1920 × 1080 mit 1.200 Tickets für 600 Sekunden. Nach dem erzwungenen
+Prozessende stellte sie die Position beider Ticketfenster wieder her. Der
+Renderer erreichte im Test maximal 161,2 MiB RSS. Das Ergebnis gehört zur
+virtuellen Testumgebung und ergänzt die Messungen auf den Zielgeräten.
