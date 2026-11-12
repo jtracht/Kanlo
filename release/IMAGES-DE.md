@@ -60,6 +60,15 @@ Pfeiltasten dein Netz. Gib das WLAN-Kennwort in der Netzwerkmaske ein.
 Schließe den Dialog nach der Verbindung. Kanlo zeigt den Netzwerkstatus und
 seine Webadresse. **Strg+Alt+F1** kehrt zum Board zurück.
 
+Bei der ersten Board-Einrichtung zeigt das TV-Bild einen QR-Code zur Webadresse.
+Ohne bestehende LAN-Verbindung kann man mit **Strg+Alt+F2 → 5** ein
+temporäres WLAN öffnen. Name und zufälliges WPA2-Kennwort erscheinen auf
+der lokalen Konsole. Smartphone oder PC damit verbinden und
+`http://10.42.0.1:8080` aufrufen. **6** schaltet das WLAN ab. Der Dienst
+beendet den Hotspot nach spätestens zehn Minuten. **1** beendet ihn vor
+der Auswahl des regulären WLANs. Die Funkprüfung am Pi steht aus.
+
+
 Der Gerätebesitzer kann vor Ort Netzwerk, Host und Anzeige einrichten.
 Es gibt keine offene Root-Shell und kein gemeinsames
 Administratorpasswort. Ein ausdrücklich eingerichteter SSH-Key erhält volle
@@ -103,8 +112,9 @@ Geräteverwaltung als `kanlo-admin` mit sudo; ohne Schlüssel bleibt SSH aus.
 ## Wartung und Fehlerbehebung
 
 Vor Update/Reflash ein Kanlo-Datenbackup herunterladen und sicher aufbewahren.
-Reflash löscht Daten; es gibt noch keinen automatischen A/B-Image-Updater oder
-automatischen Daten-Rollback. OS-Sicherheitsupdates können nach optionaler
+Reflash löscht Daten. Das installierte Kanlo-Serverprogramm kann gezielt
+mit dem [manuellen Updater](INSTALL-DE.md#kanlo-server-manuell-aktualisieren)
+aktualisiert werden. Für das Basisbetriebssystem ist dieser Updater separat. OS-Sicherheitsupdates können nach optionaler
 SSH-Einrichtung mit Debian-Werkzeugen vorgenommen werden. Nicht ungesichert
 das laufende Datenbankdateisystem kopieren oder im Betrieb abschalten.
 

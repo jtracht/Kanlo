@@ -65,3 +65,23 @@ vorheriges Backup erforderlich; es gibt noch keinen automatischen Updater.
 
 Bei `Exec format error` die Paket-/OS-Architektur mit `dpkg --print-architecture`
 prüfen. Für HDMI und Composite auf dem Pi 3 B+ siehe [Geräte-Images](IMAGES-DE.md).
+
+## Kanlo-Server manuell aktualisieren
+
+Das neue Serverpaket und seine SHA-256-Prüfsumme aus derselben vertrauenswürdigen
+Releasequelle beziehen. Für das installierte Kanlo mit Standard-Datenverzeichnis
+`/var/lib/kanlo` und Python 3:
+
+```sh
+sudo python3 /usr/lib/kanlo/update.py apply /pfad/kanlo-VERSION-linux-ARCH.tar.gz --sha256 SHA256
+sudo python3 /usr/lib/kanlo/update.py rollback
+```
+
+`apply` stoppt den Dienst kurz, sichert Programm und SQLite-Daten, probiert
+die Migration auf einer Kopie und prüft nach dem Start die Paketversion.
+Bei einem Fehler stellt es den vorherigen Zustand wieder her. Der separate
+Befehl `rollback` stellt die Daten vom Zeitpunkt vor dem Update wieder her.
+Später gespeicherte Änderungen gehen dabei verloren. Clients mit ausstehenden
+Offline-Änderungen werden durch die neue Datenbank-Epoche zur Prüfung aufgefordert.
+Die private Rollback-Kopie unter `/var/lib/kanlo-updates` enthält auch
+Authentifizierungsdaten und muss unter Root-Zugriff bleiben.

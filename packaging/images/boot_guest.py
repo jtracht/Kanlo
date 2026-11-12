@@ -1,21 +1,47 @@
 """Injected into an isolated test image only; never installed in shipped images."""
 import json
+import io
 import os
 from pathlib import Path
 import queue
 import stat
 import subprocess
+import tarfile
+import tempfile
 import threading
 import time
 import urllib.request
 import uuid
 
 import display
+import update
 
 
 def get(path, origin='http://127.0.0.1:8080'):
     with urllib.request.urlopen(origin + path, timeout=5) as response:
         return json.load(response)
+
+
+def verify_update_rollback():
+    before = get('/api/v1/health')
+    architecture = subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip()
+    root = f"kanlo-{before['version']}-linux-{architecture}"
+    build = {'schema_version': 1, 'version': before['version'], 'arch': architecture,
+             'minimum_os': 'Debian 13', 'binary_sha256': update.checksum(update.BINARY)}
+    with tempfile.TemporaryDirectory() as directory:
+        package = Path(directory) / 'same-version-fixture.tar.gz'
+        with tarfile.open(package, 'w:gz', compresslevel=1) as archive:
+            manifest = json.dumps(build).encode()
+            member = tarfile.TarInfo(f'{root}/BUILD.json')
+            member.size = len(manifest)
+            archive.addfile(member, io.BytesIO(manifest))
+            archive.add(update.BINARY, arcname=f'{root}/bin/kanlo-server')
+        updater = update.Updater(update.BINARY, update.DATABASE, update.STATE, update.System())
+        updater.apply(package, update.checksum(package), architecture)
+        assert get('/api/v1/health')['epoch'] == before['epoch']
+        updater.rollback()
+    after = get('/api/v1/health')
+    assert after['epoch'] != before['epoch'] and after['instance_id'] == before['instance_id']
 
 
 def mutate(command):
@@ -138,6 +164,11 @@ def main():
     assert Path('/etc/cloud/cloud-init.disabled').is_file()
     assert Path('/usr/sbin/wpa_supplicant').is_file()
     assert os.access('/usr/bin/nmtui-connect', os.X_OK)
+    assert os.access('/usr/sbin/dnsmasq', os.X_OK)
+    assert Path('/etc/systemd/system/kanlo-hotspot.service').is_file()
+    assert Path('/usr/lib/kanlo/update.py').is_file()
+    subprocess.run(['/usr/bin/python3', '-c',
+                    'import qrcode; assert qrcode.QRCode(border=4).get_matrix()'], check=True)
     assert Path('/lib/firmware/regulatory.db').is_file()
     wifi = Path('/etc/NetworkManager/system-connections/kanlo-wifi.nmconnection')
     assert wifi.is_file() and stat.S_IMODE(wifi.stat().st_mode) == 0o600
@@ -150,6 +181,7 @@ def main():
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'ssh.service']).returncode != 0
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'kanlo-tv.service']).returncode != 0
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'kanlo-setup.service']).returncode == 0
+    assert subprocess.run(['systemctl', 'is-active', '--quiet', 'kanlo-hotspot.service']).returncode != 0
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'NetworkManager.service']).returncode == 0
     assert subprocess.run(['systemctl', 'is-active', '--quiet', 'seatd.service']).returncode == 0
     assert 'display.py --launch' in subprocess.check_output(
@@ -196,10 +228,13 @@ def main():
             time.sleep(1)
     else:
         raise RuntimeError('Restart failed')
+    if phase == 'reboot':
+        verify_update_rollback()
+        assert get('/api/v1/tickets/' + before['ticket_id'])['title'] == 'Survives an image reboot'
     subprocess.run(['systemctl', 'stop', 'kanlo-server.service'], check=True)
     checked = subprocess.run(['runuser', '-u', 'kanlo', '--', 'env', 'KANLO_DATA_DIR=/var/lib/kanlo', '/usr/local/lib/kanlo/kanlo-server', '--check'], check=True, capture_output=True, text=True)
     assert checked.stdout.strip() == 'ok'
-    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'kernel_machine': os.uname().machine, 'kernel_release': os.uname().release, 'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(), 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True, 'independent_service_restarts': True, 'live_display_verified': True}), flush=True)
+    print('KANLO_IMAGE_BOOT_OK ' + json.dumps({'phase': phase, 'machine_id': identity, 'instance_id': state['instance_id'], 'kernel_machine': os.uname().machine, 'kernel_release': os.uname().release, 'userspace_arch': subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip(), 'root_expanded': True, 'sqlite_integrity': 'ok', 'lan_http_verified': True, 'ram_swap_verified': True, 'independent_service_restarts': True, 'live_display_verified': True, 'update_rollback_verified': phase == 'reboot'}), flush=True)
 
 
 try:

@@ -1,0 +1,16 @@
+[Unit]
+Description=Temporary Kanlo setup Wi-Fi access point
+After=NetworkManager.service
+Requires=NetworkManager.service
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStart=/usr/bin/python3 /usr/lib/kanlo/appliance.py hotspot-start
+ExecStopPost=/usr/bin/python3 /usr/lib/kanlo/appliance.py hotspot-stop
+TimeoutStartSec=60
+TimeoutStopSec=20
+RuntimeMaxSec=10min
+RuntimeDirectory=kanlo-hotspot
+RuntimeDirectoryMode=0700
+UMask=0077

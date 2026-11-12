@@ -2,6 +2,7 @@ from contextlib import nullcontext
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import threading
@@ -16,6 +17,45 @@ import build
 
 
 class Appliance(unittest.TestCase):
+    def test_hotspot_uses_private_ephemeral_wpa2_profile_and_removes_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            hotspot, profile = root / 'hotspot', root / 'nm' / 'setup.nmconnection'
+            commands = []
+
+            def command(*args, **kwargs):
+                commands.append(args)
+                output = 'wlan0:wifi:disconnected\n' if 'device' in args else ''
+                return subprocess.CompletedProcess(args, 0, output, '')
+
+            with patch.object(appliance, 'HOTSPOT', hotspot), patch.object(
+                appliance, 'HOTSPOT_PROFILE', profile
+            ), patch.object(appliance, 'run', side_effect=command), patch.object(
+                appliance.subprocess, 'run', side_effect=lambda args, **kwargs: command(*args)
+            ):
+                appliance.hotspot_start()
+                credentials = json.loads((hotspot / 'credentials.json').read_text())
+                contents = profile.read_text()
+                self.assertIn('autoconnect=false', contents)
+                self.assertIn('proto=rsn;', contents)
+                self.assertIn('interface-name=wlan0', contents)
+                self.assertIn('psk=' + credentials['password'], contents)
+                self.assertNotIn(credentials['password'], repr(commands))
+                if sys.platform != 'win32':
+                    self.assertEqual(profile.stat().st_mode & 0o777, 0o600)
+                appliance.hotspot_stop()
+                self.assertFalse(profile.exists())
+                self.assertFalse((hotspot / 'credentials.json').exists())
+                self.assertTrue(any('delete' in args for args in commands))
+
+    def test_hotspot_does_not_replace_existing_network(self):
+        with patch.object(appliance, 'run', return_value=subprocess.CompletedProcess(
+            [], 0, '192.168.1.0/24 dev eth0 scope link\n', ''
+        )) as command:
+            with self.assertRaisesRegex(ValueError, 'LAN connection'):
+                appliance.hotspot_start()
+            command.assert_called_once()
+
     def test_display_stream_updates_affected_boards_and_reconciles_on_reconnect(self):
         frames = [b': keepalive\n', b'\n', b'event: change\n',
                   b'data: {"boards":["a"]}\n', b'\n']
@@ -114,8 +154,9 @@ class Appliance(unittest.TestCase):
         ):
             appliance.setup_wifi()
             country.assert_called_once_with('DE')
-            self.assertEqual(run.call_args_list[1].args, ('/usr/bin/nmtui-connect',))
-            self.assertEqual(run.call_args_list[2].args, ('systemctl', 'restart', 'kanlo-network.service'))
+            self.assertEqual(run.call_args_list[0].args, ('systemctl', 'stop', 'kanlo-hotspot.service'))
+            self.assertEqual(run.call_args_list[2].args, ('/usr/bin/nmtui-connect',))
+            self.assertEqual(run.call_args_list[3].args, ('systemctl', 'restart', 'kanlo-network.service'))
             addresses.assert_called_once_with()
 
     def test_all_four_official_bases_are_immutable_and_checked(self):

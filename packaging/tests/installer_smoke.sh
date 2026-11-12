@@ -31,6 +31,7 @@ printf 'persistent data\n' > /var/lib/kanlo/test-sentinel
 ./install.sh --check
 ./install.sh
 test -f /etc/systemd/system/kanlo-server.service
+test -f /usr/lib/kanlo/update.py
 test ! -e /etc/systemd/system/kanlo-tv.service
 test "$(cat "$desktop")" = 'desktop fixture'
 ! grep -q 'kanlo-tv.service' "$KANLO_TEST_LOG"
@@ -46,6 +47,7 @@ grep -Fx 'enable --now seatd.service kanlo-tv.service' "$KANLO_TEST_LOG"
 ./install.sh --uninstall
 test ! -e /etc/systemd/system/kanlo-tv.service
 test ! -e /etc/systemd/system/kanlo-server.service
+test ! -e /usr/lib/kanlo/update.py
 test "$(cat /var/lib/kanlo/test-sentinel)" = 'persistent data'
 test "$(cat "$desktop")" = 'desktop fixture'
 printf '%s\n' 'PASS: standalone install, isolated kiosk mode, upgrade and data-preserving uninstall'

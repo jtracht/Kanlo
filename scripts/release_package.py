@@ -139,6 +139,7 @@ def package(binary, target, output):
         'packaging/systemd/kanlo-server.service': 'systemd/kanlo-server.service', 'packaging/sysusers.d/kanlo.conf': 'sysusers.d/kanlo.conf',
         'packaging/images/display.py': 'kiosk/display.py',
         'packaging/images/appliance.py': 'kiosk/appliance.py',
+        'packaging/images/update.py': 'update.py',
         'packaging/images/overlay/etc/systemd/system/kanlo-tv.service': 'kiosk/kanlo-tv.service',
     }
     paths.update({str(path.relative_to(ROOT)).replace('\\', '/'): str(path.relative_to(ROOT)).replace('\\', '/') for path in (ROOT / 'docs/licenses').rglob('*') if path.is_file()})

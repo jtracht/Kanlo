@@ -351,6 +351,19 @@ def setup_hint():
     return 'Strg+Alt+F2: WLAN und Einrichtung' if SETUP_AVAILABLE.is_file() else 'TV-Anzeige über Kanlo im Browser steuern'
 
 
+def setup_qr(url):
+    if not url.startswith('http://') or len(url) > 100:
+        return []
+    try:
+        import qrcode
+    except ImportError:
+        return []
+    code = qrcode.QRCode(border=4)
+    code.add_data(url)
+    code.make(fit=True)
+    return code.get_matrix()
+
+
 def launch():
     from appliance import graphical_output
 
@@ -403,6 +416,7 @@ def main(size=None):
     threading.Thread(target=reader, args=(updates, stop, display_updates), daemon=True).start()
     boards, page, page_count, online = [], 0, 1, False
     dirty, footer_dirty, last_rotate, last_urls = True, True, time.monotonic(), ''
+    qr_matrix = []
     last_scroll = last_rotate
     state, preferences, mode, overlay = {}, {}, 'board', None
     overlay_page, board_page_before_overlay = 0, 0
@@ -507,6 +521,8 @@ def main(size=None):
             urls = web_addresses() or 'Strg+Alt+F2: WLAN einrichten oder Ethernet anschließen'
             if urls != last_urls:
                 last_urls = urls
+                qr_matrix = setup_qr(urls.split()[0]) if SETUP_AVAILABLE.is_file() else []
+                dirty = True
                 footer_dirty = True
             rotation = preferences.get('rotation', [])
             if not overlay and rotation and time.monotonic() - last_rotate >= preferences['rotation_seconds']:
@@ -617,6 +633,19 @@ def main(size=None):
                 if not series:
                     text('Keine Daten im Zeitraum', (margin, height // 2))
                 page_count = 1
+            if qr_matrix and not overlay and mode == 'board' and not any(
+                workspace.get('tickets') for workspace in boards
+            ):
+                module = max(2, min(6, height // (3 * len(qr_matrix))))
+                extent = len(qr_matrix) * module
+                x, y = width - margin - extent, footer.top - margin - extent
+                if x >= margin and y >= 4 * margin:
+                    pygame.draw.rect(screen, '#ffffff', (x, y, extent, extent))
+                    for row, modules in enumerate(qr_matrix):
+                        for column, dark in enumerate(modules):
+                            if dark:
+                                pygame.draw.rect(screen, '#000000', (
+                                    x + column * module, y + row * module, module, module))
             if overlay:
                 title, contents = display_content(boards, preferences, overlay, mode)
                 shade = pygame.Surface((width, footer.top), pygame.SRCALPHA)

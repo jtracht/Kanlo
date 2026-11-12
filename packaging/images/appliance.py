@@ -6,15 +6,23 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
+import string
 import subprocess
 import tempfile
 import time
+import uuid
 
 STATE = Path('/var/lib/kanlo-appliance')
 BOOT = Path('/boot/firmware')
 DISPLAY_CONFIG = Path('/etc/kanlo/display.json')
 DRM = Path('/sys/class/drm')
 WIFI_COUNTRY = Path('/etc/modprobe.d/kanlo-wifi-country.conf')
+HOTSPOT = Path('/run/kanlo-hotspot')
+HOTSPOT_PROFILE = Path('/run/NetworkManager/system-connections/kanlo-setup.nmconnection')
+HOTSPOT_ID = 'kanlo-setup-hotspot'
+HOTSPOT_SERVICE = 'kanlo-hotspot.service'
+HOTSPOT_URL = 'http://10.42.0.1:8080'
 
 
 def run(*args, **kwargs):
@@ -205,6 +213,7 @@ def print_web_addresses():
 
 
 def setup_wifi():
+    run('systemctl', 'stop', HOTSPOT_SERVICE)
     country = input('WLAN-Land (z. B. DE, leer = unverändert): ').strip().upper()
     if country:
         set_wifi_country(country)
@@ -216,6 +225,7 @@ def setup_wifi():
 
 
 def setup_device():
+    run('systemctl', 'stop', HOTSPOT_SERVICE)
     current_host = Path('/etc/hostname').read_text().strip()
     current_zone = os.path.realpath('/etc/localtime').removeprefix('/usr/share/zoneinfo/')
     if not (Path('/usr/share/zoneinfo') / current_zone).is_file() or current_zone.startswith('/'):
@@ -236,11 +246,64 @@ def setup_device():
     print_web_addresses()
 
 
+def hotspot_start():
+    if run('ip', '-4', 'route', 'show', 'scope', 'link', capture_output=True).stdout.strip():
+        raise ValueError('A LAN connection is already active')
+    run('nmcli', 'radio', 'wifi', 'on')
+    devices = run('nmcli', '-t', '-f', 'DEVICE,TYPE,STATE', 'device', 'status',
+                  capture_output=True, env={**os.environ, 'LC_ALL': 'C'}).stdout.splitlines()
+    interface = next((row.split(':')[0] for row in devices
+                      if re.fullmatch(r'[a-zA-Z0-9_.-]+:wifi:disconnected', row)), None)
+    if interface is None:
+        raise ValueError('No disconnected Wi-Fi adapter is available')
+    ssid = 'Kanlo-' + secrets.token_hex(3)
+    password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
+    profile_id = str(uuid.uuid4())
+    atomic(HOTSPOT / 'uuid', profile_id)
+    atomic(HOTSPOT_PROFILE, f'[connection]\nid={HOTSPOT_ID}\nuuid={profile_id}\n'
+           f'type=wifi\ninterface-name={interface}\nautoconnect=false\n'
+           f'[wifi]\nmode=ap\nband=bg\nssid={ssid}\n'
+           f'[wifi-security]\nkey-mgmt=wpa-psk\nproto=rsn;\npsk={password}\n'
+           '[ipv4]\nmethod=shared\naddress1=10.42.0.1/24\n[ipv6]\nmethod=disabled\n')
+    # Do not place credentials in process arguments, standard output or the journal.
+    run('nmcli', 'connection', 'load', str(HOTSPOT_PROFILE), capture_output=True)
+    run('nmcli', '--wait', '30', 'connection', 'up', 'uuid', profile_id, capture_output=True)
+    run('systemctl', 'restart', 'kanlo-network.service')
+    atomic(HOTSPOT / 'credentials.json', json.dumps({'ssid': ssid, 'password': password}))
+
+
+def hotspot_stop():
+    profile = HOTSPOT / 'uuid'
+    if profile.is_file():
+        profile_id = str(uuid.UUID(profile.read_text()))
+        subprocess.run(['nmcli', '--wait', '10', 'connection', 'delete', 'uuid', profile_id],
+                       check=False, capture_output=True)
+    HOTSPOT_PROFILE.unlink(missing_ok=True)
+    (HOTSPOT / 'credentials.json').unlink(missing_ok=True)
+    subprocess.run(['systemctl', '--no-block', 'start', 'kanlo-network.service'],
+                   check=False, capture_output=True)
+
+
+def hotspot_serve():
+    hotspot_start()
+    run('systemd-notify', '--ready')
+    time.sleep(600)
+
+
+def setup_hotspot():
+    if not (HOTSPOT / 'credentials.json').is_file():
+        run('systemctl', 'start', HOTSPOT_SERVICE)
+    credentials = json.loads((HOTSPOT / 'credentials.json').read_text())
+    print(f"Temporäres WLAN: {credentials['ssid']}\nKennwort: {credentials['password']}")
+    print(f'Kanlo im Browser: {HOTSPOT_URL}\nDer Hotspot endet nach spätestens 10 Minuten.')
+
+
 def setup():
     while True:
         print('\033[2J\033[HKanlo – lokale Einrichtung (Strg+Alt+F1: Board)')
         print_web_addresses()
-        print('\n1  WLAN auswählen und verbinden\n2  Gerät einrichten\n3  Anzeige-Diagnose\n4  Board-Anzeige neu starten')
+        print('\n1  WLAN auswählen und verbinden\n2  Gerät einrichten\n3  Anzeige-Diagnose\n4  Board-Anzeige neu starten'
+              '\n5  Temporären WLAN-Hotspot öffnen\n6  Hotspot schließen')
         choice = input('\nAuswahl: ').strip()
         try:
             if choice == '1':
@@ -253,6 +316,10 @@ def setup():
                 run('journalctl', '-b', '-u', 'kanlo-tv.service', '-n', '20', '--no-pager')
             elif choice == '4':
                 run('systemctl', '--no-block', 'restart', 'kanlo-tv.service')
+            elif choice == '5':
+                setup_hotspot()
+            elif choice == '6':
+                run('systemctl', 'stop', HOTSPOT_SERVICE)
             else:
                 continue
         except (OSError, ValueError, subprocess.CalledProcessError):
@@ -262,8 +329,9 @@ def setup():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=['firstboot', 'network', 'has-display', 'setup'])
+    parser.add_argument('command', choices=['firstboot', 'network', 'has-display', 'setup', 'hotspot-start', 'hotspot-stop'])
     command = parser.parse_args().command
     if command == 'has-display':
         raise SystemExit(0 if has_display() else 1)
-    {'firstboot': firstboot, 'network': network, 'setup': setup}[command]()
+    {'firstboot': firstboot, 'network': network, 'setup': setup,
+     'hotspot-start': hotspot_serve, 'hotspot-stop': hotspot_stop}[command]()

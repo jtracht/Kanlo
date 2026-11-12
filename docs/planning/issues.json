@@ -212,14 +212,14 @@
     "title": "Einrichtungsassistent und Netzwerk-Grundsetup",
     "milestone": "M1",
     "component": "runtime/packaging",
-    "status": "planned",
+    "status": "partial",
     "depends_on_milestone": "M0",
     "additional_dependencies": [
       "KAN-053",
       "KAN-054"
     ],
     "baseline_checklist": "- **Milestone:** M1 – Server, SQLite, Installer\n- **Umsetzung:**\n  1. Setup-URL und QR am TV beim ersten Start anzeigen.\n  2. LAN/WiFi erkennen und optional zeitlich begrenzten gesicherten Setup-Hotspot bereitstellen.\n  3. Nach Ersteinrichtung erstes Board automatisch anzeigen.\n- **Akzeptanz / Definition of Done:** Setup funktioniert auf Smartphone/PC und schaltet Hotspot wieder ab.",
-    "validation": "Implement issue-specific automated and acceptance tests before closure",
+    "validation": "Lokale TV-URL mit QR und per Konsole aktivierter WPA2-Hotspot mit zehn Minuten Laufzeit. Physischer Smartphone-/PC- und WLAN-Test ausstehend.",
     "remote_issue": {
       "number": 11,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/11"
@@ -1212,11 +1212,11 @@
     "title": "Manueller Updateprozess mit Backup und Rollback",
     "milestone": "M9",
     "component": "packaging/releases",
-    "status": "planned",
+    "status": "partial",
     "depends_on_milestone": "M8",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M9 – Releasepakete und OS-Image\n- **Umsetzung:**\n  1. Update-CLI/Web/API-Aktionen integrieren.\n  2. Backup vor Migration und Recovery automatisieren.\n  3. Keine automatische Updateprüfung implementieren.\n- **Akzeptanz / Definition of Done:** Update nur auf explizite Aktion und mit getesteter Recovery.",
-    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "validation": "Expliziter Linux-Updater mit Paketprüfung, SQLite-Vorabmigration, privatem Snapshot und getestetem Rollback. Abnahme mit systemd auf einem Gerät und Web-/API-Einbindung offen.",
     "remote_issue": {
       "number": 61,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/61"

@@ -45,7 +45,7 @@ if [ "$mode" = --uninstall ]; then
         systemctl disable --now kanlo-server.service
     fi
     rm -f "$marker" /etc/systemd/system/kanlo-server.service /usr/lib/sysusers.d/kanlo.conf \
-        /usr/local/lib/kanlo/kanlo-server /usr/local/lib/kanlo/kanlo-server.previous
+        /usr/local/lib/kanlo/kanlo-server /usr/local/lib/kanlo/kanlo-server.previous /usr/lib/kanlo/update.py
     systemctl daemon-reload
     printf '%s\n' 'Kanlo services removed. Data and configuration remain in place.'
     exit 0
@@ -69,6 +69,7 @@ trap 'rm -f "$new_binary"' EXIT
 install -m 0755 bin/kanlo-server "$new_binary"
 install -Dm644 systemd/kanlo-server.service /etc/systemd/system/kanlo-server.service
 install -Dm644 sysusers.d/kanlo.conf /usr/lib/sysusers.d/kanlo.conf
+install -Dm644 update.py /usr/lib/kanlo/update.py
 systemd-sysusers /usr/lib/sysusers.d/kanlo.conf
 if [ -f /usr/local/lib/kanlo/kanlo-server ]; then
     install -m 0755 /usr/local/lib/kanlo/kanlo-server /usr/local/lib/kanlo/kanlo-server.previous

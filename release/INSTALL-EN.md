@@ -61,3 +61,21 @@ and a prior backup; automatic updates/rollback are not implemented yet.
 
 For `Exec format error`, compare the archive with `dpkg --print-architecture`.
 See the [appliance guide](IMAGES-EN.md) for Pi 3 B+ HDMI and composite troubleshooting.
+
+## Update the Kanlo server manually
+
+Obtain the server archive and its SHA-256 checksum from the same trusted
+release source. On the installed Kanlo service with its standard
+`/var/lib/kanlo` data directory and Python 3:
+
+```sh
+sudo python3 /usr/lib/kanlo/update.py apply /path/kanlo-VERSION-linux-ARCH.tar.gz --sha256 SHA256
+sudo python3 /usr/lib/kanlo/update.py rollback
+```
+
+The updater briefly stops the service, snapshots the executable and SQLite
+database, tests migrations on a copy, and checks the new service version.
+It automatically restores the snapshot on failure. Explicit rollback returns
+the database to its pre-update state, discards later changes and assigns a
+new epoch so clients can review queued offline changes. Keep the snapshot in
+`/var/lib/kanlo-updates` restricted to root because it includes authentication data.

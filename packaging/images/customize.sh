@@ -26,7 +26,7 @@ apt-get update
 apt-get install -y --no-install-recommends python3 python3-pygame cage seatd \
     fonts-dejavu-core network-manager avahi-daemon systemd-resolved \
     cloud-guest-utils parted systemd-zram-generator sudo openssh-server iw \
-    wpasupplicant wireless-regdb curl ca-certificates "$@"
+    wpasupplicant wireless-regdb dnsmasq-base python3-qrcode curl ca-certificates "$@"
 # No cloud-provider startup or first-user wizard in the dedicated appliance.
 install -d -m 0755 /etc/cloud
 : > /etc/cloud/cloud-init.disabled
