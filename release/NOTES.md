@@ -1,6 +1,10 @@
-# Kanlo 0.2.0-dev.9
+# Kanlo 0.2.0-dev.10
 
 Lokaler Entwicklungsstand **88,6 % (62 von 70 Originalaufgaben)**.
+
+Kanlo liefert für ChatGPT und Claude Code zuerst Einstellungskategorien,
+dann Namen in Fünferseiten. Werte werden ausdrücklich abgerufen. Bei
+Board-Regeln ist dazu das konkrete Board erforderlich.
 
 Die versionierte API veröffentlicht ihren OpenAPI-3.1-Vertrag unter
 `/api/v1/openapi.json`. Der Integrationsassistent erzeugt daraus das GPT-Actions-
@@ -30,7 +34,7 @@ Board. Die Geräteeinstellungen bieten WLAN, Bluetooth und die Anzeige-Diagnose.
 Konfiguration ab. Die physische Anschlussprüfung steht noch aus.
 
 Die Kanlo-API liefert Ticketkommentare seitenweise. Die separat erhältlichen
-Kanlo-Plugins 0.5.1 für Claude Code und ChatGPT können Kommentare lesen und
+Kanlo-Plugins 0.6.0 für Claude Code und ChatGPT können Kommentare lesen und
 Tickets in Zielspalten oder ins Backlog verschieben. Sie bieten außerdem
 eine Vorschau mit separater Bestätigung für Rückgängig-Aktionen.
 

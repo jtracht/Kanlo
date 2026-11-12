@@ -12,6 +12,8 @@ function makeActionsSchema(origin: string, contract: OpenApi) {
     ["/api/v1/integrations/verify", "verifyKanloConnection", "Verify the Kanlo API key"],
     ["/api/v1/ticket-search", "searchKanloTickets", "Find tickets across Kanlo boards"],
     ["/api/v1/tickets/{id}", "getKanloTicket", "Get a ticket by visible ID or internal ID"],
+    ["/api/v1/boards", "listKanloBoards", "List Kanlo boards before choosing a board"],
+    ["/api/v1/settings/categories", "readKanloSettings", "List categories first, then setting names; set values only when explicitly requested"],
   ];
   const paths = Object.fromEntries(actions.map(([path, operationId, summary]) => {
     const operation = contract.paths[path]?.get;
@@ -41,7 +43,7 @@ function makeActionsSchema(origin: string, contract: OpenApi) {
   collect(paths);
   return {
     openapi: "3.1.0",
-    info: { title: "Kanlo", description: "Read tickets from your Kanlo instance.", version: "1.0.0" },
+    info: { title: "Kanlo", description: "Read boards, tickets and requested settings from your Kanlo instance.", version: "1.0.0" },
     servers: [{ url: origin }],
     components: { schemas, securitySchemes: { kanloKey: { type: "http", scheme: "bearer" } } },
     security: [{ kanloKey: [] }],

@@ -3,6 +3,7 @@ import io
 import json
 import lzma
 import os
+import subprocess
 from pathlib import Path
 import sys
 import tarfile
@@ -35,6 +36,44 @@ class Packages(unittest.TestCase):
         with patch.object(package, 'version', return_value='1.0.0'):
             with self.assertRaisesRegex(ValueError, 'Stable gate'):
                 package.validate_tag('v1.0.0')
+
+    def test_stable_evidence_can_follow_candidate_but_cannot_approve_changed_code(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            def git(*args):
+                return subprocess.check_output(['git', *args], cwd=root, stderr=subprocess.STDOUT, text=True).strip()
+
+            git('init', '-q')
+            git('config', 'user.name', 'Test')
+            git('config', 'user.email', 'test@example.invalid')
+            (root / 'LICENSE').write_text('Test license fixture')
+            (root / 'kanlo.txt').write_text('Reviewed product')
+            git('add', '.')
+            git('commit', '-qm', 'Candidate')
+            reviewed = git('rev-parse', 'HEAD')
+            (root / 'release/evidence').mkdir(parents=True)
+            gates = {}
+            for gate in sorted(package.STABLE_GATES):
+                path = f'release/evidence/{gate}.json'
+                gates[gate] = path
+                (root / path).write_text(json.dumps({
+                    'gate': gate, 'status': 'passed', 'source_commit': reviewed, 'approved_by': 'Fixture',
+                }))
+            readiness = root / 'release/readiness.json'
+            readiness.write_text(json.dumps({'stable_gates': gates}))
+            git('add', 'release')
+            git('commit', '-qm', 'Approval evidence')
+            with patch.object(package, 'ROOT', root):
+                package.validate_stable_evidence()
+                (root / 'kanlo.txt').write_text('Unreviewed change')
+                git('add', 'kanlo.txt')
+                git('commit', '-qm', 'Changed product')
+                with self.assertRaisesRegex(ValueError, 'does not approve this source'):
+                    package.validate_stable_evidence()
+                gates.pop('license_approval')
+                readiness.write_text(json.dumps({'stable_gates': gates}))
+                with self.assertRaisesRegex(ValueError, 'gate list'):
+                    package.validate_stable_evidence()
 
     def test_all_architectures_are_checked(self):
         for target in package.TARGETS:

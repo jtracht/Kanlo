@@ -55,6 +55,7 @@ test("integration setup verifies a bearer key and exports a credential-free Acti
     const schema = JSON.parse(body);
     expect(schema.servers[0].url).toBe("https://kanlo.example.org");
     expect(schema.components.securitySchemes.kanloKey.scheme).toBe("bearer");
+    expect(schema.paths["/api/v1/settings/categories"].get.operationId).toBe("readKanloSettings");
     expect(body).not.toContain(token);
   } finally {
     await request.post(`${origin}/api/v1/security/keys/${id}/revoke`, { headers: { Origin: origin }, data: {} });

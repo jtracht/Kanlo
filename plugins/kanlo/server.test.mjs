@@ -52,11 +52,29 @@ test("MCP tools manage tickets through an isolated Kanlo instance", { timeout: 3
 
   const reader = await connect(false);
   const { tools } = await reader.listTools();
-  assert.equal(tools.length, 8);
+  assert.equal(tools.length, 11);
   assert.ok(tools.every((tool) => tool.annotations.readOnlyHint));
   const boards = await reader.callTool({ name: "kanlo_list_boards" });
   assert.equal(boards.isError, undefined, JSON.stringify(boards));
   const board_id = boards.structuredContent.items[0].id;
+  const categories = await reader.callTool({ name: "kanlo_list_setting_categories" });
+  assert.equal(categories.structuredContent.categories.length, 5);
+  const settingNames = await reader.callTool({
+    name: "kanlo_list_setting_names", arguments: { category: "boards" },
+  });
+  assert.equal(settingNames.structuredContent.names.length, 5);
+  assert.equal(settingNames.structuredContent.next_offset, 5);
+  assert.equal(settingNames.structuredContent.values, undefined);
+  const settingValues = await reader.callTool({
+    name: "kanlo_read_setting_values", arguments: { category: "boards", board_id, offset: 5 },
+  });
+  assert.deepEqual(Object.keys(settingValues.structuredContent.values),
+    ["auto_archive_days", "trash_retention_days"]);
+  assert.equal(settingValues.structuredContent.next_offset, null);
+  const singleValue = await reader.callTool({
+    name: "kanlo_read_setting_values", arguments: { category: "locale", key: "language" },
+  });
+  assert.deepEqual(singleValue.structuredContent.values, { language: "de" });
   const columns = await reader.callTool({ name: "kanlo_list_columns", arguments: { board_id } });
   assert.equal(columns.isError, undefined, JSON.stringify(columns));
   const column_id = columns.structuredContent.items[0].id;

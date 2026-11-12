@@ -172,6 +172,16 @@ impl Store {
             .map_err(storage)?;
         query.query_map([],|r|Ok(json!({"id":r.get::<_,String>(0)?,"name":r.get::<_,String>(1)?,"created_at":r.get::<_,String>(2)?,"revoked":r.get::<_,bool>(3)?}))).map_err(storage)?.collect::<rusqlite::Result<_>>().map_err(storage)
     }
+
+    pub fn active_session_count(&self) -> Result<i64> {
+        self.connection
+            .query_row(
+                "SELECT count(*) FROM external_sessions WHERE expires_at > ?1",
+                [engine::now()],
+                |row| row.get(0),
+            )
+            .map_err(storage)
+    }
     pub fn revoke_api_key(&mut self, id: &str) -> Result<()> {
         let count = self
             .connection

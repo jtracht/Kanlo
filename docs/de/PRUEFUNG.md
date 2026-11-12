@@ -45,3 +45,15 @@ Debian-Testumgebung nachgewiesen. Keine vorhandenen Releases, Benchmarks,
 Remote-Issues, Branchregeln oder abgeschlossenen CI-Läufe werden vorausgesetzt.
 Die 70 KAN-IDs sind Planungskennungen. Keines der 70 Gesamttickets wird allein
 durch diesen ersten Teil als abgeschlossen erklärt.
+
+## Freigaben für Stable
+
+Den Kandidaten mit finaler Cargo-Version, Lizenztext und Release-Notizen
+zuerst als eigenen Commit vorbereiten und prüfen. Für jede Freigabe in
+`release/readiness.json` einen Bericht unter `release/evidence/` hinterlegen.
+Ein Bericht enthält `gate`, `status`, `source_commit` und `approved_by`.
+`source_commit` bezeichnet den tatsächlich geprüften Kandidaten. Die
+Pipeline akzeptiert nachfolgende Commits mit Freigabeberichten und
+Änderungen an `release/readiness.json`. Produktänderungen erfordern
+erneute Nachweise. Das Erstellen eines Berichts ersetzt die Prüfung
+oder Freigabe durch die zuständige Person nicht.

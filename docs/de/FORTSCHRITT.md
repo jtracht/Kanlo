@@ -1,6 +1,6 @@
 # Entwicklungsstand
 
-Der lokale Stand 0.2.0-dev.9 umfasst **62 von 70 Originalaufgaben
+Der lokale Stand 0.2.0-dev.10 umfasst **62 von 70 Originalaufgaben
 (88,6 %)**. Er baut auf den 42 Aufgaben der [60-Prozent-Abnahme](60-PROZENT.md)
 auf. Das Ziel von mindestens 85 % liegt bei 60 Aufgaben.
 

@@ -18,6 +18,11 @@ TARGETS = {
     'armv7-unknown-linux-gnueabihf': ('armhf', 40, 1),
 }
 TAG = re.compile(r'^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(dev|beta|rc)\.(0|[1-9]\d*))?$')
+STABLE_GATES = {
+    'native_tv', 'physical_pi3_armhf', 'arm64_runtime', 'amd64_runtime',
+    'backup_update_rollback', 'security_audit', 'license_approval',
+    'trademark_approval', 'installation_documentation',
+}
 
 
 def version():
@@ -65,27 +70,51 @@ def image_files(output, commit):
     return files, images
 
 
+def validate_stable_evidence():
+    gates = json.loads((ROOT / 'release/readiness.json').read_text(encoding='utf-8'))['stable_gates']
+    if set(gates) != STABLE_GATES:
+        raise ValueError('Stable gate list does not match the required approvals')
+    if git('status', '--porcelain'):
+        raise ValueError('Stable gate validation requires a clean checkout')
+    reviewed = set()
+    directory = ROOT / 'release/evidence'
+    for name, evidence in gates.items():
+        if not isinstance(evidence, str):
+            raise ValueError(f'Stable gate not accepted: {name}')
+        path = (ROOT / evidence).resolve()
+        if not path.is_relative_to(directory) or not path.is_file():
+            raise ValueError(f'Stable evidence missing: {name}')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        source = report.get('source_commit')
+        approver = report.get('approved_by')
+        if (report.get('gate') != name or report.get('status') != 'passed'
+                or not isinstance(source, str) or not re.fullmatch(r'[0-9a-f]{40}', source)
+                or not isinstance(approver, str) or not approver.strip()):
+            raise ValueError(f'Stable evidence does not approve the release: {name}')
+        if source in reviewed:
+            continue
+        # Evidence can be committed after the candidate was tested. Only the
+        # approval records may differ from that reviewed source.
+        checks = [
+            ['merge-base', '--is-ancestor', source, 'HEAD'],
+            ['diff', '--quiet', source, 'HEAD', '--', '.',
+             ':(exclude)release/readiness.json', ':(exclude)release/evidence/**'],
+        ]
+        if any(subprocess.run(['git', *args], cwd=ROOT, capture_output=True).returncode for args in checks):
+            raise ValueError(f'Stable evidence does not approve this source: {name}')
+        reviewed.add(source)
+    if 'LICENSE REVIEW PENDING' in (ROOT / 'LICENSE').read_text(encoding='utf-8'):
+        raise ValueError('Public license approval is still pending')
+
+
 def validate_tag(tag):
     match = TAG.fullmatch(tag)
     if not match or tag != f'v{version()}':
         raise ValueError('Tag must be v<Cargo version>, optionally -dev.N, -beta.N or -rc.N')
     prerelease = match[4] is not None
     if not prerelease:
-        gates = json.loads((ROOT / 'release/readiness.json').read_text())['stable_gates']
-        if not gates:
-            raise ValueError('Stable readiness gates are missing')
-        for name, evidence in gates.items():
-            if not isinstance(evidence, str):
-                raise ValueError(f'Stable gate not accepted: {name}')
-            path = (ROOT / evidence).resolve()
-            if not path.is_relative_to(ROOT) or not path.is_file():
-                raise ValueError(f'Stable evidence missing: {name}')
-            report = json.loads(path.read_text())
-            if report.get('status') != 'passed' or report.get('source_commit') != git('rev-parse', 'HEAD') or not report.get('approved_by'):
-                raise ValueError(f'Stable evidence does not approve this commit: {name}')
-        if 'LICENSE REVIEW PENDING' in (ROOT / 'LICENSE').read_text():
-            raise ValueError('Public license approval is still pending')
-    if (ROOT / 'release/NOTES.md').read_text().splitlines()[0] != f'# Kanlo {version()}':
+        validate_stable_evidence()
+    if (ROOT / 'release/NOTES.md').read_text(encoding='utf-8').splitlines()[0] != f'# Kanlo {version()}':
         raise ValueError('Release notes must match the Cargo version')
     return prerelease
 

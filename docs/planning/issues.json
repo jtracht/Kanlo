@@ -1150,7 +1150,7 @@
     "depends_on_milestone": "M7",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M8 – Sicherheit und ChatGPT\n- **Umsetzung:**\n  1. MCP-Toolliste aus OpenAPI ableiten.\n  2. GPT-Actions-Schema und Tooloperationen erstellen.\n  3. Ambiguität, Undo, Displaysteuerung und Listenführung testen.\n- **Akzeptanz / Definition of Done:** Selbst konfigurierbare End-to-End-ChatGPT-Steuerung bereit.",
-    "validation": "MCP-Toolliste aus OpenAPI-Funktionen abgeleitet. Lokaler Test deckt Listen, mehrdeutige Titel, Anzeige und zweistufiges Undo ab. ChatGPT-Workspace-Abnahme offen.",
+    "validation": "MCP und GPT Actions nutzen OpenAPI. Lokale Tests pruefen Listen, Mehrdeutigkeit, Undo, Display und seitenweise Einstellungen mit Einzelwertabruf. Abnahme im ChatGPT-Workspace steht aus.",
     "remote_issue": {
       "number": 57,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/57"

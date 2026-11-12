@@ -323,8 +323,7 @@ mod responses {
     response!(SettingNames { names: Vec<String>, next_offset: Option<usize> });
     response!(SettingValues {
         values: BTreeMap<String, Value>,
-        next_offset: Option<usize>,
-        board_options: Option<BTreeMap<String, BoardOptions>>
+        next_offset: Option<usize>
     });
     response!(Login {
         authenticated: bool,

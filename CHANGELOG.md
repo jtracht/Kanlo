@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0-dev.10
+
+- Kanlo groups settings by category and exposes names in pages of five.
+- ChatGPT and Claude Code can request explicit setting values without receiving credentials.
+- Stable release approval records can be committed after the reviewed candidate.
+
 ## 0.2.0-dev.9
 
 - The appliance opens Wi-Fi setup before the board on first interactive boot.

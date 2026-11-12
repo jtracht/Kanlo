@@ -15,6 +15,7 @@ Gespräch mit dem Plugin öffnen. [OpenAI-Anleitung zur privaten Verbindung](htt
 | „Zeige IMG-1 für 2 Minuten auf dem TV.“ | Der konfigurierte Bildschirm zeigt das richtige Ticket. Der Test erfordert Kanlo 0.2.0-dev.8. |
 | „Mache die letzte Änderung rückgängig.“ | Die Vorschau erscheint. Bis zur separaten Bestätigung bleiben die Daten gleich. |
 | Gleiche Aktionen mit reinem Lesezugriff | Die Werkzeugliste enthält keine Schreib- oder Bestätigungsaktionen. |
+| „Welche Einstellungskategorien gibt es?“ | Kategorie auswählen, bis zu fünf Namen abrufen und danach ausdrücklich Werte für ein Board anfordern. |
 | GPT Actions mit exportiertem Leseschema | Schlüsselprüfung, Ticketsuche und Ticketabruf auf derselben Testinstanz. |
 
 Die lokale MCP-Integration prüft Werkzeugaufrufe gegen einen isolierten

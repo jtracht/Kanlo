@@ -48,6 +48,53 @@ async fn call(app: axum::Router, method: &str, path: &str, body: Value) -> (Stat
 }
 
 #[tokio::test]
+async fn settings_pages_expose_only_requested_values_and_public_security_totals() {
+    let mut db = Store::open(":memory:").unwrap();
+    let key = db.mint_api_key("Settings test").unwrap();
+    let board = db.boards().unwrap().remove(0).id;
+    let app = router(db);
+    let (status, names) = call(
+        app.clone(),
+        "GET",
+        "/api/v1/settings/categories?category=boards",
+        Value::Null,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(names["names"].as_array().unwrap().len(), 5);
+    assert!(names.get("values").is_none());
+    let (status, values) = call(
+        app.clone(),
+        "GET",
+        &format!(
+            "/api/v1/settings/categories?category=boards&board_id={board}&values=true&offset=5"
+        ),
+        Value::Null,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(values["values"].as_object().unwrap().len(), 2);
+    assert!(values.get("board_options").is_none());
+    let (status, security) = call(
+        app,
+        "GET",
+        "/api/v1/settings/categories?category=security&values=true",
+        Value::Null,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        security["values"],
+        json!({"api_keys": 1, "passcode_configured": false, "sessions": 0})
+    );
+    assert!(
+        !security
+            .to_string()
+            .contains(key["token"].as_str().unwrap())
+    );
+}
+
+#[tokio::test]
 async fn display_actions_restore_context_and_leave_board_content_unchanged() {
     let app = router(Store::open(":memory:").unwrap());
     let (_, boards) = call(app.clone(), "GET", "/api/v1/boards", Value::Null).await;

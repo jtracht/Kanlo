@@ -77,6 +77,9 @@ const toolOperations = {
   kanlo_list_undo: "getUndoHistory",
   kanlo_preview_undo: "previewUndo",
   kanlo_confirm_undo: "confirmRecovery",
+  kanlo_list_setting_categories: "readSettings",
+  kanlo_list_setting_names: "readSettings",
+  kanlo_read_setting_values: "readSettings",
 };
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const paging = {
@@ -113,6 +116,18 @@ function tool(name, description, inputSchema, execute, { readOnlyHint = true, de
 
 tool("kanlo_list_boards", "Kanlo-Boards mit IDs und Ticketpräfixen auflisten.", paging,
   async (input) => page(await request("boards"), input, ({ id, name, prefix }) => ({ id, name, prefix })));
+
+const settingPage = {
+  category: z.enum(["appearance", "boards", "backup", "security", "locale"]),
+  offset: z.number().int().min(0).default(0),
+};
+tool("kanlo_list_setting_categories", "Zuerst die Kategorien der Kanlo-Einstellungen anzeigen und die Auswahl des Nutzers abwarten.", {},
+  async () => request("settings/categories"));
+tool("kanlo_list_setting_names", "Nach Wahl einer Kategorie bis zu fünf Einstellungsnamen anzeigen. next_offset bei einer Bitte um weitere Einträge verwenden.",
+  settingPage, async (input) => request(`settings/categories?${new URLSearchParams(input)}`));
+tool("kanlo_read_setting_values", "Nur auf ausdrückliche Nachfrage die Werte einer ausgewählten Einstellungsseite anzeigen. Für Board-Regeln die Board-ID angeben.",
+  { ...settingPage, board_id: id.optional(), key: id.optional().describe("Einzelner Einstellungsname, wenn nur dieser Wert angefragt wurde.") }, async (input) =>
+    request(`settings/categories?${new URLSearchParams({ ...input, values: "true" })}`));
 
 tool("kanlo_list_columns", "Spalten eines Kanlo-Boards auflisten.", { board_id: id, ...paging },
   async (input) => page(await request(`boards/${input.board_id}/columns`), input, (column) => column));

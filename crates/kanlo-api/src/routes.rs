@@ -503,6 +503,8 @@ async fn sync_comment(
 #[derive(Deserialize, schemars::JsonSchema)]
 struct SettingsQuery {
     category: Option<String>,
+    board_id: Option<String>,
+    key: Option<String>,
     #[serde(default)]
     offset: usize,
     #[serde(default)]
@@ -532,22 +534,45 @@ async fn setting_categories(
         "security" => &["passcode_configured", "api_keys", "sessions"],
         _ => return Err(ApiError(Error::NotFound)),
     };
-    let page: Vec<_> = names
-        .iter()
-        .skip(query.offset)
-        .take(5)
-        .map(|s| s.to_string())
-        .collect();
     let next_offset = query.offset.saturating_add(5);
-    let next = if next_offset < names.len() {
-        Some(next_offset)
+    let (page, next) = if let Some(key) = query.key {
+        if !names.contains(&key.as_str()) {
+            return Err(ApiError(Error::NotFound));
+        }
+        (vec![key], None)
     } else {
-        None
+        (
+            names
+                .iter()
+                .skip(query.offset)
+                .take(5)
+                .map(|name| name.to_string())
+                .collect(),
+            (next_offset < names.len()).then_some(next_offset),
+        )
     };
     if !query.values {
         return Ok(Json(json!({"names":page,"next_offset":next})));
     }
-    Ok(Json(database(db,move|db|{let state=db.workspace()?;let settings=serde_json::to_value(state.settings).map_err(|_|Error::Storage)?;let values:BTreeMap<_,_>=page.iter().map(|name|(name.clone(),settings.get(name).cloned().unwrap_or(Value::Null))).collect();Ok(json!({"values":values,"next_offset":next,"board_options":if category=="boards"{json!(state.board_options)}else{Value::Null}}))}).await?))
+    Ok(Json(database(db, move |db| {
+        let state = db.workspace()?;
+        let source = match category.as_str() {
+            "boards" => {
+                let board = query.board_id.ok_or_else(|| Error::Validation("Choose a board before reading its settings".into()))?;
+                serde_json::to_value(state.board_options.get(&board).ok_or(Error::NotFound)?)
+                    .map_err(|_| Error::Storage)?
+            }
+            "security" => {
+                let active_keys = db.list_api_keys()?.iter().filter(|key| key["revoked"].as_bool() == Some(false)).count();
+                json!({"passcode_configured": db.has_passcode()?, "api_keys": active_keys, "sessions": db.active_session_count()?})
+            }
+            _ => serde_json::to_value(state.settings).map_err(|_| Error::Storage)?,
+        };
+        let values: BTreeMap<_, _> = page.into_iter()
+            .filter_map(|name| source.get(&name).cloned().map(|value| (name, value)))
+            .collect();
+        Ok(json!({"values":values,"next_offset":next}))
+    }).await?))
 }
 #[derive(Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]

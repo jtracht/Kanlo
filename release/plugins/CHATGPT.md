@@ -53,3 +53,8 @@ OpenAPI. Verwende einen laufenden Server ab `0.2.0-dev.6` mit
 passenden Kennungen für die Auswahl. Mit aktiviertem Schreibzugriff zeigt
 `kanlo_preview_undo` die geplante Rückgängig-Aktion. Erst nach deiner
 ausdrücklichen Bestätigung kann `kanlo_confirm_undo` sie ausführen.
+
+Für Einstellungen zuerst „Welche Kanlo-Einstellungskategorien gibt es?“ fragen.
+Nach Auswahl einer Kategorie zeigt das Plugin bis zu fünf Namen pro Seite.
+Werte werden separat abgerufen. Für Board-Regeln mit Board-Auswahl
+Kanlo 0.2.0-dev.10 verwenden.
