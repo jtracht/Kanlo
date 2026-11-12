@@ -1,6 +1,10 @@
 # Kanlo 0.2.0-dev.10
 
-Lokaler Entwicklungsstand **90 % (63 von 70 Originalaufgaben)**.
+Privater Entwicklungsstand **95,6 % (65 von 68 aktiven Aufgaben)**.
+
+Web- und TV-Board haben ein neues Layout. Auf der lokalen Anzeige bewegt GTK
+vorbereitete Bilder im Takt des Compositors. Spaltenseiten und gerenderter
+Text werden zwischengespeichert, um die CPU beim Ansichtswechsel zu entlasten.
 
 Kanlo liefert für ChatGPT und Claude Code zuerst Einstellungskategorien,
 dann Namen in Fünferseiten. Werte werden ausdrücklich abgerufen. Bei
@@ -30,10 +34,12 @@ Die Weboberfläche zeigt die installierte Version auf Anfrage.
 Die Geräteanzeige erlaubt den Wechsel zwischen Board und lokaler Einrichtung.
 Bei einem Grafikfehler steht eine einfache Boardansicht auf der Konsole zur
 Verfügung. Beim ersten Start öffnet sich die WLAN-Ersteinrichtung vor dem
-Board. Nach „Fertig“ wechselt Kanlo zur Board-Konsole. Systemmeldungen
+Board. Die Tastaturbelegung lässt sich davor auswählen. Kanlo aktiviert WLAN
+und scannt vor der Netzwerkliste. Nach „Fertig“ wechselt Kanlo zur Board-Konsole.
+Die Weboberfläche im Geräte-Image ist über HTTP-Port 80 erreichbar. Systemmeldungen
 bleiben von den Menüs getrennt. Die Geräteeinstellungen bieten WLAN,
 Bluetooth und die Anzeige-Diagnose. Composite hängt vom Pi-Modell und der Firmware-
-Konfiguration ab. Die physische Anschlussprüfung steht noch aus.
+Konfiguration ab.
 
 Die Kanlo-API liefert Ticketkommentare seitenweise. Die separat erhältlichen
 Kanlo-Plugins 0.6.1 für Claude Code und ChatGPT können Kommentare lesen und
@@ -48,7 +54,7 @@ Private Geräte-Images / Private appliance development release.
 Vier flashbare `.img.xz`-Varianten: `rpi-armhf`, `rpi-arm64`, `generic-amd64`
 und `generic-arm64`. Raspberry Pi OS Lite 13 bzw. Debian 13, vollständiger
 Kanlo-Server mit eingebetteter Weboberfläche, automatischer Start, eigene
-Dienstkonten, DHCP/mDNS und native SDL/Wayland-Boardanzeige ohne Chromium.
+Dienstkonten, DHCP/mDNS und eine native Boardanzeige mit Weston und GTK/Wayland.
 WLAN-Ersteinrichtung auf dem Bildschirm oder vorab per `KANLO_CONFIG.json`
 auf der FAT-Bootpartition. Keine gemeinsamen Kennwörter; SSH erst nach Public-Key-Einrichtung.
 Automatische Dateisystemerweiterung, begrenzte flüchtige Logs und ZRAM.
@@ -73,14 +79,14 @@ Read `IMAGES-DE.md` / `IMAGES-EN.md` for compatible hardware and flashing/setup.
 
 ## Grenzen / Known limits
 
-Entwicklungsversion. Die ChatGPT-Abnahme im Workspace
-sowie physische Raspberry-Pi-Tests stehen aus. Die QEMU-Prüfung erfasst den
-emulierten Systemstart. Tests für HDMI, Composite und WLAN am Gerät stehen aus.
-Die öffentliche Verteilung erfordert die ausstehende Lizenz- und Markenfreigabe.
+Der Anwender bestätigte SD-Erststart, WLAN-Liste, lokales Board und Neustart
+auf dem Pi 3 B+. Die Dauerlastmessungen auf den Zielgeräten stehen aus.
+Die manuellen Workspace-Tests übernimmt der Anwender. Die öffentliche
+Verteilung erfordert Lizenz- und Markenfreigabe.
 
-Development prerelease. ChatGPT workspace acceptance and physical Raspberry Pi testing
-are pending. QEMU verifies the emulated boot. On-device HDMI, composite and
-Wi-Fi testing remain pending. Public distribution requires licensing and
+The owner confirmed SD boot, Wi-Fi setup, local board and reboot on a Pi 3 B+.
+Extended benchmarks on target devices remain pending. The owner will run the
+manual ChatGPT workspace tests. Public distribution requires licensing and
 trademark clearance.
 
 ## Installation
