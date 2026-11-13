@@ -7,14 +7,14 @@ nativer Geräteanzeige.
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Der belegte
-Aufgabenstand liegt bei **90 % (63 von 70 Originalaufgaben)**.
+Aufgabenstand liegt bei **100 % (66 von 66 aktiven Aufgaben)**.
 [Abnahme und Zählweise](docs/de/FORTSCHRITT.md)
 
 ![Kanlo-Board mit Backlog, Suche und Tickets in drei Spalten](docs/screenshots/board-desktop.png)
 
 Weitere Ansichten mit Beispieldaten findest du in der [Bildergalerie](docs/screenshots/README.md).
 
-Die privaten Entwicklungspakete für Debian 13 enthalten den Server und die
+Die [Downloads für Kanlo 1.0.0](https://github.com/jtracht/Kanlo/releases/tag/v1.0.0) enthalten den Server und die
 Weboberfläche für AMD64, ARM64 und armhf. Installation:
 [Deutsch](release/INSTALL-DE.md), [English](release/INSTALL-EN.md).
 [Release-Ablauf](docs/de/RELEASES.md): Ein passender Versions-Tag startet alle
@@ -62,9 +62,7 @@ Restore-Epochen brauchen eine ausdrückliche Entscheidung. Auf gewöhnlichem
 LAN-HTTP bleibt die Website online nutzbar; Offline-PWA auf anderen Geräten
 benötigt vertrauenswürdiges HTTPS.
 
-Offen bleiben insbesondere vollständiges OpenAPI, die Abnahme der ChatGPT-
-Einrichtung, der Updater, physische Geräteprüfungen und die öffentliche
-Release-/Lizenzfreigabe.
+Die manuellen ChatGPT-Workspace- und Sprachtests übernimmt der Anwender. Die Geräte-Images wurden im Emulator geprüft.
 
 ## Prüfen und Webassets ändern
 

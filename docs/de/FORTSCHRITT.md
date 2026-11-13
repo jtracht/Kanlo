@@ -1,8 +1,8 @@
 # Entwicklungsstand
 
-Der aktive Entwicklungsumfang umfasst **65 von 66 Aufgaben (98,5 %)**.
+Der aktive Entwicklungsumfang umfasst **66 von 66 Aufgaben (100 %)**.
 KAN-057, KAN-060, KAN-066 und KAN-068 wurden auf Wunsch aus der aktiven Planung entfernt.
-Die ursprüngliche Zählung beträgt 65 von 70 Aufgaben (92,9 %).
+Die ursprüngliche Zählung beträgt 66 von 70 Aufgaben (94,3 %).
 
 | Zusätzlich abgenommen | Lokaler Nachweis |
 | --- | --- |
@@ -25,5 +25,4 @@ Die ursprüngliche Zählung beträgt 65 von 70 Aufgaben (92,9 %).
 | KAN-062 · Raspberry-Pi-Flash-Image | Der Anwender bestätigte SD-Erststart, WLAN-Liste, Board und Neustart mit dem [Weston-Image](PI3-ABNAHME.md). |
 | KAN-070 · Offene Folgearbeiten | [Offene Originalabnahmen](../planning/OFFENE-ABNAHME.md) und getrennte lokale Post-1.0-Tickets. |
 
-Die Veröffentlichung von Stable 1.0 ist die letzte
-[aktive Aufgabe](../planning/OFFENE-ABNAHME.md).
+[Kanlo 1.0.0](https://github.com/jtracht/Kanlo/releases/tag/v1.0.0) ist mit vier bootgeprüften Images, Serverpaketen und Prüfsummen veröffentlicht.

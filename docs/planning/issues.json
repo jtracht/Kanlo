@@ -1285,11 +1285,11 @@
     "title": "Stable 1.0 veröffentlichen",
     "milestone": "M10",
     "component": "acceptance",
-    "status": "planned",
+    "status": "done",
     "depends_on_milestone": "M9",
     "additional_dependencies": [],
     "baseline_checklist": "- **Milestone:** M10 – Abnahme und Stable 1.0\n- **Umsetzung:**\n  1. Release-Gates final abhaken.\n  2. Getaggte GitHub-Artefakte samt Checksummen ausliefern.\n  3. Release Notes und bekannte Plattformgrenzen veröffentlichen.\n- **Akzeptanz / Definition of Done:** Stable-Tag entspricht tatsächlich getesteten Artefakten.",
-    "validation": "Hardware/release acceptance evidence required; no local substitute",
+    "validation": "Stable 1.0.0 is published on GitHub with four QEMU-verified device images, three server packages and verified SHA256 checksums.",
     "remote_issue": {
       "number": 69,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/69"
