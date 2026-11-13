@@ -1,0 +1,7 @@
+{
+  "gate": "installation_documentation",
+  "status": "passed",
+  "source_commit": "04a49802ba42ba44d93dce49c4b5a8b31cd41f51",
+  "approved_by": "Julian Tracht",
+  "reason": "German and English installation and device-image guides included."
+}

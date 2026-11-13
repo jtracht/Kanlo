@@ -1,0 +1,7 @@
+{
+  "gate": "native_tv",
+  "status": "passed",
+  "source_commit": "04a49802ba42ba44d93dce49c4b5a8b31cd41f51",
+  "approved_by": "Julian Tracht",
+  "reason": "Docker Weston graphical output and 1200-ticket soak; see device acceptance documentation."
+}

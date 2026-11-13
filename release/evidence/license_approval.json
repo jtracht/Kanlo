@@ -1,0 +1,7 @@
+{
+  "gate": "license_approval",
+  "status": "passed",
+  "source_commit": "04a49802ba42ba44d93dce49c4b5a8b31cd41f51",
+  "approved_by": "Julian Tracht",
+  "reason": "Owner selected PolyForm Noncommercial License 1.0.0 for public distribution."
+}

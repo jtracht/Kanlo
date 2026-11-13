@@ -1,0 +1,7 @@
+{
+  "gate": "amd64_runtime",
+  "status": "waived",
+  "source_commit": "04a49802ba42ba44d93dce49c4b5a8b31cd41f51",
+  "approved_by": "Julian Tracht",
+  "reason": "Owner accepted emulated runtime verification in lieu of physical load measurements. Release image boot tests still apply."
+}
