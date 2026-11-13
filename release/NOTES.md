@@ -1,6 +1,6 @@
-# Kanlo 0.2.0-dev.10
+# Kanlo 1.0.0
 
-Privater Entwicklungsstand **95,6 % (65 von 68 aktiven Aufgaben)**.
+Erste stabile Version von Kanlo.
 
 Web- und TV-Board haben ein neues Layout. Auf der lokalen Anzeige bewegt GTK
 vorbereitete Bilder im Takt des Compositors. Spaltenseiten und gerenderter
@@ -47,8 +47,6 @@ Tickets in Zielspalten oder ins Backlog verschieben. Sie bieten außerdem
 eine Vorschau mit separater Bestätigung für Rückgängig-Aktionen und ändern
 einzelne Einstellungen mit Prüfung des zuvor gelesenen Werts.
 
-Private Geräte-Images / Private appliance development release.
-
 ## Geräte-Images / Appliance images
 
 Vier flashbare `.img.xz`-Varianten: `rpi-armhf`, `rpi-arm64`, `generic-amd64`
@@ -81,13 +79,13 @@ Read `IMAGES-DE.md` / `IMAGES-EN.md` for compatible hardware and flashing/setup.
 
 Der Anwender bestätigte SD-Erststart, WLAN-Liste, lokales Board und Neustart
 auf dem Pi 3 B+. Die Dauerlastmessungen auf den Zielgeräten stehen aus.
-Die manuellen Workspace-Tests übernimmt der Anwender. Die öffentliche
-Verteilung erfordert Lizenz- und Markenfreigabe.
+Die manuellen Workspace-Tests übernimmt der Anwender. Kanlo steht unter der
+PolyForm Noncommercial License 1.0.0.
 
 The owner confirmed SD boot, Wi-Fi setup, local board and reboot on a Pi 3 B+.
 Extended benchmarks on target devices remain pending. The owner will run the
-manual ChatGPT workspace tests. Public distribution requires licensing and
-trademark clearance.
+manual ChatGPT workspace tests. Kanlo is licensed under the PolyForm
+Noncommercial License 1.0.0.
 
 ## Installation
 

@@ -1,12 +1,11 @@
-Kanlo development baseline
+Kanlo
+
+Required Notice: Copyright (c) 2026 Julian Tracht.
 
 Third-party dependencies are resolved in Cargo.lock and the npm lockfiles. Their respective licenses
-apply independently of Kanlo's pending source-available terms.
+apply independently of Kanlo's PolyForm Noncommercial License 1.0.0.
 
 Principal components: Rust, Axum, Tokio, rusqlite, SQLite, serde, uuid,
 thiserror; test dependencies include tower, tempfile and http-body-util.
 
 The versioned inventory and collected license texts are in docs/licenses.
-Before public release: complete missing texts and bundled SQLite notices,
-assess compatibility with the final Kanlo license, and verify the product
-name/trademark. No legal clearance is claimed by this development version.

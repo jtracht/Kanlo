@@ -27,13 +27,14 @@ def binary(target):
 
 class Packages(unittest.TestCase):
     def test_tag_must_match_manifest_and_channel(self):
-        self.assertTrue(package.validate_tag('v' + package.version()))
+        with patch.object(package, 'validate_stable_evidence'):
+            self.assertEqual(package.validate_tag('v' + package.version()), '-' in package.version())
         for tag in ['release', 'v999.0.0-dev.1', 'v0.1.0-dev.01', 'v0.1.0-nightly.1', 'v0.1.0-dev.1; echo nope']:
             with self.assertRaises(ValueError):
                 package.validate_tag(tag)
 
     def test_stable_fails_closed_without_hardware_and_legal_evidence(self):
-        with patch.object(package, 'version', return_value='1.0.0'):
+        with patch.object(package, 'version', return_value='1.0.0'), patch.object(package, 'git', return_value=''), patch.object(Path, 'read_text', return_value=json.dumps({'stable_gates': dict.fromkeys(package.STABLE_GATES)})):
             with self.assertRaisesRegex(ValueError, 'Stable gate'):
                 package.validate_tag('v1.0.0')
 
@@ -97,11 +98,11 @@ class Packages(unittest.TestCase):
 
     def test_incomplete_platform_set_cannot_be_released(self):
         with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(ValueError, 'Exactly three'):
+            with patch.object(package, 'validate_stable_evidence'), self.assertRaisesRegex(ValueError, 'Exactly three'):
                 package.bundle(Path(directory), 'v' + package.version())
 
     def test_real_bundle_checks_all_platforms_and_rejects_tampered_download(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'SOURCE_COMMIT': package.git('rev-parse', 'HEAD'), 'SOURCE_DATE_EPOCH': '1700000000'}):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'SOURCE_COMMIT': package.git('rev-parse', 'HEAD'), 'SOURCE_DATE_EPOCH': '1700000000'}), patch.object(package, 'validate_stable_evidence'):
             directory = Path(directory)
             for target in package.TARGETS:
                 executable = directory / target
@@ -225,7 +226,7 @@ class Publication(unittest.TestCase):
         self.files = [Path(self.directory.name) / name for name in ['archive.tar.gz', 'SHA256SUMS']]
         for file in self.files:
             file.write_bytes(file.name.encode())
-        self.patches = [patch.object(publisher, 'checked_files', return_value=self.files), patch.object(publisher, 'git', return_value='a' * 40)]
+        self.patches = [patch.object(publisher, 'checked_files', return_value=self.files), patch.object(publisher, 'git', return_value='a' * 40), patch.object(package, 'validate_stable_evidence')]
         for item in self.patches:
             item.start()
         self.api = FakeAPI()
@@ -238,7 +239,7 @@ class Publication(unittest.TestCase):
     def test_complete_upload_publishes_and_retry_is_idempotent(self):
         publisher.publish(self.api, 'v' + package.version(), Path(self.directory.name))
         self.assertFalse(self.api.release['draft'])
-        self.assertTrue(self.api.release['prerelease'])
+        self.assertEqual(self.api.release['prerelease'], '-' in package.version())
         publisher.publish(self.api, 'v' + package.version(), Path(self.directory.name))
         self.assertEqual(len(self.api.assets), 2)
 

@@ -1,7 +1,9 @@
 # Kanlo
 
+![Kanlo](docs/brand/kanlo-logo.png)
+
 Lokales Kanban für ein Debian-/Raspberry-Pi-Gerät mit einer Weboberfläche und
-nativer Geräteanzeige. **Lokale Entwicklungsversion 0.2.0-dev.10.**
+nativer Geräteanzeige.
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
 Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Der belegte
@@ -94,6 +96,7 @@ Laufzeit- oder Anzeigeleistung auf einem Raspberry Pi.
 - [Repositories](docs/de/REPOSITORIES.md), [English guide](docs/en/README.md)
 - [Drittanbieter-Inventar und Veröffentlichungsgates](docs/licenses/README.md)
 
-Source-available ist das beabsichtigte Modell; der konkrete Lizenztext ist noch
-nicht freigegeben. `LICENSE` erteilt keine öffentliche Nutzungslizenz. Die
-Repositories bleiben privat. Keine OSI-Open-Source- oder Stable-Behauptung.
+Kanlo ist unter der [PolyForm Noncommercial License 1.0.0](LICENSE)
+quelloffen einsehbar. Kommerzielle Nutzung außerhalb der in der Lizenz
+erlaubten Zwecke erfordert eine separate Genehmigung von Julian Tracht.
+Drittanbieterkomponenten behalten ihre jeweiligen Lizenzen.

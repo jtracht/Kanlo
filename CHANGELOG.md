@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0
+
+- Erste stabile Version unter PolyForm Noncommercial 1.0.0 mit neuem Kanlo-Logo.
+- Web- und TV-Redesign, optimierte Weston-Übergänge und WLAN-Ersteinrichtung.
+
 ## 0.2.0-dev.10
 
 - Kanlo groups settings by category and exposes names in pages of five.

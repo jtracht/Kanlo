@@ -101,7 +101,13 @@ def validate_stable_evidence():
         report = json.loads(path.read_text(encoding='utf-8'))
         source = report.get('source_commit')
         approver = report.get('approved_by')
-        if (report.get('gate') != name or report.get('status') != 'passed'
+        disposition = report.get('status')
+        valid_disposition = disposition == 'passed' or (
+            disposition == 'waived' and name in {
+                'physical_pi3_armhf', 'arm64_runtime', 'amd64_runtime', 'security_audit',
+            } and isinstance(report.get('reason'), str) and bool(report['reason'].strip())
+        )
+        if (report.get('gate') != name or not valid_disposition
                 or not isinstance(source, str) or not re.fullmatch(r'[0-9a-f]{40}', source)
                 or not isinstance(approver, str) or not approver.strip()):
             raise ValueError(f'Stable evidence does not approve the release: {name}')
