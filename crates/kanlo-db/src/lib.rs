@@ -11,6 +11,7 @@ use std::{
 };
 use uuid::Uuid;
 
+mod display;
 #[cfg(test)]
 mod integration_tests;
 pub mod maintenance;
@@ -41,7 +42,7 @@ fn hash(value: &str) -> String {
     format!("{:x}", Sha256::digest(value.as_bytes()))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Mutation {
     pub op_id: String,
@@ -53,7 +54,7 @@ pub struct Mutation {
     pub base_context: Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Receipt {
     pub op_id: String,
     pub revision: i64,
@@ -64,7 +65,7 @@ pub struct Receipt {
     #[serde(default)]
     pub epoch: String,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct EntityChange {
     pub kind: String,
     pub id: String,
@@ -72,7 +73,7 @@ pub struct EntityChange {
     pub body: Option<Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Preview {
     pub token: String,
     pub revision: i64,
@@ -82,7 +83,7 @@ pub struct Preview {
     pub tickets: Vec<Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct RecordChange {
     pub kind: String,
     pub id: String,
@@ -497,6 +498,16 @@ impl Store {
         Ok(result)
     }
 
+    pub fn event_cursor(&self) -> Result<i64> {
+        self.connection
+            .query_row(
+                "SELECT COALESCE(MAX(sequence), 0) FROM event_stream",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(storage)
+    }
+
     pub fn events(&self, after: i64, limit: usize) -> Result<Vec<Value>> {
         let mut query = self.connection.prepare("SELECT sequence,payload,created_at FROM event_stream WHERE sequence>?1 ORDER BY sequence LIMIT ?2").map_err(storage)?;
         query
@@ -651,15 +662,8 @@ pub(crate) fn entity_changes(before: &Workspace, after: &Workspace) -> Result<Ve
         })
         .collect())
 }
-pub(crate) fn commit_state(
-    tx: &Transaction<'_>,
-    before: &Workspace,
-    after: &Workspace,
-    result: &ChangeResult,
-    description: &str,
-    history: bool,
-) -> Result<()> {
-    let relocated: Option<String> = tx
+fn require_writable(connection: &Connection) -> Result<()> {
+    let relocated: Option<String> = connection
         .query_row(
             "SELECT value FROM metadata WHERE key='relocated_to'",
             [],
@@ -672,6 +676,18 @@ pub(crate) fn commit_state(
             "Database relocated; configure the new data directory".into(),
         ));
     }
+    Ok(())
+}
+
+pub(crate) fn commit_state(
+    tx: &Transaction<'_>,
+    before: &Workspace,
+    after: &Workspace,
+    result: &ChangeResult,
+    description: &str,
+    history: bool,
+) -> Result<()> {
+    require_writable(tx)?;
     let old = records::to_records(before)?;
     let new = records::to_records(after)?;
     if old == new {

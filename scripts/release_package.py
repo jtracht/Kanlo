@@ -18,6 +18,11 @@ TARGETS = {
     'armv7-unknown-linux-gnueabihf': ('armhf', 40, 1),
 }
 TAG = re.compile(r'^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(dev|beta|rc)\.(0|[1-9]\d*))?$')
+STABLE_GATES = {
+    'native_tv', 'physical_pi3_armhf', 'arm64_runtime', 'amd64_runtime',
+    'backup_update_rollback', 'security_audit', 'license_approval',
+    'trademark_approval', 'installation_documentation',
+}
 
 
 def version():
@@ -26,6 +31,16 @@ def version():
 
 def git(*args):
     return subprocess.check_output(['git', *args], cwd=ROOT).decode().strip()
+
+
+def preview_digest():
+    if git('ls-files', '--others', '--exclude-standard'):
+        raise ValueError('Local preview requires all source changes to be in tracked files')
+    diff = subprocess.check_output(
+        ['git', 'diff', '--no-ext-diff', '--binary', '--full-index', '--no-color', 'HEAD', '--'],
+        cwd=ROOT,
+    )
+    return hashlib.sha256(diff).hexdigest()
 
 
 def file_sha256(path):
@@ -46,11 +61,17 @@ def image_files(output, commit):
         if image.is_symlink() or evidence.is_symlink():
             raise ValueError('Image inputs must be regular files')
         report = json.loads(evidence.read_text())
+        if 'local_preview_sha256' in report:
+            raise ValueError('Local preview images cannot be bundled as releases')
         boot = report.get('boot_test', {})
         if report.get('source_commit') != commit or report.get('version') != version() or report.get('profile') != profile or report.get('base') != base or report.get('image') != image.name:
             raise ValueError('Image provenance/version/base mismatch')
-        if boot.get('status') != 'passed' or [b.get('phase') for b in boot.get('boots', [])] != ['firstboot', 'reboot'] or any(b.get('sqlite_integrity') != 'ok' or not b.get('root_expanded') or not b.get('lan_http_verified') or not b.get('ram_swap_verified') for b in boot['boots']):
-            raise ValueError('Two successful image boots are required')
+        required = ('root_expanded', 'lan_http_verified', 'ram_swap_verified',
+                    'independent_service_restarts', 'live_display_verified')
+        if boot.get('status') != 'passed' or [b.get('phase') for b in boot.get('boots', [])] != ['firstboot', 'reboot'] or any(b.get('sqlite_integrity') != 'ok' or not all(b.get(key) for key in required) for b in boot['boots']):
+            raise ValueError('Two successful image boots and independent service restarts are required')
+        if profile == 'generic-amd64' and boot['boots'][0].get('wifi_hotspot_verified') is not True:
+            raise ValueError('AMD64 Wi-Fi hotspot acceptance is required')
         if not re.fullmatch(r'[0-9a-f]{64}', boot.get('emulator_binary_sha256', '')) or base['arch'] != 'amd64' and boot.get('emulator_source_commit') != '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5':
             raise ValueError('Pinned emulator provenance is required')
         with image.open('rb') as stream:
@@ -63,27 +84,51 @@ def image_files(output, commit):
     return files, images
 
 
+def validate_stable_evidence():
+    gates = json.loads((ROOT / 'release/readiness.json').read_text(encoding='utf-8'))['stable_gates']
+    if set(gates) != STABLE_GATES:
+        raise ValueError('Stable gate list does not match the required approvals')
+    if git('status', '--porcelain'):
+        raise ValueError('Stable gate validation requires a clean checkout')
+    reviewed = set()
+    directory = ROOT / 'release/evidence'
+    for name, evidence in gates.items():
+        if not isinstance(evidence, str):
+            raise ValueError(f'Stable gate not accepted: {name}')
+        path = (ROOT / evidence).resolve()
+        if not path.is_relative_to(directory) or not path.is_file():
+            raise ValueError(f'Stable evidence missing: {name}')
+        report = json.loads(path.read_text(encoding='utf-8'))
+        source = report.get('source_commit')
+        approver = report.get('approved_by')
+        if (report.get('gate') != name or report.get('status') != 'passed'
+                or not isinstance(source, str) or not re.fullmatch(r'[0-9a-f]{40}', source)
+                or not isinstance(approver, str) or not approver.strip()):
+            raise ValueError(f'Stable evidence does not approve the release: {name}')
+        if source in reviewed:
+            continue
+        # Evidence can be committed after the candidate was tested. Only the
+        # approval records may differ from that reviewed source.
+        checks = [
+            ['merge-base', '--is-ancestor', source, 'HEAD'],
+            ['diff', '--quiet', source, 'HEAD', '--', '.',
+             ':(exclude)release/readiness.json', ':(exclude)release/evidence/**'],
+        ]
+        if any(subprocess.run(['git', *args], cwd=ROOT, capture_output=True).returncode for args in checks):
+            raise ValueError(f'Stable evidence does not approve this source: {name}')
+        reviewed.add(source)
+    if 'LICENSE REVIEW PENDING' in (ROOT / 'LICENSE').read_text(encoding='utf-8'):
+        raise ValueError('Public license approval is still pending')
+
+
 def validate_tag(tag):
     match = TAG.fullmatch(tag)
     if not match or tag != f'v{version()}':
         raise ValueError('Tag must be v<Cargo version>, optionally -dev.N, -beta.N or -rc.N')
     prerelease = match[4] is not None
     if not prerelease:
-        gates = json.loads((ROOT / 'release/readiness.json').read_text())['stable_gates']
-        if not gates:
-            raise ValueError('Stable readiness gates are missing')
-        for name, evidence in gates.items():
-            if not isinstance(evidence, str):
-                raise ValueError(f'Stable gate not accepted: {name}')
-            path = (ROOT / evidence).resolve()
-            if not path.is_relative_to(ROOT) or not path.is_file():
-                raise ValueError(f'Stable evidence missing: {name}')
-            report = json.loads(path.read_text())
-            if report.get('status') != 'passed' or report.get('source_commit') != git('rev-parse', 'HEAD') or not report.get('approved_by'):
-                raise ValueError(f'Stable evidence does not approve this commit: {name}')
-        if 'LICENSE REVIEW PENDING' in (ROOT / 'LICENSE').read_text():
-            raise ValueError('Public license approval is still pending')
-    if (ROOT / 'release/NOTES.md').read_text().splitlines()[0] != f'# Kanlo {version()}':
+        validate_stable_evidence()
+    if (ROOT / 'release/NOTES.md').read_text(encoding='utf-8').splitlines()[0] != f'# Kanlo {version()}':
         raise ValueError('Release notes must match the Cargo version')
     return prerelease
 
@@ -116,21 +161,49 @@ def package(binary, target, output):
     epoch = int(os.environ.get('SOURCE_DATE_EPOCH') or git('log', '-1', '--format=%ct'))
     arch = TARGETS[target][0]
     prefix = f'kanlo-{version()}-linux-{arch}'
-    build = {'schema_version': 1, 'version': version(), 'target': target, 'arch': arch, 'source_commit': commit, 'source_date_epoch': epoch, 'binary_sha256': hashlib.sha256(data).hexdigest(), 'minimum_os': 'Debian 13', 'native_tv': False, 'physical_device_certified': False}
+    build = {'schema_version': 1, 'version': version(), 'target': target, 'arch': arch, 'source_commit': commit, 'source_date_epoch': epoch, 'binary_sha256': hashlib.sha256(data).hexdigest(), 'minimum_os': 'Debian 13', 'native_tv': True, 'physical_device_certified': False}
+    preview = os.environ.get('KANLO_LOCAL_PREVIEW_SHA256')
+    if preview is not None:
+        if not re.fullmatch(r'[0-9a-f]{64}', preview):
+            raise ValueError('Invalid local preview source digest')
+        build['local_preview_sha256'] = preview
     files = [(f'{prefix}/bin/kanlo-server', data, 0o755), (f'{prefix}/BUILD.json', (json.dumps(build, indent=2) + '\n').encode(), 0o644)]
     paths = {
         'LICENSE': 'LICENSE', 'NOTICE': 'NOTICE', 'CHANGELOG.md': 'CHANGELOG.md',
         'release/NOTES.md': 'RELEASE-NOTES.md', 'release/INSTALL-DE.md': 'INSTALL-DE.md', 'release/INSTALL-EN.md': 'INSTALL-EN.md',
         'release/IMAGES-DE.md': 'IMAGES-DE.md', 'release/IMAGES-EN.md': 'IMAGES-EN.md',
         'docs/de/BETRIEB.md': 'docs/de/BETRIEB.md', 'docs/en/README.md': 'docs/en/README.md',
+        'docs/de/60-PROZENT.md': 'docs/de/60-PROZENT.md',
+        'docs/de/50-PROZENT.md': 'docs/de/50-PROZENT.md',
+        'docs/de/INTEGRATIONEN.md': 'docs/de/INTEGRATIONEN.md',
+        'docs/de/FORTSCHRITT.md': 'docs/de/FORTSCHRITT.md',
+        'docs/de/GERAETEABNAHME.md': 'docs/de/GERAETEABNAHME.md',
+        'docs/planning/OFFENE-ABNAHME.md': 'docs/planning/OFFENE-ABNAHME.md',
+        'docs/planning/issues.json': 'docs/planning/issues.json',
+        'docs/planning/post-1.0.json': 'docs/planning/post-1.0.json',
+        'docs/de/SICHERHEITSPRUEFUNG.md': 'docs/de/SICHERHEITSPRUEFUNG.md',
+        'release/plugins/screenshots/api-keys.png': 'release/plugins/screenshots/api-keys.png',
+        'release/plugins/CLAUDE-CODE.md': 'release/plugins/CLAUDE-CODE.md',
+        'release/plugins/CHATGPT.md': 'release/plugins/CHATGPT.md',
         'packaging/systemd/kanlo-server.service': 'systemd/kanlo-server.service', 'packaging/sysusers.d/kanlo.conf': 'sysusers.d/kanlo.conf',
+        'packaging/images/display.py': 'kiosk/display.py',
+        'packaging/images/tv_markdown.py': 'kiosk/tv_markdown.py',
+        'packaging/images/tv_wayland.py': 'kiosk/tv_wayland.py',
+        'packaging/images/appliance.py': 'kiosk/appliance.py',
+        'tests/images/physical_metrics.py': 'diagnostics/physical_metrics.py',
+        'tests/images/physical_workload.py': 'diagnostics/physical_workload.py',
+        'packaging/images/update.py': 'update.py',
+        'packaging/images/overlay/etc/systemd/system/kanlo-tv.service': 'kiosk/kanlo-tv.service',
     }
     paths.update({str(path.relative_to(ROOT)).replace('\\', '/'): str(path.relative_to(ROOT)).replace('\\', '/') for path in (ROOT / 'docs/licenses').rglob('*') if path.is_file()})
+    paths.update({path.relative_to(ROOT).as_posix(): path.relative_to(ROOT).as_posix()
+                  for path in (ROOT / 'docs/screenshots').iterdir() if path.is_file()})
     for source, name in paths.items():
         path = ROOT / source
         if path.is_symlink():
             raise ValueError('Package input must not be a symlink')
         files.append((f'{prefix}/{name}', path.read_bytes(), 0o644))
+    files.append((f'{prefix}/install.sh', (ROOT / 'packaging/install.sh').read_bytes(), 0o755))
     result = output / f'{prefix}.tar.gz'
     archive(result, files, epoch)
     return result
@@ -150,7 +223,7 @@ def inspect(path):
         elf(data, build['target'])
         if hashlib.sha256(data).hexdigest() != build['binary_sha256']:
             raise ValueError('Embedded binary checksum mismatch')
-        for required in ['LICENSE', 'NOTICE', 'INSTALL-DE.md', 'INSTALL-EN.md', 'RELEASE-NOTES.md', 'docs/licenses/inventory.json']:
+        for required in ['LICENSE', 'NOTICE', 'INSTALL-DE.md', 'INSTALL-EN.md', 'RELEASE-NOTES.md', 'docs/licenses/inventory.json', 'install.sh', 'kiosk/display.py', 'kiosk/appliance.py', 'kiosk/kanlo-tv.service']:
             tar.getmember(f'{prefix}/{required}')
         return build
 
@@ -160,7 +233,8 @@ def bundle(output, tag):
     packages = sorted(output.glob(f'kanlo-{version()}-linux-*.tar.gz'))
     builds = [inspect(path) for path in packages]
     commit = git('rev-parse', 'HEAD')
-    if len(builds) != 3 or {b['target'] for b in builds} != set(TARGETS) or any(b['source_commit'] != commit for b in builds):
+    if len(builds) != 3 or {b['target'] for b in builds} != set(TARGETS) or any(
+            b['source_commit'] != commit or 'local_preview_sha256' in b for b in builds):
         raise ValueError('Exactly three packages from this commit are required')
     image_assets, images = image_files(output, commit)
     epoch = int(git('log', '-1', '--format=%ct'))
@@ -181,10 +255,13 @@ if __name__ == '__main__':
     p = sub.add_parser('validate'); p.add_argument('--tag', required=True)
     p = sub.add_parser('package'); p.add_argument('--binary', type=Path, required=True); p.add_argument('--target', choices=TARGETS, required=True); p.add_argument('--output', type=Path, required=True)
     p = sub.add_parser('bundle'); p.add_argument('--output', type=Path, required=True); p.add_argument('--tag', required=True)
+    sub.add_parser('preview-digest')
     args = parser.parse_args()
     if args.command == 'validate':
         print('prerelease' if validate_tag(args.tag) else 'stable')
     elif args.command == 'package':
         print(package(args.binary, args.target, args.output))
+    elif args.command == 'preview-digest':
+        print(preview_digest())
     else:
         bundle(args.output, args.tag)

@@ -128,6 +128,8 @@ export function TicketDialog({
   const initialDraft = useRef(JSON.stringify(draft));
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [tvMinutes, setTvMinutes] = useState("");
+  const validTvMinutes = tvMinutes === "" || (/^\d+$/.test(tvMinutes) && Number(tvMinutes) <= 300);
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [comment, setComment] = useState("");
@@ -921,6 +923,39 @@ export function TicketDialog({
             </details>
           )}
           <div class="actions wrap">
+            <label>
+              {t("TV-Dauer in Minuten", "TV duration in minutes")}
+              <input type="number" min="0" max="300" step="1" value={tvMinutes}
+                placeholder={t("Standard", "Default")}
+                onInput={(event) => setTvMinutes(event.currentTarget.value)} />
+            </label>
+            <button type="button" class="secondary"
+              disabled={!validTvMinutes || busy || !connection.online || connection.authRequired || ticket.details.trashed || ticket.details.archived}
+              onClick={() => run(async () => {
+                await api("/display", { kind: "show_ticket", ticket_id: ticket.id,
+                  minutes: tvMinutes === "" ? undefined : Number(tvMinutes) });
+                setMessage(t("Ticket auf TV angezeigt.", "Ticket sent to TV."));
+              })}>
+              {t("Auf TV anzeigen", "Show on TV")}
+            </button>
+            <button type="button" class="secondary"
+              disabled={busy || !connection.online || connection.authRequired || ticket.details.trashed || ticket.details.archived}
+              onClick={() => run(async () => {
+                await api("/display", { kind: "highlight", ticket_ids: [ticket.id], seconds: 25 });
+                setMessage(t("Ticket auf dem TV-Board hervorgehoben.", "Ticket highlighted on the TV board."));
+              })}>
+              {t("Auf TV hervorheben", "Highlight on TV")}
+            </button>
+            {root && (
+              <button type="button" class="secondary"
+                disabled={busy || !connection.online || connection.authRequired || ticket.details.trashed || ticket.details.archived}
+                onClick={() => run(async () => {
+                  await api("/display", { kind: "show_children", ticket_id: ticket.id });
+                  setMessage(t("Untertickets auf TV angezeigt.", "Subtickets sent to TV."));
+                })}>
+                {t("Untertickets auf TV anzeigen", "Show subtickets on TV")}
+              </button>
+            )}
             <button
               type="button"
               class="secondary"

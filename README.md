@@ -1,11 +1,16 @@
 # Kanlo
 
 Lokales Kanban für ein Debian-/Raspberry-Pi-Gerät mit einer Weboberfläche und
-nativer Geräteanzeige. **Entwicklungsversion 0.2.0-dev.1, kein Stable-Release.**
+nativer Geräteanzeige. **Lokale Entwicklungsversion 0.2.0-dev.10.**
 
 Die Originalanforderungen liegen unverändert unter `docs/baseline/`.
-Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Den belegten
-Aufgabenstand führt [50-PROZENT.md](docs/de/50-PROZENT.md).
+Gitea ist die Hauptquelle; GitHub spiegelt dieselben Commits. Der belegte
+Aufgabenstand liegt bei **90 % (63 von 70 Originalaufgaben)**.
+[Abnahme und Zählweise](docs/de/FORTSCHRITT.md)
+
+![Kanlo-Board mit Backlog, Suche und Tickets in drei Spalten](docs/screenshots/board-desktop.png)
+
+Weitere Ansichten mit Beispieldaten findest du in der [Bildergalerie](docs/screenshots/README.md).
 
 Die privaten Entwicklungspakete für Debian 13 enthalten den Server und die
 Weboberfläche für AMD64, ARM64 und armhf. Installation:
@@ -37,6 +42,10 @@ HTTPS-Proxy-Zugang: [Betrieb](docs/de/BETRIEB.md).
 
 ## Umgesetzt
 
+Die [Plugins für ChatGPT und Claude Code](plugins/kanlo/README.md) greifen über
+MCP auf Kanlo-Boards, Spalten und Tickets zu. Schreibzugriff lässt sich pro
+Verbindung freigeben.
+
 Boards/Spalten, stabile Ticketkennungen, Typen, globale Labels, eigene Textfelder,
 Untertickets, azyklische Abhängigkeiten, WIP-Limits, transaktionale Sammelaktionen,
 Kommentare und sicheres Markdown, Archiv/Papierkorb, gruppiertes Undo,
@@ -51,9 +60,9 @@ Restore-Epochen brauchen eine ausdrückliche Entscheidung. Auf gewöhnlichem
 LAN-HTTP bleibt die Website online nutzbar; Offline-PWA auf anderen Geräten
 benötigt vertrauenswürdiges HTTPS.
 
-Offen bleiben insbesondere native TV-Anzeige und ihre Steuerung, Installer,
-Kiosk/Display-Erkennung, vollständiges OpenAPI/MCP/ChatGPT, OS-Images/Updater,
-Geräte-/Pi-Messungen und öffentliche Release-/Lizenzfreigaben.
+Offen bleiben insbesondere vollständiges OpenAPI, die Abnahme der ChatGPT-
+Einrichtung, der Updater, physische Geräteprüfungen und die öffentliche
+Release-/Lizenzfreigabe.
 
 ## Prüfen und Webassets ändern
 

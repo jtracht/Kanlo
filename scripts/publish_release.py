@@ -11,6 +11,7 @@ import urllib.request
 import uuid
 
 from release_package import ROOT, file_sha256, git, image_files, inspect, validate_tag
+from plugin_release import checked_plugin_files
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -114,17 +115,20 @@ def checked_files(directory, tag):
     for path in files:
         if '-linux-' in path.name:
             build = inspect(path)
-            if build['source_commit'] != manifest['source_commit']:
+            if build['source_commit'] != manifest['source_commit'] or 'local_preview_sha256' in build:
                 raise ValueError('Package source commit mismatch')
     return [*files, directory / 'SHA256SUMS']
 
 
 def publish(api, tag, directory):
-    prerelease = validate_tag(tag)
+    plugins = tag.startswith('plugins-v')
+    prerelease = True if plugins else validate_tag(tag)
     commit = git('rev-parse', 'HEAD')
     if git('rev-parse', f'refs/tags/{tag}^{{commit}}') != commit:
         raise ValueError('Checkout is not the tagged commit')
-    files = checked_files(directory, tag)
+    files = checked_plugin_files(directory, tag, commit) if plugins else checked_files(directory, tag)
+    name = f'Kanlo Plugins {tag.removeprefix("plugins-v")}' if plugins else f'Kanlo {tag}'
+    notes = 'release/plugins/NOTES.md' if plugins else 'release/NOTES.md'
     repository = api.request('GET', '')
     if not repository['private'] and 'LICENSE REVIEW PENDING' in (ROOT / 'LICENSE').read_text():
         raise ValueError('Public distribution requires license clearance')
@@ -133,7 +137,7 @@ def publish(api, tag, directory):
     except urllib.error.HTTPError as error:
         if error.code != 404:
             raise
-        release = api.request('POST', '/releases', {'tag_name': tag, 'target_commitish': commit, 'name': f'Kanlo {tag}', 'body': (ROOT / 'release/NOTES.md').read_text(), 'draft': True, 'prerelease': prerelease})
+        release = api.request('POST', '/releases', {'tag_name': tag, 'target_commitish': commit, 'name': name, 'body': (ROOT / notes).read_text(encoding='utf-8'), 'draft': True, 'prerelease': prerelease})
     if release['target_commitish'] != commit or bool(release['prerelease']) != prerelease:
         raise ValueError('Existing release has another commit or release channel')
     assets = api.request('GET', f"/releases/{release['id']}/assets")

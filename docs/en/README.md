@@ -5,6 +5,11 @@ Development version, not Kanlo 1.0 or a hardware-certified release. Run
 `http://127.0.0.1:8080`. Rust 1.99.1 and a native C compiler are required to
 build. Committed local webassets make Node unnecessary at runtime.
 
+![Kanlo desktop board with search, filters, backlog and three workflow columns](../screenshots/board-desktop.png)
+
+See the [screenshot gallery](../screenshots/README.md) for the mobile view,
+ticket editor and integration settings.
+
 The Rust domain/SQLite authority implements boards, columns, stable ticket IDs,
 types, global labels, custom text fields, one-level children, acyclic dependencies,
 WIP, grouped undo, trash/archive, recurrence, comments, import/export and

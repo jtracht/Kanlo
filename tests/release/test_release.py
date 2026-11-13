@@ -3,6 +3,7 @@ import io
 import json
 import lzma
 import os
+import subprocess
 from pathlib import Path
 import sys
 import tarfile
@@ -35,6 +36,44 @@ class Packages(unittest.TestCase):
         with patch.object(package, 'version', return_value='1.0.0'):
             with self.assertRaisesRegex(ValueError, 'Stable gate'):
                 package.validate_tag('v1.0.0')
+
+    def test_stable_evidence_can_follow_candidate_but_cannot_approve_changed_code(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            def git(*args):
+                return subprocess.check_output(['git', *args], cwd=root, stderr=subprocess.STDOUT, text=True).strip()
+
+            git('init', '-q')
+            git('config', 'user.name', 'Test')
+            git('config', 'user.email', 'test@example.invalid')
+            (root / 'LICENSE').write_text('Test license fixture')
+            (root / 'kanlo.txt').write_text('Reviewed product')
+            git('add', '.')
+            git('commit', '-qm', 'Candidate')
+            reviewed = git('rev-parse', 'HEAD')
+            (root / 'release/evidence').mkdir(parents=True)
+            gates = {}
+            for gate in sorted(package.STABLE_GATES):
+                path = f'release/evidence/{gate}.json'
+                gates[gate] = path
+                (root / path).write_text(json.dumps({
+                    'gate': gate, 'status': 'passed', 'source_commit': reviewed, 'approved_by': 'Fixture',
+                }))
+            readiness = root / 'release/readiness.json'
+            readiness.write_text(json.dumps({'stable_gates': gates}))
+            git('add', 'release')
+            git('commit', '-qm', 'Approval evidence')
+            with patch.object(package, 'ROOT', root):
+                package.validate_stable_evidence()
+                (root / 'kanlo.txt').write_text('Unreviewed change')
+                git('add', 'kanlo.txt')
+                git('commit', '-qm', 'Changed product')
+                with self.assertRaisesRegex(ValueError, 'does not approve this source'):
+                    package.validate_stable_evidence()
+                gates.pop('license_approval')
+                readiness.write_text(json.dumps({'stable_gates': gates}))
+                with self.assertRaisesRegex(ValueError, 'gate list'):
+                    package.validate_stable_evidence()
 
     def test_all_architectures_are_checked(self):
         for target in package.TARGETS:
@@ -78,15 +117,29 @@ class Packages(unittest.TestCase):
                 fixture = json.loads(evidence.read_text())
                 fixture['boot_test'].update(emulator_binary_sha256='0' * 64, emulator_source_commit=None if base['arch'] == 'amd64' else '7e0b2296c5d8e6ae0325f32c2c879ca2aba83ed5')
                 for boot in fixture['boot_test']['boots']:
-                    boot.update(lan_http_verified=True, ram_swap_verified=True)
+                    boot.update(lan_http_verified=True, ram_swap_verified=True, independent_service_restarts=True, live_display_verified=True)
+                if profile == 'generic-amd64':
+                    fixture['boot_test']['boots'][0]['wifi_hotspot_verified'] = True
                 evidence.write_text(json.dumps(fixture))
             original = evidence.read_text()
+            preview = json.loads(original) | {'local_preview_sha256': '1' * 64}
+            evidence.write_text(json.dumps(preview))
+            with self.assertRaisesRegex(ValueError, 'Local preview images'):
+                package.bundle(directory, tag)
             rejected = json.loads(original)
             rejected['boot_test']['status'] = 'failed'
             evidence.write_text(json.dumps(rejected))
             with self.assertRaisesRegex(ValueError, 'Two successful image boots'):
                 package.bundle(directory, tag)
             evidence.write_text(original)
+            wifi_report = directory / f'kanlo-{package.version()}-generic-amd64.image.json'
+            original_wifi = wifi_report.read_text()
+            missing_wifi = json.loads(original_wifi)
+            missing_wifi['boot_test']['boots'][0].pop('wifi_hotspot_verified')
+            wifi_report.write_text(json.dumps(missing_wifi))
+            with self.assertRaisesRegex(ValueError, 'Wi-Fi hotspot acceptance'):
+                package.bundle(directory, tag)
+            wifi_report.write_text(original_wifi)
             package.bundle(directory, tag)
             self.assertEqual(len(publisher.checked_files(directory, tag)), 14)
             archive = next(directory.glob('*-linux-amd64.tar.gz'))

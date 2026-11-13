@@ -1,7 +1,8 @@
 # Kanlo-Server unter Debian 13
 
-Dieses Paket enthält den Server und die Weboberfläche. Native TV-Anzeige,
-Kiosk-Konfiguration und ein Flash-Image sind noch nicht enthalten.
+Dieses Paket enthält den Server und die Weboberfläche für vorhandene
+Desktop- oder Headless-Systeme. Das separate [Geräte-Image](IMAGES-DE.md)
+enthält die native Kiosk-Anzeige und die lokale WLAN-Einrichtung.
 
 1. Passendes Paket wählen: `amd64` für x86-64-PCs, `arm64` für ein 64-Bit-ARM-OS,
    `armhf` für ein ARMv7-Hard-Float-OS. Die OS-Architektur zählt, nicht nur die CPU.
@@ -19,23 +20,35 @@ Kiosk-Konfiguration und ein Flash-Image sind noch nicht enthalten.
 
 ## Optionaler Systemdienst
 
-Die folgenden Befehle installieren ausschließlich den Server; sie verändern
-keinen Desktop und aktivieren keinen Kiosk. Aus dem entpackten Verzeichnis:
+Das Skript prüft Betriebssystem, Architektur und die Prüfsumme der
+Serverdatei. Es installiert den Server als Dienst im vorhandenen System.
+Aus dem entpackten Verzeichnis:
 
 ```sh
-sudo install -Dm755 bin/kanlo-server /usr/local/lib/kanlo/kanlo-server
-sudo install -Dm644 systemd/kanlo-server.service /etc/systemd/system/kanlo-server.service
-sudo install -Dm644 sysusers.d/kanlo.conf /usr/lib/sysusers.d/kanlo.conf
-sudo systemd-sysusers /usr/lib/sysusers.d/kanlo.conf
-sudo systemctl daemon-reload
-sudo systemctl enable --now kanlo-server
+./install.sh --check
+sudo ./install.sh
 ```
 
 Der Dienst verwendet `/var/lib/kanlo`, ein nicht interaktiv nutzbares Dienstkonto
-und private Verzeichnisrechte. Zustand/Fehler: `systemctl status kanlo-server`
-und `journalctl -u kanlo-server`. Entfernen: Dienst stoppen/deaktivieren und die
-installierten Programm-/Unit-Dateien entfernen. Daten unter `/var/lib/kanlo`
-bewusst separat aufbewahren; sie werden nicht automatisch gelöscht.
+und private Verzeichnisrechte. Zustand und Fehler stehen in
+`systemctl status kanlo-server` und `journalctl -u kanlo-server`. Ein Upgrade
+bewahrt die bisherige Binärdatei als `kanlo-server.previous` auf. Zum
+Entfernen `sudo ./install.sh --uninstall` aus dem Paket ausführen. Die Daten
+und Einstellungen bleiben auf dem System.
+
+### Optionale native Anzeige
+
+Auf einem dedizierten Linux-System mit freier lokaler Konsole kann der
+Serverinstaller auch die Anzeige installieren.
+
+```sh
+sudo apt install weston cage seatd python3-pygame python3-gi-cairo gir1.2-gtk-3.0 python3-markdown-it python3-pil fonts-dejavu-core
+sudo ./install.sh --kiosk
+```
+
+Die Anzeige nutzt tty1. Ein aktiver Desktop-Anmeldedienst muss für diesen
+Modus beendet sein. Für die WLAN-Einrichtung am Bildschirm das Geräte-Image
+verwenden.
 
 ## Netzwerk, Sicherung und Wartung
 
@@ -50,5 +63,25 @@ und neu starten. Eine ältere Binärdatei darf eine neuere Datenbankschemaversio
 nicht öffnen. Für einen Daten-Rollback sind das passende alte Programm und ein
 vorheriges Backup erforderlich; es gibt noch keinen automatischen Updater.
 
-Bei `Exec format error` die Paket-/OS-Architektur prüfen; bei Problemen mit
-Display/HDMI den Server separat prüfen: Dieser Release hat keinen TV-Prozess.
+Bei `Exec format error` die Paket-/OS-Architektur mit `dpkg --print-architecture`
+prüfen. Für HDMI und Composite auf dem Pi 3 B+ siehe [Geräte-Images](IMAGES-DE.md).
+
+## Kanlo-Server manuell aktualisieren
+
+Das neue Serverpaket und seine SHA-256-Prüfsumme aus derselben vertrauenswürdigen
+Releasequelle beziehen. Für das installierte Kanlo mit Standard-Datenverzeichnis
+`/var/lib/kanlo` und Python 3:
+
+```sh
+sudo python3 /usr/lib/kanlo/update.py apply /pfad/kanlo-VERSION-linux-ARCH.tar.gz --sha256 SHA256
+sudo python3 /usr/lib/kanlo/update.py rollback
+```
+
+`apply` stoppt den Dienst kurz, sichert Programm und SQLite-Daten, probiert
+die Migration auf einer Kopie und prüft nach dem Start die Paketversion.
+Bei einem Fehler stellt es den vorherigen Zustand wieder her. Der separate
+Befehl `rollback` stellt die Daten vom Zeitpunkt vor dem Update wieder her.
+Später gespeicherte Änderungen gehen dabei verloren. Clients mit ausstehenden
+Offline-Änderungen werden durch die neue Datenbank-Epoche zur Prüfung aufgefordert.
+Die private Rollback-Kopie unter `/var/lib/kanlo-updates` enthält auch
+Authentifizierungsdaten und muss unter Root-Zugriff bleiben.

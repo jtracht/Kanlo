@@ -6,6 +6,7 @@ import json
 import lzma
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -14,9 +15,17 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from release_package import git, inspect, version
+from release_package import git, inspect, preview_digest, version
 
 PROFILES = json.loads((ROOT / 'packaging/images/bases.json').read_text())['profiles']
+
+
+def raspberry_pi_cmdline(original):
+    excluded = ('init=', 'systemd.run=', 'systemd.run_success_action=',
+                'systemd.run_failure_action=', 'loglevel=', 'systemd.show_status=')
+    args = [value for value in original.split() if not value.startswith(excluded)
+            and not re.fullmatch(r'console=tty\d+(?:,.*)?', value)]
+    return ' '.join([*args, 'console=tty3', 'loglevel=3', 'systemd.show_status=no']) + '\n'
 
 
 @contextlib.contextmanager
@@ -150,20 +159,23 @@ def install_overlay(root):
     shutil.copy2(ROOT / 'packaging/systemd/kanlo-server.service', root / 'etc/systemd/system/kanlo-server.service')
     (root / 'etc/systemd/system/kanlo-server.service').chmod(0o644)
     (root / 'usr/lib/kanlo').mkdir(parents=True, exist_ok=True)
-    for name in ['appliance.py', 'display.py', 'customize.sh']:
+    for name in ['appliance.py', 'display.py', 'tv_markdown.py', 'tv_wayland.py', 'customize.sh', 'update.py']:
         shutil.copy2(ROOT / 'packaging/images' / name, root / 'usr/lib/kanlo' / name)
         (root / 'usr/lib/kanlo' / name).chmod(0o644)
     os.chmod(root / 'etc/NetworkManager/dispatcher.d/90-kanlo', 0o755)
 
 
-def build(profile, package, cache, work, output):
+def build(profile, package, cache, work, output, *, local_preview=False):
     commit = git('rev-parse', 'HEAD')
-    if git('status', '--porcelain', '--untracked-files=no'):
+    if not local_preview and git('status', '--porcelain', '--untracked-files=no'):
         raise ValueError('Commit source changes before building an image')
+    preview = preview_digest() if local_preview else None
     base = PROFILES[profile]
     metadata = inspect(package)
-    if metadata['arch'] != base['arch'] or metadata['source_commit'] != git('rev-parse', 'HEAD'):
+    if metadata['arch'] != base['arch'] or metadata['source_commit'] != commit:
         raise ValueError('Image requires the matching package from this exact commit')
+    if metadata.get('local_preview_sha256') != preview:
+        raise ValueError('Package and image must use the same local preview source')
     work.mkdir(parents=True, exist_ok=True); output.mkdir(parents=True, exist_ok=True)
     with workspace(profile, work) as directory:
         directory = Path(directory)
@@ -177,7 +189,6 @@ def build(profile, package, cache, work, output):
         # A power-of-two SD capacity is also required by QEMU's Raspberry Pi model.
         run('truncate', '-s', '8G', image)
         with mounted(image, directory, expand=True) as (root, root_part, parts):
-            import re
             if not re.search(r'^VERSION_ID="?13"?$', (root / 'etc/os-release').read_text(), re.M):
                 raise ValueError('Only Debian/Raspberry Pi OS 13 is supported')
             import tarfile
@@ -199,9 +210,8 @@ def build(profile, package, cache, work, output):
             # Raspberry Pi uses its original firmware, DTBs, kernel and auto-initramfs.
             boot = root / 'boot/firmware'
             if base['family'] == 'rpi':
-                cmdline = (boot / 'cmdline.txt').read_text().strip().split()
-                cmdline = [p for p in cmdline if not p.startswith(('init=', 'systemd.run=', 'systemd.run_success_action=', 'systemd.run_failure_action='))]
-                (boot / 'cmdline.txt').write_text(' '.join(cmdline) + '\n')
+                cmdline = boot / 'cmdline.txt'
+                cmdline.write_text(raspberry_pi_cmdline(cmdline.read_text()))
             else:
                 # FAT provisioning area: same KANLO_CONFIG.json path as Raspberry Pi.
                 efi = root / 'boot/efi'
@@ -214,21 +224,26 @@ def build(profile, package, cache, work, output):
             provision = boot if base['family'] == 'rpi' else root / 'boot/efi'
             shutil.copy2(ROOT / 'packaging/images/config.example.json', provision / 'KANLO_CONFIG.example.json')
             report = {'schema_version': 1, 'profile': profile, 'version': version(), 'source_commit': metadata['source_commit'], 'base': base, 'server': metadata, 'boot_test': None, 'physical_device_certified': False, 'packages': (root / 'usr/share/kanlo/image-packages.tsv').read_text().splitlines()}
+            if preview is not None:
+                report['local_preview_sha256'] = preview
             (root / 'usr/share/kanlo/IMAGE.json').write_text(json.dumps({k: v for k, v in report.items() if k != 'packages'}, indent=2) + '\n')
             # Discard unused blocks, including removed build-time keys/package caches.
             run('fstrim', '--verbose', root)
         # Boot tests operate on an isolated copy and never leave test data in the release.
         from boot_test import verify
         report['boot_test'] = verify(image, profile, directory)
-        if git('rev-parse', 'HEAD') != commit or git('status', '--porcelain', '--untracked-files=no'):
-            raise ValueError('Source changed during image validation; rebuild from a clean commit')
-        destination = output / f'kanlo-{version()}-{profile}.img.xz'
+        changed = preview_digest() != preview if local_preview else bool(
+            git('status', '--porcelain', '--untracked-files=no'))
+        if git('rev-parse', 'HEAD') != commit or changed:
+            raise ValueError('Source changed during image validation')
+        stem = f'kanlo-{version()}-{profile}' + (f'-local-{preview[:12]}' if preview else '')
+        destination = output / (stem + '.img.xz')
         with destination.open('wb') as stream:
             run('xz', '--compress', '--stdout', '-T2', '-6', image, stdout=stream)
         report['image'] = destination.name
         report['sha256'] = checksum(destination)
         report['raw_size'] = image.stat().st_size
-        (output / f'kanlo-{version()}-{profile}.image.json').write_text(json.dumps(report, indent=2) + '\n')
+        (output / (stem + '.image.json')).write_text(json.dumps(report, indent=2) + '\n')
         print('PASS: built and boot-verified', destination)
 
 
@@ -239,5 +254,7 @@ if __name__ == '__main__':
     parser.add_argument('--cache', type=Path, default=Path('/cache'))
     parser.add_argument('--work', type=Path, default=Path('/work'))
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--local-preview', action='store_true')
     args = parser.parse_args()
-    build(args.profile, args.package.resolve(), args.cache.resolve(), args.work.resolve(), args.output.resolve())
+    build(args.profile, args.package.resolve(), args.cache.resolve(), args.work.resolve(),
+          args.output.resolve(), local_preview=args.local_preview)

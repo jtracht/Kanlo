@@ -1,7 +1,7 @@
 use super::*;
 use kanlo_core::sync::{FieldConflict, Operation};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct SyncResponse {
     pub status: String,
     pub receipt: Option<Receipt>,
@@ -9,7 +9,7 @@ pub struct SyncResponse {
     pub epoch_changed: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct OfflineCreate {
     pub op_id: String,
@@ -25,7 +25,7 @@ pub struct OfflineCreate {
     pub parent_id: Option<String>,
     pub type_id: Option<String>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct OfflineComment {
     pub op_id: String,

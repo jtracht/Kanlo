@@ -1,10 +1,12 @@
 [Unit]
-Description=Kanlo physical-console setup (Ctrl+Alt+F2)
+Description=Kanlo local device settings
 After=kanlo-firstboot.service NetworkManager.service
 Conflicts=getty@tty2.service
 
 [Service]
 Type=simple
+Environment=TERM=linux
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 /usr/lib/kanlo/appliance.py setup
 Restart=always
 RestartSec=2

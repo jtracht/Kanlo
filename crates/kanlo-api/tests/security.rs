@@ -37,6 +37,79 @@ async fn json_body(response: axum::response::Response) -> Value {
 }
 
 #[tokio::test]
+async fn display_control_and_integration_key_check_use_existing_authentication() {
+    let mut store = Store::open(":memory:").unwrap();
+    let key = store.mint_api_key("Integration test").unwrap();
+    let token = key["token"].as_str().unwrap();
+    let bearer = format!("Bearer {token}");
+    let db = Arc::new(Mutex::new(store));
+    let app = router_shared(
+        db.clone(),
+        Policy::external("https://kanlo.example").unwrap(),
+    );
+    let local = router_shared(db.clone(), Policy::local());
+    for (router, host) in [(app.clone(), "kanlo.example"), (local, "localhost")] {
+        let response = request(
+            router,
+            "GET",
+            "/api/v1/integrations/verify",
+            &[("Host", host)],
+            Value::Null,
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+    let response = request(
+        app.clone(),
+        "POST",
+        "/api/v1/display",
+        &[
+            ("Host", "kanlo.example"),
+            ("Origin", "https://untrusted.example"),
+        ],
+        json!({"kind":"close"}),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    let auth = [
+        ("Host", "kanlo.example"),
+        ("Authorization", bearer.as_str()),
+    ];
+    let response = request(
+        app.clone(),
+        "GET",
+        "/api/v1/integrations/verify",
+        &auth,
+        Value::Null,
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(!json_body(response).await.to_string().contains(token));
+    let response = request(
+        app.clone(),
+        "POST",
+        "/api/v1/display",
+        &auth,
+        json!({"kind":"close"}),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    db.lock()
+        .unwrap()
+        .revoke_api_key(key["id"].as_str().unwrap())
+        .unwrap();
+    let response = request(
+        app,
+        "GET",
+        "/api/v1/integrations/verify",
+        &auth,
+        Value::Null,
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn protected_listener_requires_auth_and_cannot_be_downgraded_with_forwarded_headers() {
     let db = Arc::new(Mutex::new(Store::open(":memory:").unwrap()));
     let app = router_shared(db, Policy::external("https://kanlo.example").unwrap());

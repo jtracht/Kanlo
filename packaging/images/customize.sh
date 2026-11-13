@@ -23,10 +23,12 @@ SOURCES
         firmware-atheros firmware-misc-nonfree firmware-amd-graphics firmware-intel-graphics
 fi
 apt-get update
-apt-get install -y --no-install-recommends python3 python3-pygame cage seatd \
+apt-get install -y --no-install-recommends python3 python3-pygame weston cage seatd \
     fonts-dejavu-core network-manager avahi-daemon systemd-resolved \
     cloud-guest-utils parted systemd-zram-generator sudo openssh-server iw \
-    wpasupplicant wireless-regdb curl ca-certificates "$@"
+    wpasupplicant wireless-regdb dnsmasq-base bluez rfkill kbd console-setup \
+    python3-qrcode python3-markdown-it python3-pil python3-gi-cairo gir1.2-gtk-3.0 \
+    curl ca-certificates "$@"
 # No cloud-provider startup or first-user wizard in the dedicated appliance.
 install -d -m 0755 /etc/cloud
 : > /etc/cloud/cloud-init.disabled
@@ -42,7 +44,7 @@ done
 # SSH is disabled, but can be explicitly enabled by first-boot provisioning.
 systemctl unmask ssh.service
 systemctl disable ssh.service
-systemctl enable NetworkManager.service avahi-daemon.service systemd-resolved.service seatd.service
+systemctl enable NetworkManager.service avahi-daemon.service systemd-resolved.service seatd.service bluetooth.service
 systemctl disable systemd-networkd.service systemd-networkd-wait-online.service 2>/dev/null || true
 systemctl enable kanlo-firstboot.service kanlo-network.service kanlo-network.timer kanlo-server.service kanlo-tv.service kanlo-setup.service
 systemctl set-default multi-user.target

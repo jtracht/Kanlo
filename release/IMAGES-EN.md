@@ -30,20 +30,42 @@ real configuration file from the boot partition; the example contains no secrets
 Connect Ethernet or provision Wi-Fi and boot. Storage expands automatically.
 The server starts offline, without login. Default hostnames are
 `kanlo-<device-identity>`. Open the address shown on the attached display or on
-the physical Ctrl+Alt+F2 setup console: `http://<hostname>.local:8080` or the
-device's LAN IPv4 address. If mDNS is blocked, inspect your router's DHCP list.
-Ctrl+Alt+F1 returns to the native display.
+the physical Ctrl+Alt+F2 setup console: `http://<hostname>.local` or the
+device's LAN IPv4 address. The web server uses HTTP port 80. If mDNS is blocked,
+inspect your router's DHCP list.
+On the first boot with a display, choose your keyboard layout before Wi-Fi setup.
+Select **1** to connect or **0** to continue, for example when using Ethernet.
+Kanlo enables the Wi-Fi adapter and scans before opening the network list.
+A successful connection opens the board. Headless and Wi-Fi-provisioned
+devices start directly.
+
+After boot, **Ctrl+Alt+F2** opens Device Settings. Choose **1** for Wi-Fi
+and saved connections, **2** for Bluetooth power, status and pairing, or **6**
+to change and save the console keyboard layout.
+The Bluetooth device console accepts `scan on`, `devices`, `pair ADDRESS`,
+`connect ADDRESS`, `remove ADDRESS` and `quit`. Select **0** in Device
+Settings or use **Ctrl+Alt+F1** to return to the board.
+[BlueZ command reference](https://manpages.debian.org/trixie/bluez/bluetoothctl.1.en.html)
+
+Connect HDMI before boot and select the matching monitor input. A Raspberry Pi
+composite output requires a compatible connector and cable and may require
+firmware configuration. On affected models, enabling composite disables HDMI.
+See the [Raspberry Pi composite documentation](https://www.raspberrypi.com/documentation/computers/config_txt.html#composite-video-mode).
+If the display stays on boot messages, open the setup console and select **3**
+for connector and service diagnostics or **4** to restart the board display.
 
 There is no shared password or open root shell. SSH stays off until you supply
 your own public key. That key grants full device administration as
 `kanlo-admin` with sudo. The physical-console owner can reconfigure network,
-hostname, timezone and display settings locally. Do not expose LAN port 8080
+hostname, timezone and display settings locally. Do not expose LAN port 80
 to the internet. Configure external HTTPS/PWA through the separate protected
 ingress described in the server operating guide.
 
 The server and initial native read-only board viewer have separate services.
-The viewer uses SDL/Wayland/Cage without Chromium or a full desktop. Headless
-operation remains available; display hotplug restarts the viewer. Full TV
+The viewer draws in software and presents the board through GTK/Wayland and
+Weston without Chromium or a full desktop. Headless
+operation remains available. Display hotplug can start the viewer, and a
+graphics startup failure falls back to a simple board on the local console. Full TV
 overlays/Markdown/statistics/control remain under development.
 
 SQLite is persistent in private `/var/lib/kanlo` storage. Volatile logs are

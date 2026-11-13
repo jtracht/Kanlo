@@ -4,14 +4,14 @@ use super::*;
 mod import;
 pub use import::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ExternalReference {
     pub id: String,
     pub public_id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct BoardExport {
     pub schema_version: u32,
@@ -20,7 +20,7 @@ pub struct BoardExport {
     pub external_references: Vec<ExternalReference>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct HistoryGroup {
     pub sequence: i64,
@@ -30,7 +30,7 @@ pub struct HistoryGroup {
     pub boards: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct StatisticSample {
     pub board_id: String,
@@ -38,7 +38,7 @@ pub struct StatisticSample {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Backup {
     pub schema_version: u32,
@@ -48,7 +48,7 @@ pub struct Backup {
     pub statistics: Vec<StatisticSample>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct RecoveryPreview {
     pub token: String,
     pub revision: i64,
@@ -391,6 +391,7 @@ impl Store {
             tx.execute("DELETE FROM api_keys", []).map_err(storage)?;
             tx.execute("DELETE FROM temp_mappings", [])
                 .map_err(storage)?;
+            crate::display::reset_context(&tx)?;
             tx.execute("INSERT INTO event_stream(payload,created_at) VALUES (?1,?2)",params![encode(&json!({"revision":revision(&tx)?,"epoch":identity(&tx)?.1,"boards":after.boards.iter().map(|b|b.id.clone()).collect::<Vec<_>>(),"affected":result.affected,"restored":true}))?,engine::now()]).map_err(storage)?;
         }
         tx.execute("DELETE FROM recovery_previews WHERE token=?1", [token])

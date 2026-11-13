@@ -1,0 +1,60 @@
+# ChatGPT-Abnahme
+
+## Private Integration
+
+Für die Abnahme den Server mit einer frischen Testdatenbank starten.
+Der folgende Aufruf legt zwei Boards mit je einem Ticket namens `WLAN-Test`
+an und zeigt die lokale Adresse sowie die Ticketkennungen an.
+
+```sh
+python tests/chatgpt_fixture.py PFAD_ZUM_KANLO_SERVER
+```
+
+Die ausgegebene Adresse als `KANLO_URL` für den Tunnel-Client verwenden.
+Den Server und den Tunnel-Client während der Abnahme geöffnet lassen.
+Die [Tunnel-Einrichtung](../../plugins/kanlo/README.md#chatgpt) beschreibt die
+Registrierung und die getrennten Lese- und Schreibtests. In ChatGPT auf dem
+Web das Plugin über **Plugins → + →
+Add custom MCP server → Tunnel** verbinden. Der Tunnel muss dem Workspace
+zugeordnet sein. Die erkannten Werkzeuge anzeigen lassen und ein neues
+Gespräch mit dem Plugin öffnen. [OpenAI-Anleitung zur privaten Verbindung](https://developers.openai.com/plugins/deploy/connect-chatgpt)
+
+| Test | Erwarteter Nachweis |
+| --- | --- |
+| „Liste meine Kanlo-Boards auf.“ | ChatGPT ruft das Plugin auf und zeigt die Boards aus der Testinstanz. |
+| „Zeige das Ticket mit dem Titel WLAN-Test.“ | Bei identischen Titeln werden Board oder Ticketkennung abgefragt. |
+| „Zeige NORD-1 für 2 Minuten auf dem TV.“ | Der mit der Testinstanz verbundene Bildschirm zeigt das richtige Ticket. |
+| „Mache die letzte Änderung rückgängig.“ | Die Vorschau erscheint. Bis zur separaten Bestätigung bleiben die Daten gleich. |
+| „Setze die Sprache von Deutsch auf Englisch.“ | Vorhandenen Wert lesen, eine Einstellung ändern und andere Werte erhalten. Eine Wiederholung mit dem alten Wert meldet einen Konflikt. |
+| „Setze das Undo-Limit dieses Boards auf 20.“ | Board auswählen, Wert lesen und ausschließlich diese Board-Regel ändern. |
+| Gleiche Aktionen mit reinem Lesezugriff | Die Werkzeugliste enthält keine Schreib- oder Bestätigungsaktionen. |
+| „Welche Einstellungskategorien gibt es?“ | Kategorie auswählen, bis zu fünf Namen abrufen und danach ausdrücklich Werte für ein Board anfordern. |
+| GPT Actions mit exportiertem Leseschema | Schlüsselprüfung, Ticketsuche und Ticketabruf auf derselben Testinstanz. |
+
+Die lokale MCP-Integration prüft Werkzeugaufrufe gegen einen isolierten
+Kanlo-Server. Der Browser-Test lädt das aus Kanlo exportierte GPT-Actions-Schema
+auf Desktop und Mobil herunter und führt alle fünf darin enthaltenen
+Leseoperationen mit einem Testschlüssel gegen den lokalen Server aus. Die
+Testreihe im tatsächlichen ChatGPT-Workspace steht aus.
+
+## Diktat und Live-Voice
+
+- Diktat schreibt gesprochenen Text in das Eingabefeld. Den erkannten Text
+  vor dem Absenden prüfen. Anschließend im Textgespräch denselben Leseaufruf
+  wie oben ausführen und den sichtbaren Werkzeugaufruf protokollieren.
+- Für Live-Voice ein separates Gespräch starten. „Liste meine Kanlo-Boards
+  auf“ sprechen und festhalten, ob das Plugin dort auswählbar ist und ein
+  Werkzeugaufruf tatsächlich erscheint. Datum, App-Version, Plattform,
+  Workspace und beobachteten Aufruf festhalten. Beide Tests sind offen.
+  [OpenAI zu Diktat und Live-Voice](https://developers.openai.com/training/walkthroughs/using-voice)
+
+## Öffentliche Einreichung
+
+Die öffentliche Remote-Variante erfordert eine verifizierte Entwickleridentität,
+einen stabilen öffentlichen HTTPS-Endpunkt und die Prüfung der Domain.
+Das Portal bietet keinen Eingabedialog für einen Bearer-Token oder API-Schlüssel.
+Für eine geschützte öffentliche Variante ist deshalb ein freigegebener OAuth-Weg
+oder eine mit OpenAI abgestimmte Alternative erforderlich. Der private
+Kanlo-Tunnel eignet sich für den Workspace-Test. Für eine öffentliche
+Einreichung sind außerdem Lizenz- und Markenfreigabe erforderlich.
+[OpenAI-Anforderungen zur Einreichung](https://developers.openai.com/plugins/deploy/submission)

@@ -22,8 +22,8 @@ Offline (implementierte Abnahme): unabhängige Felder/gleiche Felder, kausale Qu
 Idempotenz, Mehrtab, 401/403, Epochwechsel und Tombstones.
 Browser (implementierte Abnahme): Smartphone/Desktop, DE/EN, Keyboard/Touch,
 persistentes Modal, HTTPS/PWA mit im isolierten Browser gepinntem Testzertifikat,
-Konfliktdialog, sichere Markdown-Ausgabe. TV-Effekte bleiben bis zum nativen
-Renderer unprüfbar; öffentliche TLS-Zertifikatsketten sind ein Betriebsgate.
+Konfliktdialog, sichere Markdown-Ausgabe und die unabhängige TV-Steuerung.
+Öffentliche TLS-Zertifikatsketten sind ein Betriebsgate.
 TV: max. 1/2 Overlays, Backlog-/Elternrückkehr, 2D-Scroll, Rotation-Pause,
 Dirty Regions, Crash-Restore und Langzeitbetrieb.
 Security: getrennte Listener, Proxy-Bypass, Sessions/Keys/CSRF/Rate Limits,

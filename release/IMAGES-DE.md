@@ -46,25 +46,96 @@ echte Kernel-/systemd-Boots unter QEMU, keine simulierten Erfolgsmeldungen.
    Bei UEFI-Images ist dies die EFI-Systempartition; Windows zeigt sie häufig
    nicht automatisch als Laufwerk an. In diesem Fall die lokale Einrichtung
    unter Ctrl+Alt+F2 verwenden oder die gewählte EFI-Partition unter Linux öffnen.
-4. Gerät mit Ethernet oder konfiguriertem WLAN starten. Die Datenpartition
-   erweitert sich automatisch auf den Datenträger. Kanlo startet ohne Anmeldung
-   und ohne Internet. Ohne Konfiguration heißt das Gerät `kanlo-<Gerätekennung>`.
-5. Die Webadresse erscheint auf dem angeschlossenen Display bzw. unter
-   Ctrl+Alt+F2 auf der lokalen Konsole. Im selben LAN
-   `http://<hostname>.local:8080` oder `http://<IPv4-Adresse>:8080` öffnen.
-   mDNS muss im Clientnetz erlaubt sein; sonst die DHCP-Liste des Routers nutzen.
+4. Bildschirm und USB-Tastatur anschließen und den Pi starten. Beim ersten
+   Start kannst du zuerst das Tastaturlayout auswählen. Danach öffnet sich die
+   WLAN-Einrichtung vor dem Board. Wähle **1** für WLAN
+   oder **0 – Weiter zum Board**, beispielsweise bei Ethernet-Betrieb.
+   Kanlo aktiviert den WLAN-Adapter und scannt vor der Netzwerkauswahl.
+   Nach erfolgreicher WLAN-Verbindung öffnet sich das Board automatisch.
+   Geräte ohne Bildschirm und Images mit vorab eingetragenem WLAN starten direkt.
+5. Die Webadresse erscheint auf dem Board und in den Geräteeinstellungen.
+   Der Webserver verwendet HTTP-Port 80. Im selben LAN `http://<hostname>.local` oder
+   `http://<IPv4-Adresse>` öffnen. Ist mDNS gesperrt, nutze die DHCP-Liste
+   des Routers.
 
-Ctrl+Alt+F2 öffnet den lokalen Einrichtungsdialog; Ctrl+Alt+F1 kehrt zur Anzeige
-zurück. Der Dialog erlaubt dem physisch anwesenden Gerätebesitzer Netz-/Host-/
-Anzeigeeinstellungen. Es gibt keine offene Root-Shell und kein gemeinsames
+## Geräteeinstellungen nach dem Start
+
+**Strg+Alt+F2** öffnet die Geräteeinstellungen. **0 – Zurück zum Board**
+oder **Strg+Alt+F1** kehrt zur Anzeige zurück.
+
+- **1 – WLAN** öffnet die Netzwerkauswahl, gespeicherte Verbindungen und den
+  temporären Hotspot. In der Netzwerkauswahl können WLAN-Land und Zugangsdaten
+  aktualisiert werden. **WLAN → 3** öffnet den WPA2-Hotspot ohne bestehende
+  LAN-Verbindung. Name und Kennwort stehen auf der lokalen Konsole. Smartphone
+  oder PC verbinden und `http://10.42.0.1` öffnen. **WLAN → 4** beendet ihn
+  manuell. Er endet automatisch nach spätestens zehn Minuten.
+- **2 – Bluetooth** zeigt Status und gekoppelte Geräte, schaltet Bluetooth
+  ein oder aus und öffnet die Geräteverwaltung. Zum Koppeln das Zubehör in
+  den Kopplungsmodus versetzen und dort `scan on`, `devices` und
+  `pair ADRESSE` verwenden. Mit `connect ADRESSE` verbinden, mit
+  `remove ADRESSE` eine Kopplung entfernen und mit `quit` zum Menü zurück.
+  PIN-Abfragen auf der Konsole bestätigen. [BlueZ-Befehle](https://manpages.debian.org/trixie/bluez/bluetoothctl.1.en.html)
+- **3 – Anzeige-Diagnose**, **4 – Board-Anzeige neu starten** und
+  **5 – Gerät einrichten** bleiben im Hauptmenü.
+- **6 – Tastaturlayout** ändert die Konsolenbelegung sofort und speichert sie.
+
+Bei der ersten Board-Einrichtung zeigt das TV-Bild einen QR-Code zur Webadresse.
+
+Der Gerätebesitzer kann vor Ort Netzwerk, Host und Anzeige einrichten.
+Es gibt keine offene Root-Shell und kein gemeinsames
 Administratorpasswort. Ein ausdrücklich eingerichteter SSH-Key erhält volle
 Geräteverwaltung als `kanlo-admin` mit sudo; ohne Schlüssel bleibt SSH aus.
+
+Startmeldungen werden im Journal erfasst. Die Menüs und das Board haben
+eigene Konsolen. **Board-Anzeige neu starten** wechselt nach der Anforderung
+zur Board-Konsole. Unter **Anzeige-Diagnose** stehen der aktive Bildschirm-
+Konsolenplatz, die erkannten Ausgänge und die letzten Meldungen der Anzeige.
+
+## HDMI und Composite
+
+- **HDMI** vor dem Start anschließen und am Monitor den passenden Eingang
+  wählen. Kanlo nutzt den vom Linux-Grafiktreiber erkannten Anschluss.
+- **Composite (analoges Video)** braucht einen dafür vorgesehenen Anschluss
+  und ein zum Pi-Modell passendes Kabel. Erkennt der Kernel den Composite-
+  Anschluss mit einem verfügbaren Modus, nutzt Kanlo denselben Anzeigedienst.
+  Raspberry Pi dokumentiert den KMS-Zusatz `,composite` an der vorhandenen
+  `dtoverlay=vc4-kms-v3d`-Zeile in `config.txt`. Modelle, die laut Raspberry Pi
+  `enable_tvout=1` benötigen, schalten damit HDMI ab. Für einen PAL-Fernseher kann
+  `vc4.tv_norm=PAL` in die einzige Zeile von `cmdline.txt` aufgenommen werden.
+  [Raspberry-Pi-Dokumentation zu Composite](https://www.raspberrypi.com/documentation/computers/config_txt.html#composite-video-mode)
+- Bleibt der Startbildschirm stehen, öffne **Strg+Alt+F2 → 3 – Anzeige-Diagnose**.
+  Dort erscheinen erkannte Anschlüsse und die letzten Meldungen des
+  Anzeigedienstes. **4** startet die Board-Anzeige neu.
+
+## Ticketdetails am TV
+
+Im Ticketdialog kann man für **Auf TV anzeigen** 0 bis 300 Minuten einstellen.
+Leer verwendet die TV-Standardeinstellung. 0 lässt das Fenster geöffnet.
+Ab 1152 × 600 Pixeln zeigt Kanlo bis zu zwei unabhängige Tickets
+nebeneinander. Auf kleineren Anzeigen bleibt das zuletzt geöffnete Ticket sichtbar.
+
+Markdown-Absätze, Listen, Tabellen, Code und Kommentare werden direkt dargestellt.
+Für externe Bilder kann der Geräteadministrator in einem systemd-Drop-in
+für `kanlo-tv.service` die folgende Einstellung setzen und den Dienst
+neu starten. Der Bildanbieter erhält dann Anfragen vom Gerät.
+
+```ini
+[Service]
+Environment=KANLO_TV_EXTERNAL_IMAGES=1
+```
+
+Die Anzeige verwendet öffentliche HTTPS-Bildadressen und unterstützt PNG,
+JPEG und WebP. Sie begrenzt Dateigröße und Pixelzahl und folgt keinen
+Weiterleitungen. Ohne Freigabe bleiben Bildbeschreibungen sichtbar.
 
 ## Verhalten und Optimierungen
 
 - Server und native Anzeige sind getrennte, automatisch startende Dienste.
+  Das Board wird in Software gezeichnet und über GTK/Wayland an Weston übergeben.
   Ohne angeschlossenen Bildschirm bleibt der Server verfügbar. DRM-Hotplug
-  startet die Anzeige erneut. Kein vollständiger Desktop und kein Browsermotor.
+  kann einen noch nicht laufenden Anzeigedienst starten. Falls der Grafikstart
+  fehlschlägt, zeigt Kanlo eine einfache Boardansicht auf der lokalen Konsole.
+  Kein vollständiger Desktop und kein Browsermotor.
 - Native erste Boardansicht mit Ticketkarten und wechselnden Seiten/Boards.
   Bearbeitung erfolgt im Web. Erweiterte TV-Funktionen sind weiterhin Entwicklung.
 - SQLite unter `/var/lib/kanlo`, Dienstnutzer `kanlo`, Rechte 0700. Daten und
@@ -80,8 +151,9 @@ Geräteverwaltung als `kanlo-admin` mit sudo; ohne Schlüssel bleibt SSH aus.
 ## Wartung und Fehlerbehebung
 
 Vor Update/Reflash ein Kanlo-Datenbackup herunterladen und sicher aufbewahren.
-Reflash löscht Daten; es gibt noch keinen automatischen A/B-Image-Updater oder
-automatischen Daten-Rollback. OS-Sicherheitsupdates können nach optionaler
+Reflash löscht Daten. Das installierte Kanlo-Serverprogramm kann gezielt
+mit dem [manuellen Updater](INSTALL-DE.md#kanlo-server-manuell-aktualisieren)
+aktualisiert werden. Für das Basisbetriebssystem ist dieser Updater separat. OS-Sicherheitsupdates können nach optionaler
 SSH-Einrichtung mit Debian-Werkzeugen vorgenommen werden. Nicht ungesichert
 das laufende Datenbankdateisystem kopieren oder im Betrieb abschalten.
 
