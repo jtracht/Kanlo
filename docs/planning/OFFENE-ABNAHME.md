@@ -7,8 +7,10 @@ verpflichtenden 1.0-Abnahme und werden lokal geführt.
 
 | Offene Originalaufgaben | Fehlender Nachweis |
 | --- | --- |
-| KAN-066 | Vergleichbare Messprotokolle zum Dauerbetrieb auf Pi 3 B+ ARMHF, ARM64 und AMD64. Der Pi-Erststart und die lokale Anzeige sind [bestätigt](../de/PI3-ABNAHME.md). |
-| KAN-068, KAN-069 | Lizenz-, Sicherheits- und Markenfreigabe sowie veröffentlichter Stable-Release. |
+| KAN-069 | Stable 1.0 mit geprüften Images und Prüfsummen veröffentlichen. Die [Stable-Freigaben](../../release/readiness.json) sind noch offen. |
+
+KAN-066 (Dauerlastmessung) und KAN-068 (abschließende Prüfaufgabe)
+wurden aus der aktiven Planung entfernt.
 
 Die [Geräteabnahme](../de/GERAETEABNAHME.md) beschreibt Flash-, Anschluss-
 und Messprüfungen. Die manuellen Workspace- und Sprachtests (KAN-057 und

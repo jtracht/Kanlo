@@ -1266,21 +1266,6 @@
     ]
   },
   {
-    "planning_id": "KAN-066",
-    "title": "Realgerät-Benchmark und Dauerlasttest",
-    "milestone": "M10",
-    "component": "acceptance",
-    "status": "planned",
-    "depends_on_milestone": "M9",
-    "additional_dependencies": [],
-    "baseline_checklist": "- **Milestone:** M10 – Abnahme und Stable 1.0\n- **Umsetzung:**\n  1. Pi 3 B+ und je einen ARM64/AMD64-Testlauf absolvieren.\n  2. TV-Scroll, mehrere Overlays, Markdown und 1000+ Tickets messen.\n  3. Regressionen und Budget dokumentieren.\n- **Akzeptanz / Definition of Done:** Messprotokolle auf realer Hardware vorhanden.",
-    "validation": "Hardware/release acceptance evidence required; no local substitute",
-    "remote_issue": {
-      "number": 66,
-      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/66"
-    }
-  },
-  {
     "planning_id": "KAN-067",
     "title": "End-to-End-Abnahmesuite",
     "milestone": "M10",
@@ -1293,21 +1278,6 @@
     "remote_issue": {
       "number": 67,
       "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/67"
-    }
-  },
-  {
-    "planning_id": "KAN-068",
-    "title": "Sicherheits-/Lizenz-/Releaseprüfung",
-    "milestone": "M10",
-    "component": "acceptance",
-    "status": "planned",
-    "depends_on_milestone": "M9",
-    "additional_dependencies": [],
-    "baseline_checklist": "- **Milestone:** M10 – Abnahme und Stable 1.0\n- **Umsetzung:**\n  1. Source-available-Lizenz rechtlich freigeben.\n  2. Secrets und Remote-Zugriffe nochmals auditieren.\n  3. Third-party-Lizenzen und Markenfreigabe dokumentieren.\n- **Akzeptanz / Definition of Done:** Keine unklaren Rechte oder kritischen Leaks im Release.",
-    "validation": "Hardware/release acceptance evidence required; no local substitute",
-    "remote_issue": {
-      "number": 68,
-      "url": "https://git.tracht-digital.de/jtracht/Kanlo/issues/68"
     }
   },
   {
