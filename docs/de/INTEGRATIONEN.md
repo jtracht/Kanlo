@@ -47,3 +47,19 @@ Widerrufe einen nicht mehr benötigten Schlüssel in denselben Einstellungen.
    for that origin. Import it in the GPT editor, set authentication to
    **API Key → Bearer**, and test **verifyKanloConnection** in the editor.
    [OpenAI setup guide](https://developers.openai.com/api/docs/actions/getting-started)
+
+## Gitea-Meilensteine im Kalender
+
+Die Weboberfläche öffnet den internen Kalender über **Kalender**. Lokale Sprints haben Beginn und Ende. Lokale Meilensteine haben einen Termin. Der Monatskalender zeigt beides sowie datierte Meilensteine aus dem verbundenen Gitea-Repository. **Sprint daraus planen** übernimmt Titel und Termin eines Gitea-Meilensteins in das lokale Sprintformular.
+
+Unter **Meilensteine und Sprints** verschachtelt Kanlo die lokale Planung. Ein Sprint kann einem Meilenstein angehören. Teile einem Sprint ein Backlog-Ticket zu, oder ordne ein Ticket direkt einem Meilenstein zu. Auf der Karte stehen die zugehörigen Namen. Um ein Sprint-Ticket in eine Board-Spalte zu verschieben, entferne zuerst seine Sprint-Zuordnung.
+
+Konfiguriere die Verbindung in der Umgebung des Kanlo-Servers. Bei einer systemd-Installation kann ein Dienst-Drop-in eine nur für den Administrator lesbare Umgebungsdatei über `EnvironmentFile=` laden. Starte den Dienst nach der Änderung neu.
+
+```ini
+KANLO_GITEA_URL=https://git.example.org
+KANLO_GITEA_REPOSITORY=owner/repository
+KANLO_GITEA_TOKEN=
+```
+
+Für private Repositorys trägst du serverseitig ein auf das Repository und den Lesezugriff beschränktes Gitea-Token ein. Alle Benutzer mit Zugang zum Kanlo-Kalender sehen die Meilensteine dieses Repositorys. Lokale Einträge werden in Kanlo gespeichert. Der Abruf aus Gitea ist lesend.

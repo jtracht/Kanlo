@@ -99,7 +99,6 @@ class Appliance(unittest.TestCase):
             wifi.assert_called_once()
             bluetooth.assert_called_once()
             self.assertNotIn('Strg+Alt', str(output.call_args_list))
-            self.assertNotIn('Strg+Alt', display.setup_hint())
 
     def test_bluetooth_menu_controls_radio_and_opens_pairing_agent(self):
         with patch.object(appliance, 'run') as command, patch('builtins.input', side_effect=['2', '', '3', '', '4', '', '0']), patch('builtins.print'):

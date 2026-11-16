@@ -11,6 +11,7 @@ use std::{
 };
 use uuid::Uuid;
 
+pub mod calendar;
 mod display;
 #[cfg(test)]
 mod integration_tests;
@@ -128,7 +129,7 @@ impl Store {
         let version: i64 = tx
             .pragma_query_value(None, "user_version", |r| r.get(0))
             .map_err(storage)?;
-        if version > 4 {
+        if version > 6 {
             return Err(Error::Conflict(
                 "Database schema is newer than this program; refusing downgrade".into(),
             ));
@@ -160,6 +161,16 @@ impl Store {
             tx.execute_batch(include_str!("../migrations/004_security_sync.sql"))
                 .map_err(storage)?;
             tx.pragma_update(None, "user_version", 4).map_err(storage)?;
+        }
+        if version < 5 {
+            tx.execute_batch(include_str!("../migrations/005_calendar.sql"))
+                .map_err(storage)?;
+            tx.pragma_update(None, "user_version", 5).map_err(storage)?;
+        }
+        if version < 6 {
+            tx.execute_batch(include_str!("../migrations/006_planning.sql"))
+                .map_err(storage)?;
+            tx.pragma_update(None, "user_version", 6).map_err(storage)?;
         }
         tx.commit().map_err(storage)?;
         Ok(Self { connection })
@@ -693,6 +704,7 @@ pub(crate) fn commit_state(
     if old == new {
         return Ok(());
     }
+    calendar::keep_sprints_in_backlog(tx, after)?;
     records::persist(tx, &old, &new)?;
     tx.execute(
         "UPDATE metadata SET value=CAST(CAST(value AS INTEGER)+1 AS TEXT) WHERE key='revision'",

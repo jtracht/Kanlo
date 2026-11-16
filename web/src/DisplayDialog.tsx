@@ -1,9 +1,10 @@
 import { useEffect, useState } from "preact/hooks";
-import type { Board } from "./types";
+import type { Board, Snapshot } from "./types";
 import { api } from "./client";
-import { Dialog, Message, errorText, useT } from "./ui";
+import { Dialog, Icon, Message, errorText, useT } from "./ui";
 
 type DisplayView = "board" | "overview" | "statistics";
+type DisplayDesign = "light" | "colorful";
 const views: DisplayView[] = ["board", "overview", "statistics"];
 type RotationEntry = { view: DisplayView; board_id: string | null };
 const entryKey = (entry: RotationEntry) => `${entry.view}:${entry.board_id ?? ""}`;
@@ -12,6 +13,7 @@ interface DisplayState {
   revision: number;
   preferences: {
     view: DisplayView;
+    design: DisplayDesign;
     board_id: string | null;
     rotation: RotationEntry[];
     rotation_seconds: number;
@@ -29,6 +31,23 @@ export function DisplayDialog({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [targetBoard, setTargetBoard] = useState("");
+  const [snapshot, setSnapshot] = useState<Snapshot>();
+  const [ticketId, setTicketId] = useState("");
+  const [minutes, setMinutes] = useState("");
+  const board = targetBoard || currentBoard || boards[0]?.id || "";
+  useEffect(() => {
+    let current = true;
+    setSnapshot(undefined);
+    setTicketId("");
+    if (board) void api<Snapshot>(`/boards/${encodeURIComponent(board)}/snapshot`)
+      .then((value) => { if (current) setSnapshot(value); })
+      .catch((reason) => { if (current) setError(errorText(reason)); });
+    return () => { current = false; };
+  }, [board]);
+  const tickets = snapshot?.workspace.tickets.filter((ticket) => !ticket.details.archived && !ticket.details.trashed) ?? [];
+  const ticket = tickets.find((item) => item.id === ticketId);
+  const validMinutes = minutes === "" || (/^\d+$/.test(minutes) && Number(minutes) <= 300);
   useEffect(() => {
     void api<DisplayState>("/display").then(setState).catch((error) => setError(errorText(error)));
   }, []);
@@ -75,10 +94,56 @@ export function DisplayDialog({
   }
 
   return (
-    <Dialog title={t("TV-Anzeige", "TV display")} close={close}>
+    <Dialog title={t("TV-Fernbedienung", "TV remote")} close={close}>
       <div class="dialog-body">
         {error && <Message error>{error}</Message>}
         {notice && <Message>{notice}</Message>}
+        <div class="actions wrap">
+          <button type="button" class="secondary" disabled={busy || !state} onClick={() => void send({ kind: "scroll", delta: -1 })}>
+            {t("Vorherige TV-Seite", "Previous TV page")}
+          </button>
+          <button type="button" class="secondary" disabled={busy || !state} onClick={() => void send({ kind: "scroll", delta: 1 })}>
+            {t("Nächste TV-Seite", "Next TV page")}
+          </button>
+          <button type="button" class="secondary" disabled={busy || !state} onClick={() => void send({ kind: "back" })}>
+            <Icon name="undo" /> {t("Auf TV zurück", "Back on TV")}
+          </button>
+          <button type="button" class="secondary" disabled={busy || !state} onClick={() => void send({ kind: "close" })}>
+            <Icon name="close" /> {t("TV-Einblendung schließen", "Close TV overlay")}
+          </button>
+        </div>
+        <fieldset disabled={busy || !state}>
+          <legend>{t("Tickets und Backlog", "Tickets and backlog")}</legend>
+          <label>{t("Quellboard", "Source board")}
+            <select value={board} onChange={(event) => setTargetBoard(event.currentTarget.value)}>
+              {boards.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>{t("Ticket", "Ticket")}
+            <select value={ticketId} disabled={!snapshot} onChange={(event) => setTicketId(event.currentTarget.value)}>
+              <option value="">{t("Ticket auswählen", "Select ticket")}</option>
+              {tickets.map((item) => <option key={item.id} value={item.id}>{item.public_id} · {item.title}</option>)}
+            </select>
+          </label>
+          <label>{t("TV-Dauer in Minuten", "TV duration in minutes")}
+            <input type="number" min="0" max="300" step="1" value={minutes} placeholder={t("Standard", "Default")}
+              onInput={(event) => setMinutes(event.currentTarget.value)} />
+          </label>
+          <div class="actions wrap">
+            <button type="button" disabled={!ticket || !validMinutes} onClick={() => void send({
+              kind: "show_ticket", ticket_id: ticketId, minutes: minutes === "" ? undefined : Number(minutes),
+            })}>{t("Auf TV anzeigen", "Show on TV")}</button>
+            <button type="button" class="secondary" disabled={!ticket} onClick={() => void send({
+              kind: "highlight", ticket_ids: [ticketId], seconds: 25,
+            })}>{t("Auf TV hervorheben", "Highlight on TV")}</button>
+            <button type="button" class="secondary" disabled={!ticket || !!ticket.details.parent_id} onClick={() => void send({
+              kind: "show_children", ticket_id: ticketId,
+            })}>{t("Untertickets auf TV anzeigen", "Show subtickets on TV")}</button>
+            <button type="button" class="secondary" disabled={!board} onClick={() => void send({
+              kind: "show_backlog", board_id: board,
+            })}>{t("Backlog auf TV anzeigen", "Show backlog on TV")}</button>
+          </div>
+        </fieldset>
         {state && preferences && (
           <form onSubmit={(event) => {
             event.preventDefault();
@@ -89,6 +154,13 @@ export function DisplayDialog({
                 <label>{t("Ansicht", "View")}
                   <select value={preferences.view} onChange={(event) => update({ view: event.currentTarget.value as DisplayView })}>
                     {views.map((view) => <option value={view} key={view}>{name(view)}</option>)}
+                  </select>
+                </label>
+                <label>{t("TV-Design", "TV design")}
+                  <select value={preferences.design ?? "light"}
+                    onChange={(event) => update({ design: event.currentTarget.value as DisplayDesign })}>
+                    <option value="light">{t("Hell", "Light")}</option>
+                    <option value="colorful">{t("Farbig", "Colorful")}</option>
                   </select>
                 </label>
                 <label>{t("Board auf dem TV", "Board on TV")}
@@ -140,24 +212,6 @@ export function DisplayDialog({
             </fieldset>
           </form>
         )}
-        <div class="actions wrap">
-          <button type="button" class="secondary" disabled={busy} onClick={() => void send({ kind: "scroll", delta: -1 })}>
-            {t("Vorherige TV-Seite", "Previous TV page")}
-          </button>
-          <button type="button" class="secondary" disabled={busy} onClick={() => void send({ kind: "scroll", delta: 1 })}>
-            {t("Nächste TV-Seite", "Next TV page")}
-          </button>
-          <button type="button" class="secondary" disabled={busy || !currentBoard}
-            onClick={() => void send({ kind: "show_backlog", board_id: currentBoard })}>
-            {t("Backlog auf TV anzeigen", "Show backlog on TV")}
-          </button>
-          <button type="button" class="secondary" disabled={busy} onClick={() => void send({ kind: "back" })}>
-            {t("Auf TV zurück", "Back on TV")}
-          </button>
-          <button type="button" class="secondary" disabled={busy} onClick={() => void send({ kind: "close" })}>
-            {t("TV-Einblendung schließen", "Close TV overlay")}
-          </button>
-        </div>
       </div>
     </Dialog>
   );

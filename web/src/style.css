@@ -127,6 +127,23 @@ button.icon-button {
   font-size: 20px;
   line-height: 1;
 }
+.ui-icon {
+  vertical-align: -0.2em;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3rem;
+  text-align: center;
+}
+.calendar-grid button {
+  min-width: 0;
+  padding-inline: 0;
+}
+.calendar-grid button[aria-pressed="true"] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
 button.text-button {
   background: none;
   border: 0;

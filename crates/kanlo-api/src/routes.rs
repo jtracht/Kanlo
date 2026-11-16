@@ -7,6 +7,7 @@ use axum::{
 use serde::Deserialize;
 use std::{collections::BTreeMap, convert::Infallible};
 
+mod calendar;
 mod contract;
 
 pub fn routes() -> Router<Database> {
@@ -20,6 +21,19 @@ pub fn routes() -> Router<Database> {
                 .layer(DefaultBodyLimit::max(16 * 1024)),
         )
         .route("/api/v1/overview", get(overview))
+        .route(
+            "/api/v1/calendar",
+            get(calendar::entries)
+                .post(calendar::add)
+                .layer(DefaultBodyLimit::max(4096)),
+        )
+        .route("/api/v1/calendar/gitea", get(calendar::gitea))
+        .route(
+            "/api/v1/calendar/tickets",
+            get(calendar::planning_tickets)
+                .post(calendar::assign_ticket)
+                .layer(DefaultBodyLimit::max(4096)),
+        )
         .route("/api/v1/system/update", get(update_status))
         .route("/api/v1/integrations/verify", get(verify_integration))
         .route("/api/v1/boards/{id}/snapshot", get(snapshot))
@@ -127,7 +141,7 @@ async fn snapshot(
     State(db): State<Database>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, ApiError> {
-    Ok(Json(database(db,move|db|{let mut export=db.export_board(&id)?;let state=db.workspace()?;export.workspace.settings=state.settings.clone();export.workspace.views=state.views.clone();export.workspace.types=state.types.clone();export.workspace.labels=state.labels.clone();let external:Vec<_>=export.external_references.iter().map(|reference|{let ticket=state.find_ticket(&reference.id)?;Ok(json!({"id":reference.id,"public_id":reference.public_id,"done":ticket.done,"trashed":ticket.details.trashed}))}).collect::<kanlo_core::Result<_>>()?;Ok(json!({"workspace":export.workspace,"external_references":external,"revision":db.revision()?,"view_states":state.views,"settings":state.settings,"epoch":db.identity()?.1}))}).await?))
+    Ok(Json(database(db,move|db|{let mut export=db.export_board(&id)?;let state=db.workspace()?;export.workspace.settings=state.settings.clone();export.workspace.views=state.views.clone();export.workspace.types=state.types.clone();export.workspace.labels=state.labels.clone();let external:Vec<_>=export.external_references.iter().map(|reference|{let ticket=state.find_ticket(&reference.id)?;Ok(json!({"id":reference.id,"public_id":reference.public_id,"done":ticket.done,"trashed":ticket.details.trashed}))}).collect::<kanlo_core::Result<_>>()?;let planning=db.planning_labels(&export.workspace)?;Ok(json!({"workspace":export.workspace,"external_references":external,"revision":db.revision()?,"view_states":state.views,"settings":state.settings,"epoch":db.identity()?.1,"planning":planning}))}).await?))
 }
 async fn command(
     State(db): State<Database>,
