@@ -46,7 +46,7 @@ test("the calendar adds a sprint and loads it after reopening", async ({ page, r
   await page.getByRole("button", { name: "Kalender", exact: true }).click();
   const calendar = page.getByRole("dialog", { name: "Kalender", exact: true });
   const title = `Sprint ${board.prefix}`;
-  await calendar.getByLabel("Titel").fill(title);
+  await calendar.getByLabel("Titel", { exact: true }).fill(title);
   await calendar.getByLabel("Beginn").fill("2030-04-03");
   await calendar.getByLabel("Ende").fill("2030-04-07");
   await calendar.getByRole("button", { name: "Hinzufügen", exact: true }).click();
@@ -97,7 +97,7 @@ test.describe("Gitea calendar response", () => {
     const calendar = page.getByRole("dialog", { name: "Kalender", exact: true });
     await calendar.getByText("Gitea-Meilensteine ohne Termin", { exact: true }).click();
     await calendar.getByRole("button", { name: "Sprint daraus planen" }).click();
-    await expect(calendar.getByLabel("Titel")).toHaveValue("Gitea-Ziel");
+    await expect(calendar.getByLabel("Titel", { exact: true })).toHaveValue("Gitea-Ziel");
     await expect(calendar.getByLabel("Beginn")).toHaveValue("");
   });
 });
