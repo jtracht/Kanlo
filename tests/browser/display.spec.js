@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { create, fixture, origin, resetLocale, visit } from "./helpers.js";
 import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 
 test.beforeEach(async ({ request }) => resetLocale(request));
 
-test("opening a web ticket preserves the independent TV view until explicitly sent", async ({ page, request }) => {
+test("TV commands are operated from the remote, independently of the web ticket", async ({ page, request }) => {
   const board = await fixture(request, "Display");
   const ticket = await create(request, board, "Anzeige aus dem Browser");
   await visit(page, board);
@@ -14,21 +15,91 @@ test("opening a web ticket preserves the independent TV view until explicitly se
   const details = page.getByRole("dialog", { name: /Ticketdetails/ });
   await expect(details).toBeVisible();
   expect(await read()).toEqual(before);
-  await details.getByLabel("TV-Dauer in Minuten").fill("0");
-  await details.getByRole("button", { name: "Auf TV anzeigen", exact: true }).click();
+  await expect(details.getByRole("button", { name: "Auf TV anzeigen", exact: true })).toHaveCount(0);
+  await details.getByRole("button", { name: "Schließen", exact: true }).last().click();
+  await page.getByRole("button", { name: "TV-Fernbedienung", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "TV-Fernbedienung", exact: true });
+  await dialog.getByRole("combobox", { name: "Ticket", exact: true }).selectOption(ticket.id);
+  await dialog.getByLabel("TV-Dauer in Minuten").fill("0");
+  await dialog.getByRole("button", { name: "Auf TV anzeigen", exact: true }).click();
   await expect.poll(async () => (await read()).overlays.at(-1)).toEqual({
     kind: "ticket", ticket_id: ticket.id,
   });
   expect((await read()).ticket_minutes[ticket.id]).toBe(0);
   expect((await read()).expires_at).toBeNull();
-  await expect(details).toBeVisible();
-  await details.getByRole("button", { name: "Schließen", exact: true }).last().click();
-  await page.getByRole("button", { name: "TV-Anzeige", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "TV-Anzeige", exact: true });
   await dialog.getByRole("combobox", { name: "Ansicht", exact: true }).selectOption("overview");
+  await dialog.getByRole("combobox", { name: "TV-Design", exact: true }).selectOption("colorful");
   await dialog.getByRole("button", { name: "Anzeige speichern" }).click();
   await expect.poll(async () => (await read()).preferences.view).toBe("overview");
+  await expect.poll(async () => (await read()).preferences.design).toBe("colorful");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(board.name);
+});
+
+test("the Android entry URL opens the TV remote directly", async ({ page }) => {
+  await page.goto(`${origin}/?tv-remote`);
+  await expect(page.getByRole("dialog", { name: "TV-Fernbedienung", exact: true })).toBeVisible();
+});
+
+test("the calendar adds a sprint and loads it after reopening", async ({ page, request }) => {
+  const board = await fixture(request, "Calendar");
+  await visit(page, board);
+  await page.getByRole("button", { name: "Kalender", exact: true }).click();
+  const calendar = page.getByRole("dialog", { name: "Kalender", exact: true });
+  const title = `Sprint ${board.prefix}`;
+  await calendar.getByLabel("Titel", { exact: true }).fill(title);
+  await calendar.getByLabel("Beginn").fill("2030-04-03");
+  await calendar.getByLabel("Ende").fill("2030-04-07");
+  await calendar.getByRole("button", { name: "Hinzufügen", exact: true }).click();
+  await expect(calendar.getByText(title, { exact: true })).toBeVisible();
+  const response = await request.get(`${origin}/api/v1/calendar`);
+  expect(await response.json()).toContainEqual(expect.objectContaining({ title, kind: "sprint", start: "2030-04-03", end: "2030-04-07" }));
+});
+
+test("sprint tickets stay in the backlog and inherit the milestone label", async ({ page, request }) => {
+  const board = await fixture(request, "Sprint-Backlog");
+  const ticket = await create(request, board, "Geplantes Sprint-Ticket");
+  const calendarPost = (path, data) => request.post(`${origin}/api/v1/calendar${path}`, {
+    headers: { Origin: origin }, data,
+  });
+  const milestone = await (await calendarPost("", { kind: "milestone", title: "Ziel Sprint-Backlog", end: "2030-05-01" })).json();
+  const sprint = await (await calendarPost("", { kind: "sprint", title: "Sprint A", start: "2030-04-01", end: "2030-04-10", milestone_id: milestone.id })).json();
+  expect((await calendarPost("/tickets", { ticket_id: ticket.id, entry_id: sprint.id })).ok()).toBeTruthy();
+  await visit(page, board);
+  const card = page.getByRole("region", { name: "Backlog" }).locator("article").filter({ hasText: ticket.title });
+  await expect(card.getByText("Sprint · Sprint A", { exact: true })).toBeVisible();
+  await expect(card.getByText("Meilenstein · Ziel Sprint-Backlog", { exact: true })).toBeVisible();
+  const health = await (await request.get(`${origin}/api/v1/health`)).json();
+  const move = await request.post(`${origin}/api/v1/commands`, {
+    headers: { Origin: origin },
+    data: {
+      op_id: randomUUID(), client_id: "sprint-test",
+      server_instance_id: health.instance_id,
+      base_epoch: health.epoch,
+      command: { kind: "move_ticket", id: ticket.id, base_revision: ticket.revision,
+        board_id: board.id, column_id: board.snapshot.workspace.columns[0].id, activate_types: false, convert_types: {} },
+    },
+  });
+  expect(move.status(), await move.text()).toBe(409);
+  await page.getByRole("button", { name: "Kalender", exact: true }).click();
+  const hierarchy = page.getByRole("dialog", { name: "Kalender", exact: true }).locator("details").first();
+  await expect(hierarchy.locator("li").getByText(`${ticket.public_id} · ${ticket.title}`, { exact: true })).toBeVisible();
+});
+
+test.describe("Gitea calendar response", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("a milestone can prefill a local sprint", async ({ page }) => {
+    await page.route("**/api/v1/calendar/gitea", (route) => route.fulfill({
+      json: { configured: true, milestones: [{ id: 1, title: "Gitea-Ziel", end: null, closed: false }] },
+    }));
+    await page.goto(origin);
+    await page.getByRole("button", { name: "Kalender", exact: true }).click();
+    const calendar = page.getByRole("dialog", { name: "Kalender", exact: true });
+    await calendar.getByText("Gitea-Meilensteine ohne Termin", { exact: true }).click();
+    await calendar.getByRole("button", { name: "Sprint daraus planen" }).click();
+    await expect(calendar.getByLabel("Titel", { exact: true })).toHaveValue("Gitea-Ziel");
+    await expect(calendar.getByLabel("Beginn")).toHaveValue("");
+  });
 });
 
 test("integration setup exports a credential-free Actions schema whose reads work with a bearer key", async ({ page, request }) => {

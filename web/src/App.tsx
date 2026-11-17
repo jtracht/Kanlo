@@ -12,9 +12,10 @@ import { defaultView, emptySnapshot } from "./types";
 import * as client from "./client";
 import * as storage from "./storage";
 import { blocked, deadlineTime, visibleTickets } from "./workspace";
-import { Dialog, Locale, Message, Busy, useT, errorText } from "./ui";
+import { Dialog, Icon, Locale, Message, Busy, useT, errorText } from "./ui";
 import { TicketDialog } from "./TicketDialog";
 import { DisplayDialog } from "./DisplayDialog";
+import { CalendarDialog } from "./CalendarDialog";
 import { SettingsDialog } from "./SettingsDialog";
 import { DataDialog } from "./DataDialog";
 import { HistoryDialog } from "./HistoryDialog";
@@ -59,8 +60,8 @@ function Main({
   const aliases = useRef<Record<string, string>>({});
   const boardRequest = useRef(0);
   const [panel, setPanel] = useState<
-    "settings" | "data" | "history" | "queue" | "board" | "bulk" | "statistics" | "display"
-  >();
+    "settings" | "data" | "history" | "queue" | "board" | "bulk" | "statistics" | "display" | "calendar" | undefined
+  >(() => new URLSearchParams(location.search).has("tv-remote") ? "display" : undefined);
   const [preview, setPreview] = useState<QueueEntry>();
   const [newBoardName, setNewBoardName] = useState("");
   const [newPrefix, setNewPrefix] = useState("");
@@ -302,6 +303,10 @@ function Main({
   }
   async function move(ticket: Ticket, column: string | null, before?: string) {
     if (!snapshot || ticket.details.parent_id) return;
+    if (column && snapshot.planning?.[ticket.id]?.sprint) {
+      setError(t("Sprint-Tickets bleiben im Backlog.", "Sprint tickets stay in the backlog."));
+      return;
+    }
     try {
       if (ticket.column_id !== column)
         await client.patchTicket(ticket, {
@@ -499,14 +504,14 @@ function Main({
           <button type="button" class="secondary"
             disabled={!bootstrap || !client.connection.online || client.connection.authRequired}
             onClick={() => setPanel("display")}>
-            {t("TV-Anzeige", "TV display")}
+            <Icon name="display" /> {t("TV-Fernbedienung", "TV remote")}
           </button>
           <button
             class="icon-button"
             aria-label={t("Neues Board", "New board")}
             onClick={() => setPanel("board")}
           >
-            ＋
+            <Icon name="add" />
           </button>
           <button
             class={`secondary status-button ${client.connection.online && !client.connection.authRequired && !entries.length ? "is-synced" : ""}`}
@@ -533,7 +538,7 @@ function Main({
             disabled={!snapshot}
             onClick={() => setPanel("settings")}
           >
-            ⚙
+            <Icon name="settings" />
           </button>
         </div>
       </header>
@@ -551,8 +556,11 @@ function Main({
               `${columns.length} columns · ${roots.length} visible tickets`,
             )}</p>}
           </div>
+          <button class="secondary" onClick={() => setPanel("calendar")}>
+            <Icon name="calendar" /> {t("Kalender", "Calendar")}
+          </button>
           <button class="secondary" onClick={() => setPanel("statistics")}>
-            {t("Übersicht & Verlauf", "Overview & history")}
+            <Icon name="overview" /> {t("Übersicht & Verlauf", "Overview & history")}
           </button>
         </div>
         {pwa === "http" && (
@@ -685,10 +693,10 @@ function Main({
               changeView({ ...view, descending: !view.descending })
             }
           >
-            {view.descending ? "↓" : "↑"}
+            <Icon name={view.descending ? "sortDown" : "sortUp"} />
           </button>
           <button class="secondary" onClick={() => void refresh()}>
-            {t("Aktualisieren", "Refresh")}
+            <Icon name="refresh" /> {t("Aktualisieren", "Refresh")}
           </button>
         </div>
         <div class="filter-row">
@@ -971,13 +979,13 @@ function Main({
       {toast && (
         <div class="undo-toast" role="status">
           <span>{t("Änderung synchronisiert", "Change synchronized")}</span>
-          <button onClick={undo}>{t("Rückgängig", "Undo")}</button>
+          <button onClick={undo}><Icon name="undo" /> {t("Rückgängig", "Undo")}</button>
           <button
             class="icon-button"
             aria-label={t("Hinweis schließen", "Dismiss notification")}
             onClick={() => setToast(undefined)}
           >
-            ×
+            <Icon name="close" />
           </button>
         </div>
       )}
@@ -1014,9 +1022,10 @@ function Main({
           history={() => setPanel("history")}
         />
       )}
-      {panel === "display" && bootstrap && (
+      {panel === "display" && bootstrap && !client.connection.authRequired && (
         <DisplayDialog boards={bootstrap.boards} currentBoard={boardId} close={() => setPanel(undefined)} />
       )}
+      {panel === "calendar" && <CalendarDialog close={() => { setPanel(undefined); void refresh(); }} />}
       {panel === "data" && snapshot && (
         <DataDialog
           snapshot={snapshot}
@@ -1223,6 +1232,8 @@ function Main({
           </button>
         </h3>
         <div class="ticket-meta">
+          {snapshot?.planning?.[ticket.id]?.sprint && <span>Sprint · {snapshot.planning[ticket.id].sprint}</span>}
+          {snapshot?.planning?.[ticket.id]?.milestone && <span>{t("Meilenstein", "Milestone")} · {snapshot.planning[ticket.id].milestone}</span>}
           {ticket.details.type_id && (
             <span>
               {

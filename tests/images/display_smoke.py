@@ -10,6 +10,7 @@ import display
 
 workspace = {'boards': [{'id': 'board', 'name': 'Kanlo appliance acceptance'}],
              'columns': [{'id': 'todo', 'name': 'Offen', 'position': 0}],
+             'planning': {'ticket': {'sprint': 'Sprint A', 'milestone': 'Ziel A'}},
              'tickets': [{'id': 'ticket', 'public_id': 'IMG-1', 'column_id': 'todo',
                           'title': 'Native SDL/Wayland · Überprüfung',
                           'description': '# Beschreibung\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n```sh\necho test\n```',
@@ -18,10 +19,10 @@ workspace = {'boards': [{'id': 'board', 'name': 'Kanlo appliance acceptance'}],
                           'title': 'Zweite Einblendung', 'description': 'Ein zweites Ticket',
                           'details': {'trashed': False, 'archived': False, 'rank': 2}}]}
 
-current = {'view': 'board', 'overlay': None}
+current = {'view': 'board', 'overlay': None, 'design': 'light'}
 def provide_board(updates, stop, display_updates=None):
     if display_updates is not None:
-        display_updates.put({'revision': 1, 'preferences': {'view': current['view']},
+        display_updates.put({'revision': 1, 'preferences': {'view': current['view'], 'design': current['design']},
                              'overlays': [current['overlay']] if current['overlay'] else [],
                              'companion_ticket': current.get('companion'),
                              'overview': [{'name': 'Kanlo', 'open': 1, 'done': 0, 'backlog': 0, 'blocked': 0}],
@@ -45,10 +46,21 @@ with tempfile.TemporaryDirectory() as directory:
         assert screenshot.stat().st_size > 3000
         scale, margin, _, _, _ = display.layout_metrics(width, height)
         x = margin + round(30 * scale)
-        assert surface.get_at((x, round(130 * scale)))[:3] == pygame.Color(display.PANEL)[:3]
-        assert surface.get_at((x, round(215 * scale)))[:3] == pygame.Color(display.CARD)[:3]
+        assert surface.get_at((x, round(143 * scale)))[:3] == pygame.Color(display.PANEL)[:3]
+        assert surface.get_at((x, round(222 * scale)))[:3] == pygame.Color(display.CARD)[:3]
+        row_top = round(150 * scale) + round(143 * scale)
+        assert any(surface.get_at((pixel, y))[:3] == pygame.Color(display.ACCENT)[:3]
+                   for y in range(row_top, row_top + round(20 * scale))
+                   for pixel in range(x, min(x + 160, width)))
         print(f'PASS: native board and ticket at {width}x{height}')
     if '--formats' in sys.argv:
+        current.update(design='colorful')
+        display.main((720, 576))
+        surface = pygame.image.load(str(screenshot))
+        scale, margin, _, _, _ = display.layout_metrics(720, 576)
+        assert surface.get_at((margin + 2, round(95 * scale)))[:3] == pygame.Color(display.LANE_COLORS[1])[:3]
+        assert surface.get_at((margin + round(30 * scale), round(222 * scale)))[:3] == pygame.Color(display.CARD)[:3]
+        print('PASS: colorful column headers with neutral cards')
         for mode, overlay in [('overview', None), ('statistics', None),
                               ('board', {'kind': 'ticket', 'ticket_id': 'ticket'}),
                               ('board', {'kind': 'backlog', 'board_id': 'board'}),

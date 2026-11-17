@@ -72,7 +72,7 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use kanlo_core::tv::{Preferences, RotationEntry, View};
+    use kanlo_core::tv::{Design, Preferences, RotationEntry, View};
 
     #[test]
     fn saved_display_preferences_survive_reopening_the_database() {
@@ -82,6 +82,7 @@ mod tests {
         let board_id = store.boards().unwrap()[0].id.clone();
         let preferences = Preferences {
             view: View::Statistics,
+            design: Design::Colorful,
             board_id: Some(board_id.clone()),
             rotation: vec![
                 RotationEntry {

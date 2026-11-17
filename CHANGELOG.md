@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-dev.1
+
+- Kalender mit lokalen Sprints und Meilensteinen, Ticketzuordnung und lesend eingebundenen Gitea-Meilensteinen.
+- TV-Gestaltung „Hell“ oder „Farbig“, eigene TV-Fernbedienung und Vorschau der Android-App „Kanlo TV“.
+
 ## 1.0.0
 
 - Erste stabile Version unter PolyForm Noncommercial 1.0.0 mit neuem Kanlo-Logo.

@@ -268,6 +268,7 @@ mod responses {
     #[derive(JsonSchema)]
     pub struct Snapshot {
         pub workspace: Workspace,
+        pub planning: BTreeMap<String, kanlo_db::calendar::PlanningLabel>,
         pub external_references: Vec<ExternalTicket>,
         pub revision: i64,
         pub view_states: BTreeMap<String, ViewState>,
@@ -408,6 +409,33 @@ fn document() -> Value {
     read!("/api/v1/health", "getHealth", responses::Health);
     read!("/api/v1/bootstrap", "bootstrap", responses::Bootstrap);
     read!("/api/v1/display", "getDisplay", tv::DisplayState);
+    read!(
+        "/api/v1/calendar/tickets",
+        "listPlanningTickets",
+        Vec<kanlo_db::calendar::PlannedTicket>
+    );
+    write!(
+        "/api/v1/calendar/tickets",
+        "assignPlanningTicket",
+        kanlo_db::calendar::Assignment,
+        Value
+    );
+    read!(
+        "/api/v1/calendar",
+        "listCalendar",
+        Vec<kanlo_db::calendar::Entry>
+    );
+    write!(
+        "/api/v1/calendar",
+        "addCalendarEntry",
+        kanlo_db::calendar::Draft,
+        kanlo_db::calendar::Entry
+    );
+    read!(
+        "/api/v1/calendar/gitea",
+        "listGiteaMilestones",
+        super::calendar::GiteaCalendar
+    );
     write!(
         "/api/v1/display",
         "controlDisplay",

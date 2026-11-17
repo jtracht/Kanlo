@@ -25,14 +25,14 @@ RUNTIME_VIEW = Path('/var/lib/kanlo-display/view.json')
 ORIGIN = os.environ.get('KANLO_DISPLAY_ORIGIN', 'http://127.0.0.1:8080')
 FIRST_FRAME_TIMEOUT = 20
 ANIMATIONS = {'off': 0, 'subtle': 0.10, 'fluid': 0.20, 'dynamic': 0.32}
-CANVAS = '#0d1322'
-PANEL = '#19243a'
-CARD = '#24324d'
-INK = '#f1f4fb'
-MUTED = '#aebbd2'
-ACCENT = '#b9b1ff'
-DIVIDER = '#354564'
-LANE_COLORS = ('#a397ff', '#78b7ff', '#6fdbbb', '#f5c483')
+CANVAS = '#f5f7fa'
+PANEL = '#e7edf3'
+CARD = '#ffffff'
+INK = '#152338'
+MUTED = '#43546a'
+ACCENT = '#315abc'
+DIVIDER = '#b9c6d5'
+LANE_COLORS = ('#5746a8', '#16558d', '#216657', '#85501f')
 
 
 def fetch(path):
@@ -123,7 +123,11 @@ def reader(updates, stop, display_updates=None):
         for board in bootstrap['boards']:
             key = board['id']
             if affected is None or key in affected or key not in cache:
-                next_cache[key] = fetch(f'boards/{key}/snapshot')['workspace']
+                snapshot = fetch(f'boards/{key}/snapshot')
+                workspace = snapshot['workspace']
+                if snapshot.get('planning'):
+                    workspace = {**workspace, 'planning': snapshot['planning']}
+                next_cache[key] = workspace
             else:
                 next_cache[key] = cache[key]
         cache = next_cache
@@ -330,11 +334,25 @@ def paginate(workspace, per_screen, rows):
     return paginate_columns(visible(workspace), per_screen, rows)
 
 
+def ticket_metadata(workspace):
+    tickets = {ticket['id']: ticket for ticket in workspace.get('tickets', [])}
+    blocked = {edge['ticket_id'] for edge in workspace.get('dependencies', [])
+               if not tickets.get(edge['prerequisite_id'], {}).get('done')}
+    children = {}
+    for ticket in tickets.values():
+        parent = ticket['details'].get('parent_id')
+        if parent and not ticket['details'].get('trashed'):
+            completed, total = children.get(parent, (0, 0))
+            children[parent] = completed + bool(ticket.get('done')), total + 1
+    labels = {label['id']: label['name'] for label in workspace.get('labels', [])}
+    return blocked, children, labels
+
+
 def layout_metrics(width, height):
     scale = max(0.6, min(height / 900, width / 960, 1.75))
     margin = round(32 * scale)
-    card = round(100 * scale)
-    columns = max(1, (width - 2 * margin) // round(280 * scale))
+    card = round(180 * scale)
+    columns = max(1, (width - 2 * margin) // round(356 * scale))
     rows = max(1, (height - round(238 * scale)) // card)
     return scale, margin, card, columns, rows
 
@@ -350,7 +368,7 @@ def console_board(until=None):
         except queue.Empty:
             pass
         width, height = shutil.get_terminal_size((80, 25))
-        lines = ['Kanlo · Board-Anzeige', setup_hint(), '']
+        lines = ['Kanlo · Board-Anzeige', '']
         if not online:
             lines.append('Kanlo wartet auf den Server.')
         urls = web_addresses()
@@ -377,10 +395,6 @@ def web_addresses():
         return '  '.join(json.loads(Path('/run/kanlo-network/urls.json').read_text()))
     except (OSError, ValueError):
         return '' if SETUP_AVAILABLE.is_file() else ORIGIN
-
-
-def setup_hint():
-    return 'TV-Anzeige über Kanlo im Browser steuern'
 
 
 def setup_qr(url):
@@ -501,7 +515,7 @@ def main(size=None):
 
     def present(region=None, duration=0):
         if presenter:
-            presenter.present(duration)
+            presenter.present(duration, region)
         elif region is None:
             pygame.display.flip()
             first_frame()
@@ -559,23 +573,42 @@ def main(size=None):
 
     def text(value, position, face=None, color=INK, max_width=None):
         screen.blit(render_text(str(value), font if face is None else face, color, max_width), position)
+
+    @lru_cache(maxsize=192)
+    def title_lines(value, face, max_width):
+        words = value.split()
+        for index in range(1, len(words)):
+            if face.size(' '.join(words[:index + 1]))[0] > max_width:
+                return ' '.join(words[:index]), ' '.join(words[index:])
+        return value, ''
+
+    def status_icon(x, y, connected):
+        size = max(10, round(16 * scale))
+        color = ACCENT if connected else MUTED
+        node = size // 3
+        center = y + size // 2
+        pygame.draw.rect(screen, color, (x, center - node // 2, node, node), width=1)
+        pygame.draw.rect(screen, color, (x + size - node, center - node // 2, node, node), width=1)
+        pygame.draw.line(screen, color, (x + node, center), (x + size - node, center))
+        if not connected:
+            pygame.draw.line(screen, color, (x, y), (x + size, y + size), 2)
+        return size
+
     try:
         while not stop.is_set():
             # An event-driven, capped loop: repaint only on data/page/connection changes.
             if presenter:
-                presenter.pump()
+                event = presenter.wait(33 if marker else 100)
                 screen = presenter.surface
-            if presenter:
-                wait = 8 if presenter.tick_id is not None else 33 if marker else 100
             else:
-                wait = 33 if transition else 250
-            event = pygame.event.wait(wait)
+                event = pygame.event.wait(33 if transition else 250)
             dirty |= images.ready()
             if screen.get_size() != (width, height):
                 width, height, scale, margin, card_height, per_screen, rows, font, title_font, small = layout()
                 transition = None
                 page_cache.clear()
                 render_text.cache_clear()
+                title_lines.cache_clear()
                 dirty = True
                 footer_dirty = True
             if event.type in (pygame.WINDOWEXPOSED, pygame.WINDOWSHOWN, pygame.WINDOWRESTORED):
@@ -587,7 +620,9 @@ def main(size=None):
                 if overlay:
                     overlay_page = max(0, overlay_page + direction)
                 else:
-                    page = (page + direction) % page_count
+                    destination = (page + direction) % page_count
+                    animate = destination != page
+                    page = destination
                 last_scroll = time.monotonic()
                 dirty = True
             try:
@@ -605,10 +640,13 @@ def main(size=None):
                 if state != new_state:
                     new_preferences = new_state['preferences']
                     if preferences != new_preferences:
-                        mode, page, last_rotate = new_preferences['view'], 0, time.monotonic()
+                        if {key: val for key, val in preferences.items() if key != 'design'} != {
+                            key: val for key, val in new_preferences.items() if key != 'design'
+                        }:
+                            mode, page, last_rotate = new_preferences['view'], 0, time.monotonic()
+                            rotation_index = -1
                         preferences = new_preferences
                         animate = bool(state)
-                        rotation_index = -1
                     if not state and saved.get('instance') == new_state.get('instance') and saved.get('revision') in (new_state['revision'], new_state.get('resumed_revision')):
                         if saved.get('mode') in ('board', 'overview', 'statistics'):
                             mode = saved['mode']
@@ -627,7 +665,9 @@ def main(size=None):
                         if overlay:
                             overlay_page = max(0, overlay_page + scroll)
                         else:
-                            page = (page + scroll) % page_count
+                            destination = (page + scroll) % page_count
+                            animate |= destination != page
+                            page = destination
                         last_scroll = time.monotonic()
                     state, dirty = new_state, True
             except queue.Empty:
@@ -677,35 +717,33 @@ def main(size=None):
                 last_rotate = time.monotonic()
             scroll_seconds = preferences.get('auto_scroll_seconds', 0)
             if not overlay and mode == 'board' and scroll_seconds and time.monotonic() - last_scroll >= scroll_seconds:
-                page, dirty = (page + 1) % page_count, True
+                if page_count > 1:
+                    page, dirty, animate = (page + 1) % page_count, True, True
                 last_scroll = time.monotonic()
-            if transition and not dirty and not footer_dirty:
-                previous, target, start, duration = transition
+            if transition and not dirty:
+                strip, background, start, duration = transition
                 fraction = min(1, (time.monotonic() - start) / duration)
-                screen.blit(previous, (0, 0))
-                target.set_alpha(round(255 * fraction))
-                screen.blit(target, (0, 0))
-                present()
+                screen.blit(background, strip)
+                extent = round(strip.width * 4 * fraction * (1 - fraction))
+                screen.fill(ACCENT, (0, 0, extent, strip.height))
+                present(strip)
                 if fraction >= 1:
                     transition = None
-                continue
             if not dirty and not footer_dirty:
                 continue
-            if transition and not dirty:
-                target = transition[1]
-                target.set_alpha(None)
-                screen.blit(target, (0, 0))
-            transition = None
             duration = ANIMATIONS.get(state.get('animation'), 0) if animate else 0
-            previous = screen.copy() if duration and presenter is None else None
             animate = False
             footer = pygame.Rect(0, height - 4 * margin, width, 4 * margin)
             if footer_dirty:
                 screen.fill(CANVAS, footer)
                 pygame.draw.line(screen, DIVIDER, (margin, footer.top + margin // 3),
                                  (width - margin, footer.top + margin // 3))
-                text(last_urls, (margin, height - 2 * margin), small, max_width=width - 2 * margin)
-                text(setup_hint() if online else 'Verbindung wird wiederhergestellt …', (margin, height - 3 * margin), small, MUTED)
+                status_y = height - 3 * margin
+                text_x = margin + status_icon(margin, status_y + 2, online) + margin // 2
+                text(last_urls if online else 'Verbindung wird wiederhergestellt …',
+                     (text_x, status_y), small, INK if online else MUTED, width - text_x - margin)
+                if not online:
+                    text(last_urls, (margin, height - 2 * margin), small, max_width=width - 2 * margin)
                 footer_dirty = False
             if not dirty:
                 present(footer)
@@ -727,8 +765,9 @@ def main(size=None):
                 if cache_key not in page_cache:
                     columns = visible(workspace)
                     shown = min(len(columns), per_screen)
-                    page_cache[cache_key] = (shown, paginate_columns(columns, shown, rows) if shown else [])
-                shown_columns, pages = page_cache[cache_key]
+                    page_cache[cache_key] = (shown, paginate_columns(columns, shown, rows) if shown else [],
+                                             ticket_metadata(workspace))
+                shown_columns, pages, (blocked, children, labels) = page_cache[cache_key]
                 page_count = 1
                 if pages:
                     column_width = (width - margin * 2) // shown_columns
@@ -744,28 +783,55 @@ def main(size=None):
                         lane_width = column_width - inset
                         lane_y = round(88 * scale)
                         lane_color = LANE_COLORS[(column['position'] + 1) % len(LANE_COLORS)]
-                        pygame.draw.rect(screen, PANEL, (x, lane_y, lane_width, footer.top - lane_y - inset),
-                                         border_radius=inset)
-                        pygame.draw.rect(screen, lane_color, (x + inset, lane_y + inset,
-                                         max(3, round(4 * scale)), round(27 * scale)), border_radius=2)
+                        pygame.draw.rect(screen, PANEL, (x, lane_y, lane_width, footer.top - lane_y - inset))
+                        colorful = preferences.get('design') == 'colorful'
+                        pygame.draw.rect(screen, lane_color if colorful else '#d9e3ee',
+                                         (x, lane_y, lane_width, round(50 * scale)))
                         limit = column.get('wip_limit')
                         full = limit is not None and column.get('root_count', 0) >= limit
                         label = f"{column['name']} · {total}" + (f' · WIP {column["root_count"]}/{limit}' if full else '')
-                        text(label, (x + 2 * inset, round(100 * scale)), color='#f5c483' if full else INK,
+                        text(label, (x + 2 * inset, round(100 * scale)),
+                             color=CARD if colorful else '#7b3512' if full else INK,
                              max_width=lane_width - 3 * inset)
                         for row, ticket in enumerate(tickets):
                             y = round(150 * scale) + row * card_height
                             highlighted = ticket.get('id') in highlights
-                            background = '#294664' if highlighted else PANEL if highlights else CARD
+                            background = '#dce9ff' if highlighted else CARD
                             foreground = MUTED if highlights and not highlighted else INK
-                            pygame.draw.rect(screen, background, (x + inset, y, lane_width - 2 * inset, card_height - inset),
-                                             border_radius=inset)
-                            text(ticket['public_id'], (x + 2 * inset, y + round(8 * scale)), small, lane_color)
-                            text(ticket['title'], (x + 2 * inset, y + round(34 * scale)), color=foreground,
-                                 max_width=lane_width - 4 * inset)
+                            bounds = (x + inset, y, lane_width - 2 * inset, card_height - inset)
+                            pygame.draw.rect(screen, background, bounds)
+                            pygame.draw.rect(screen, ACCENT if highlighted else DIVIDER, bounds, width=1)
+                            left = x + 2 * inset
+                            available = lane_width - 4 * inset
+                            text(ticket['public_id'], (left, y + round(8 * scale)), small, MUTED)
+                            first, second = title_lines(ticket['title'], font, available)
+                            text(first, (left, y + round(32 * scale)), color=foreground, max_width=available)
+                            text(second, (left, y + round(60 * scale)), color=foreground, max_width=available)
+                            identifier = ticket['id']
+                            status = ['⚠ Blockiert'] if identifier in blocked and not ticket.get('done') else []
                             warning = due_warning(ticket, workspace, now)
                             if warning:
-                                text(warning[0], (x + 2 * inset, y + round(65 * scale)), small, warning[1])
+                                status.append(f'◷ {warning[0]}')
+                            elif (deadline := ticket['details'].get('deadline')) and not ticket.get('done'):
+                                status.append(f'◷ {deadline[8:10]}.{deadline[5:7]}.')
+                            if (priority := ticket.get('importance')) is not None:
+                                status.append(f'↑ Prio {priority}')
+                            text(' · '.join(status), (left, y + round(91 * scale)), small,
+                                 '#8f302c' if status and (identifier in blocked or warning) else MUTED, available)
+                            context = []
+                            if identifier in children:
+                                completed, total_children = children[identifier]
+                                context.append(f'✓ {completed}/{total_children} Untertickets')
+                            context.extend([labels[key] for key in ticket['details'].get('labels', [])
+                                            if key in labels][:2])
+                            text(' · '.join(context), (left, y + round(117 * scale)), small, MUTED, available)
+                            planning = workspace.get('planning', {}).get(identifier, {})
+                            membership = [f'{label}: {planning[key]}' for key, label in
+                                          (('sprint', 'Sprint'), ('milestone', 'Meilenstein')) if planning.get(key)]
+                            for index, label in enumerate(membership):
+                                slot = available // len(membership)
+                                text(label, (left + index * slot, y + round(143 * scale)),
+                                     small, ACCENT, slot - 4)
             elif mode == 'overview':
                 overview = state.get('overview', [])
                 text('Gesamtübersicht', (margin, margin), title_font)
@@ -781,7 +847,7 @@ def main(size=None):
                 text(f"Statistik · {preferences.get('statistics_days', 7)} Tage",
                      (margin, margin), title_font, max_width=width - 4 * margin - brand_width)
                 series = state.get('statistics', [])
-                legend = [('Erstellt', '#67e8c9'), ('Abgeschlossen', '#7bbaff'), ('Backlog', '#e7bf82'), ('Blockiert', '#f09098')]
+                legend = list(zip(('Erstellt', 'Abgeschlossen', 'Backlog', 'Blockiert'), LANE_COLORS))
                 bar_width = max(3, (width - 2 * margin) // 42)
                 maximum = max((count for _, *counts in series for count in counts), default=1) or 1
                 baseline = footer.top - round(65 * scale)
@@ -812,7 +878,7 @@ def main(size=None):
                                     x + column * module, y + row * module, module, module))
             if overlay:
                 shade = pygame.Surface((width, footer.top), pygame.SRCALPHA)
-                shade.fill((0, 0, 0, 150))
+                shade.fill((21, 35, 56, 105))
                 screen.blit(shade, (0, 0))
                 panel = pygame.Rect(margin, margin * 2, width - 2 * margin, footer.top - margin * 3)
                 line_height = max(18, round(31 * scale))
@@ -860,9 +926,9 @@ def main(size=None):
                             image_size = (max(1, round(resolution[0] * factor)), max(1, round(resolution[1] * factor)))
                             screen.blit(pygame.transform.smoothscale(source, image_size), (x, y))
                             continue
-                        color = '#9bc7e9' if style in ('table', 'heading') else '#e5e7eb'
+                        color = ACCENT if style in ('table', 'heading') else INK
                         if style in ('code', 'table'):
-                            pygame.draw.rect(screen, '#17252f', (x, y, max_width, line_height - 1))
+                            pygame.draw.rect(screen, CARD, (x, y, max_width, line_height - 1))
                         text(line, (x, y), color=color, max_width=max_width)
                     return selected_page
 
@@ -873,9 +939,10 @@ def main(size=None):
                     panel.left += half + margin
                     panel.width = half
                 overlay_page = draw_panel(panel, overlay, overlay_page)
-            if previous is not None:
-                transition = (previous, screen.copy(), time.monotonic(), duration)
-                screen.blit(previous, (0, 0))
+            transition = None
+            if duration and presenter is None:
+                strip = pygame.Rect(0, 0, min(width // 4, 240), 3)
+                transition = (strip, screen.subsurface(strip).copy(), time.monotonic(), duration)
             present(duration=duration)
             if state and 'instance' in state:
                 companion_page = None

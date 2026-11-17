@@ -149,6 +149,7 @@ export interface Bootstrap {
   passcode_configured: boolean;
 }
 export interface Snapshot {
+  planning?: Record<string, { sprint: string | null; milestone: string | null }>;
   workspace: Workspace;
   external_references: { id: string; public_id: string }[];
   revision: number;

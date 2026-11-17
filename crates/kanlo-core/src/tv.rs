@@ -25,6 +25,16 @@ pub enum View {
 }
 
 #[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize, schemars::JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum Design {
+    #[default]
+    Light,
+    Colorful,
+}
+
+#[derive(
     Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize, schemars::JsonSchema,
 )]
 #[serde(deny_unknown_fields)]
@@ -37,6 +47,7 @@ pub struct RotationEntry {
 #[serde(default, deny_unknown_fields)]
 pub struct Preferences {
     pub view: View,
+    pub design: Design,
     pub board_id: Option<String>,
     pub rotation: Vec<RotationEntry>,
     pub rotation_seconds: u16,
@@ -49,6 +60,7 @@ impl Default for Preferences {
     fn default() -> Self {
         Self {
             view: View::Board,
+            design: Design::Light,
             board_id: None,
             rotation: vec![],
             rotation_seconds: 30,

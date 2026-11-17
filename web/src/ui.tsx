@@ -4,6 +4,29 @@ import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { HttpError } from "./client";
 
+const iconPaths = {
+  add: "M12 5v14M5 12h14",
+  calendar: "M3 5h18v16H3zM3 10h18M8 3v4m8-4v4",
+  close: "m6 6 12 12M6 18 18 6",
+  display: "M3 4h18v13H3zM8 21h8m-4-4v4",
+  overview: "M3 19h18M6 15v-4m6 4V5m6 10V8",
+  refresh: "M20 7v5h-5M4 17v-5h5m11 0a8 8 0 0 0-14-5m-2 5a8 8 0 0 0 14 5",
+  settings: "M4 6h16M4 12h16M4 18h16M8 3v6m8 0v6m-6 0v6",
+  sortDown: "M12 5v14m-5-5 5 5 5-5",
+  sortUp: "M12 19V5m-5 5 5-5 5 5",
+  undo: "M9 5 3 11l6 6m-6-6h12a5 5 0 0 1 5 5v2",
+} as const;
+
+export function Icon({ name }: { name: keyof typeof iconPaths }) {
+  return (
+    <svg class="ui-icon" aria-hidden="true" focusable="false" width="18" height="18"
+      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d={iconPaths[name]} />
+    </svg>
+  );
+}
+
 export const Locale = createContext<"de" | "en">("de");
 export function useT() {
   const locale = useContext(Locale);
@@ -62,7 +85,7 @@ export function Dialog({
           aria-label={t("Schließen", "Close")}
           onClick={close}
         >
-          ×
+          <Icon name="close" />
         </button>
       </header>
       {children}

@@ -127,6 +127,23 @@ button.icon-button {
   font-size: 20px;
   line-height: 1;
 }
+.ui-icon {
+  vertical-align: -0.2em;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3rem;
+  text-align: center;
+}
+.calendar-grid button {
+  min-width: 0;
+  padding-inline: 0;
+}
+.calendar-grid button[aria-pressed="true"] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
 button.text-button {
   background: none;
   border: 0;
@@ -605,6 +622,20 @@ h4 {
   box-shadow: 0 20px 90px #0003;
   overflow: hidden;
   animation: appear var(--duration) ease-out;
+}
+.dialog[open],
+.dialog > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.dialog > * {
+  flex-shrink: 0;
+}
+.dialog > form,
+.dialog .dialog-body {
+  flex-shrink: 1;
+  min-height: 0;
 }
 .dialog.wide {
   width: min(920px, calc(100vw - 30px));
