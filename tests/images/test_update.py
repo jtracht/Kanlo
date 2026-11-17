@@ -20,6 +20,7 @@ class LocalService:
         self.binary, self.database = binary, database
         self.running = True
         self.fail_new_health = False
+        self.display_refreshes = 0
 
     def validate_data_path(self, database):
         assert database == self.database
@@ -41,6 +42,9 @@ class LocalService:
         if self.fail_new_health and version == '1.1.0':
             raise RuntimeError('Injected health failure after migration')
         return version
+
+    def refresh_display(self):
+        self.display_refreshes += 1
 
     def preflight(self, candidate, directory):
         assert candidate.read_bytes() == b'new'
@@ -65,12 +69,17 @@ class UpdateRecovery(unittest.TestCase):
                 INSERT INTO tickets VALUES ('Keep me');
             """)
         self.system = LocalService(self.binary, self.database)
-        self.updater = update.Updater(self.binary, self.database, self.root / 'state', self.system)
+        self.display = self.root / 'display.py'
+        self.display.write_bytes(b'old display')
+        self.absent = self.root / 'appliance.py'
+        self.updater = update.Updater(self.binary, self.database, self.root / 'state', self.system,
+                                      {'kiosk/display.py': self.display, 'kiosk/appliance.py': self.absent})
         self.package = self.root / 'release.tar.gz'
         manifest = {'version': '1.1.0', 'arch': 'amd64', 'minimum_os': 'Debian 13',
                     'schema_version': 1, 'binary_sha256': hashlib.sha256(b'new').hexdigest()}
         with tarfile.open(self.package, 'w:gz') as archive:
-            for name, data in [('BUILD.json', json.dumps(manifest).encode()), ('bin/kanlo-server', b'new')]:
+            for name, data in [('BUILD.json', json.dumps(manifest).encode()), ('bin/kanlo-server', b'new'),
+                               ('kiosk/display.py', b'new display'), ('kiosk/appliance.py', b'new appliance')]:
                 member = tarfile.TarInfo('kanlo-1.1.0-linux-amd64/' + name)
                 member.size = len(data)
                 archive.addfile(member, io.BytesIO(data))
@@ -80,6 +89,8 @@ class UpdateRecovery(unittest.TestCase):
 
     def assert_restored(self):
         self.assertEqual(self.system.health(), '1.0.0')
+        self.assertEqual(self.display.read_bytes(), b'old display')
+        self.assertFalse(self.absent.exists())
         with sqlite3.connect(self.database) as connection:
             self.assertEqual(connection.execute('PRAGMA integrity_check').fetchall(), [('ok',)])
             self.assertEqual(connection.execute('SELECT * FROM tickets').fetchall(), [('Keep me',)])
@@ -94,6 +105,22 @@ class UpdateRecovery(unittest.TestCase):
             self.assertEqual(connection.execute('SELECT * FROM new_schema').fetchall(), [('migrated',)])
         self.updater.rollback()
         self.assert_restored()
+
+    def test_update_replaces_installed_display_files_only(self):
+        self.apply()
+        self.assertEqual(self.display.read_bytes(), b'new display')
+        self.assertFalse(self.absent.exists())
+        self.assertEqual(self.system.display_refreshes, 1)
+
+    def test_snapshot_without_file_list_still_restores(self):
+        self.apply()
+        snapshot = self.root / 'state' / 'rollback' / 'snapshot.json'
+        metadata = json.loads(snapshot.read_text(encoding='utf-8'))
+        del metadata['files']
+        snapshot.write_text(json.dumps(metadata), encoding='utf-8')
+        self.updater.rollback()
+        self.assertEqual(self.system.health(), '1.0.0')
+        self.assertEqual(self.display.read_bytes(), b'new display')
 
     def test_failed_health_after_migration_rolls_back_automatically(self):
         self.system.fail_new_health = True

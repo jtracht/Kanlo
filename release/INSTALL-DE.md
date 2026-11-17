@@ -79,7 +79,19 @@ sudo python3 /usr/lib/kanlo/update.py rollback
 
 `apply` stoppt den Dienst kurz, sichert Programm und SQLite-Daten, probiert
 die Migration auf einer Kopie und prüft nach dem Start die Paketversion.
-Bei einem Fehler stellt es den vorherigen Zustand wieder her. Der separate
+Ab 1.1 ersetzt es zusätzlich die bereits installierten Dateien der TV-Anzeige,
+die `kanlo-tv.service`-Unit und sich selbst, lädt systemd neu und startet eine
+laufende TV-Anzeige neu. Bei einem Fehler stellt es den vorherigen Zustand
+wieder her, einschließlich dieser Dateien.
+
+Geräte mit Kanlo 1.0.x haben noch den alten Updater, der nur den Server
+tauscht. Einmalig den Updater aus dem neuen Paket verwenden:
+
+```sh
+echo "SHA256  kanlo-VERSION-linux-ARCH.tar.gz" | sha256sum -c
+tar -xzf kanlo-VERSION-linux-ARCH.tar.gz kanlo-VERSION-linux-ARCH/update.py
+sudo python3 kanlo-VERSION-linux-ARCH/update.py apply kanlo-VERSION-linux-ARCH.tar.gz --sha256 SHA256
+``` Der separate
 Befehl `rollback` stellt die Daten vom Zeitpunkt vor dem Update wieder her.
 Später gespeicherte Änderungen gehen dabei verloren. Clients mit ausstehenden
 Offline-Änderungen werden durch die neue Datenbank-Epoche zur Prüfung aufgefordert.

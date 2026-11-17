@@ -21,6 +21,17 @@ DATABASE = Path('/var/lib/kanlo/kanlo.sqlite3')
 STATE = Path('/var/lib/kanlo-updates')
 SERVICE = 'kanlo-server.service'
 HEALTH = 'http://127.0.0.1/api/v1/health'
+DISPLAY_UNIT = Path('/etc/systemd/system/kanlo-tv.service')
+# Package files that replace an existing installed copy. Kiosk files are only
+# present on appliances and kiosk installations; absent files stay absent.
+MANAGED = {
+    'kiosk/display.py': Path('/usr/lib/kanlo/display.py'),
+    'kiosk/tv_markdown.py': Path('/usr/lib/kanlo/tv_markdown.py'),
+    'kiosk/tv_wayland.py': Path('/usr/lib/kanlo/tv_wayland.py'),
+    'kiosk/appliance.py': Path('/usr/lib/kanlo/appliance.py'),
+    'kiosk/kanlo-tv.service': DISPLAY_UNIT,
+    'update.py': Path('/usr/lib/kanlo/update.py'),
+}
 
 
 def checksum(path):
@@ -64,7 +75,7 @@ def copy_database(source, destination):
         os.fsync(stream.fileno())
 
 
-def unpack(package, expected, architecture, work):
+def unpack(package, expected, architecture, work, managed=()):
     if not re.fullmatch('[0-9a-f]{64}', expected):
         raise ValueError('Provide a SHA-256 checksum from the trusted release')
     # Copy before verification so the inspected file cannot change afterwards.
@@ -96,8 +107,21 @@ def unpack(package, expected, architecture, work):
             shutil.copyfileobj(source, target)
         if checksum(candidate) != build['binary_sha256']:
             raise ValueError('Release executable checksum mismatch')
+        files = {}
+        prefix = manifest.name.removesuffix('BUILD.json')
+        for name in managed:
+            try:
+                member = archive.getmember(prefix + name)
+            except KeyError:
+                continue
+            if not member.isfile() or not 0 < member.size <= 4 * 1024 * 1024:
+                raise ValueError(f'Invalid release file {name}')
+            files[name] = work / 'files' / name.replace('/', '__')
+            files[name].parent.mkdir(mode=0o700, exist_ok=True)
+            with archive.extractfile(member) as source, files[name].open('wb') as target:
+                shutil.copyfileobj(source, target)
     candidate.chmod(0o700)
-    return candidate, version
+    return candidate, version, files
 
 
 class System:
@@ -138,13 +162,22 @@ class System:
         if result.stdout.strip() != 'ok':
             raise ValueError('Candidate could not migrate and verify a copy of the database')
 
+    def refresh_display(self):
+        subprocess.run(['systemctl', 'daemon-reload'], check=True)
+        # Restarts the native display only where it is running.
+        subprocess.run(['systemctl', 'try-restart', DISPLAY_UNIT.name], check=True)
+
 
 class Updater:
-    def __init__(self, binary, database, state, system):
+    def __init__(self, binary, database, state, system, managed=None):
         self.binary = binary
         self.database = database
         self.state = state
         self.system = system
+        self.managed = managed or {}
+
+    def installed(self):
+        return {name: path for name, path in self.managed.items() if path.is_file()}
 
     @contextlib.contextmanager
     def locked(self):
@@ -169,9 +202,14 @@ class Updater:
             staged.mkdir(mode=0o700)
             shutil.copyfile(self.binary, staged / 'kanlo-server')
             copy_database(self.database, staged / 'kanlo.sqlite3')
+            files = {}
+            for name, path in self.installed().items():
+                copy = staged / ('file-' + name.replace('/', '__'))
+                shutil.copyfile(path, copy)
+                files[name] = {'path': str(path), 'sha256': checksum(copy)}
             metadata = {'version': version, 'uid': database.st_uid, 'gid': database.st_gid,
                         'binary_sha256': checksum(staged / 'kanlo-server'),
-                        'database_sha256': checksum(staged / 'kanlo.sqlite3')}
+                        'database_sha256': checksum(staged / 'kanlo.sqlite3'), 'files': files}
             (staged / 'snapshot.json').write_text(json.dumps(metadata), encoding='utf-8')
             for path in staged.iterdir():
                 path.chmod(0o600)
@@ -186,6 +224,11 @@ class Updater:
         binary, database = slot / 'kanlo-server', slot / 'kanlo.sqlite3'
         if checksum(binary) != metadata['binary_sha256'] or checksum(database) != metadata['database_sha256']:
             raise ValueError('Rollback snapshot failed checksum verification')
+        # Snapshots from updaters before 1.1 contain only the executable and database.
+        files = metadata.get('files', {})
+        for name, entry in files.items():
+            if checksum(slot / ('file-' + name.replace('/', '__'))) != entry['sha256']:
+                raise ValueError('Rollback snapshot failed checksum verification')
         self.system.stop()
         for suffix in ('-wal', '-shm', '-journal'):
             self.database.with_name(self.database.name + suffix).unlink(missing_ok=True)
@@ -200,8 +243,12 @@ class Updater:
                     raise ValueError('Rollback snapshot lacks its database epoch')
             replace_file(restored, self.database, 0o600, (metadata['uid'], metadata['gid']))
         replace_file(binary, self.binary, 0o755)
+        for name, entry in files.items():
+            replace_file(slot / ('file-' + name.replace('/', '__')), Path(entry['path']), 0o644)
         self.system.start()
         self.system.health(metadata['version'])
+        if files:
+            self.system.refresh_display()
 
     def apply(self, package, expected, architecture):
         with self.locked():
@@ -211,7 +258,9 @@ class Updater:
                 raise ValueError('An interrupted update must be rolled back first')
             with tempfile.TemporaryDirectory(dir=self.state) as temporary:
                 work = Path(temporary)
-                candidate, version = unpack(package, expected, architecture, work)
+                candidate, version, files = unpack(package, expected, architecture, work,
+                                                   self.managed)
+                targets = {name: files[name] for name in self.installed() if name in files}
                 old_version = self.system.health()
                 self.system.validate_data_path(self.database)
                 self.system.stop()
@@ -222,8 +271,12 @@ class Updater:
                     shutil.copyfile(pending / 'kanlo.sqlite3', staged / 'kanlo.sqlite3')
                     self.system.preflight(candidate, staged)
                     replace_file(candidate, self.binary, 0o755)
+                    for name, source in targets.items():
+                        replace_file(source, self.managed[name], 0o644)
                     self.system.start()
                     self.system.health(version)
+                    if targets:
+                        self.system.refresh_display()
                 except BaseException:
                     if pending.exists():
                         self.restore(pending)
@@ -258,7 +311,7 @@ def main():
     args = parser.parse_args()
     if os.geteuid() != 0:
         parser.error('Run this command as the device administrator')
-    updater = Updater(BINARY, DATABASE, STATE, System())
+    updater = Updater(BINARY, DATABASE, STATE, System(), MANAGED)
     try:
         if args.command == 'apply':
             architecture = subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip()

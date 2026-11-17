@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-dev.2
+
+- Der Updater aktualisiert auch die installierte TV-Anzeige, ihre systemd-Unit und sich selbst, mit gemeinsamem Rollback.
+
 ## 1.1.0-dev.1
 
 - Kalender mit lokalen Sprints und Meilensteinen, Ticketzuordnung und lesend eingebundenen Gitea-Meilensteinen.

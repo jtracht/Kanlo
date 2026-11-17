@@ -1,6 +1,12 @@
-# Kanlo 1.1.0-dev.1
+# Kanlo 1.1.0-dev.2
 
 Entwicklungs-Vorabversion nach Kanlo 1.0.0.
+
+Geräte lassen sich vollständig aktualisieren. Der Updater ersetzt neben dem
+Server auch die installierte TV-Anzeige, die `kanlo-tv.service`-Unit und sich
+selbst und stellt bei einem Fehler alles gemeinsam wieder her. Geräte mit
+1.0.x verwenden dafür einmalig den Updater aus dem neuen Paket; die Schritte
+stehen in der Installationsanleitung.
 
 Die Weboberfläche enthält einen Kalender für lokale Sprints und Meilensteine.
 Ein Sprint kann einem Meilenstein angehören. Backlog-Tickets lassen sich einem

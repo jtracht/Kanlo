@@ -75,7 +75,19 @@ sudo python3 /usr/lib/kanlo/update.py rollback
 
 The updater briefly stops the service, snapshots the executable and SQLite
 database, tests migrations on a copy, and checks the new service version.
-It automatically restores the snapshot on failure. Explicit rollback returns
-the database to its pre-update state, discards later changes and assigns a
-new epoch so clients can review queued offline changes. Keep the snapshot in
+From 1.1 on, it also replaces the installed native display files, the
+`kanlo-tv.service` unit and itself, reloads systemd and restarts a running
+display. It automatically restores the snapshot, including these files, on failure.
+
+Devices on Kanlo 1.0.x still have the old updater, which only replaces the
+server. Use the updater from the new package once:
+
+```sh
+echo "SHA256  kanlo-VERSION-linux-ARCH.tar.gz" | sha256sum -c
+tar -xzf kanlo-VERSION-linux-ARCH.tar.gz kanlo-VERSION-linux-ARCH/update.py
+sudo python3 kanlo-VERSION-linux-ARCH/update.py apply kanlo-VERSION-linux-ARCH.tar.gz --sha256 SHA256
+```
+
+Explicit rollback returns the database to its pre-update state, discards later
+changes and assigns a new epoch so clients can review queued offline changes. Keep the snapshot in
 `/var/lib/kanlo-updates` restricted to root because it includes authentication data.
