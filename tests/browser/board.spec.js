@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { resetLocale } from "./helpers.js";
+import { fixture, resetLocale, visit } from "./helpers.js";
 test.beforeEach(async ({ request }) => resetLocale(request));
 
 test("create, move and persist a ticket without script execution", async ({
@@ -45,4 +45,14 @@ test("create, move and persist a ticket without script execution", async ({
     path: testInfo.outputPath("board.png"),
     fullPage: true,
   });
+});
+
+test("the board page never scrolls sideways", async ({ page, request }) => {
+  const board = await fixture(request, `Breite ${"Sehr langer Boardname ".repeat(3)}`);
+  await visit(page, board);
+  const width = page.viewportSize().width;
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+    .toBeLessThanOrEqual(width);
+  expect(await page.evaluate(() => window.innerWidth)).toBe(width);
 });

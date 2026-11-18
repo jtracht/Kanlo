@@ -1124,8 +1124,14 @@ html[data-theme="dark"] .overdue {
   }
   .intro {
     align-items: start;
-    gap: 15px;
+    flex-wrap: wrap;
+    gap: 10px 15px;
     padding: 14px;
+  }
+  .intro > div {
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .intro > button {
     font-size: 11px;
