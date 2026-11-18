@@ -8,6 +8,9 @@ selbst und stellt bei einem Fehler alles gemeinsam wieder her. Geräte mit
 1.0.x verwenden dafür einmalig den Updater aus dem neuen Paket; die Schritte
 stehen in der Installationsanleitung.
 
+Auf dem Handy bricht die Board-Kopfzeile um. Bisher verbreiterte die neue
+Schaltfläche „Kalender“ die Seite, wodurch Dialoge seitlich verrutschten.
+
 Die Weboberfläche enthält einen Kalender für lokale Sprints und Meilensteine.
 Ein Sprint kann einem Meilenstein angehören. Backlog-Tickets lassen sich einem
 Sprint oder direkt einem Meilenstein zuordnen; die Karte zeigt die Namen an.

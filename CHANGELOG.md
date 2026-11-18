@@ -3,6 +3,7 @@
 ## 1.1.0-dev.2
 
 - Der Updater aktualisiert auch die installierte TV-Anzeige, ihre systemd-Unit und sich selbst, mit gemeinsamem Rollback.
+- Die Board-Kopfzeile bricht auf dem Handy um, statt die Seite seitlich zu verbreitern.
 
 ## 1.1.0-dev.1
 
