@@ -158,7 +158,13 @@ def verify_independent_restarts(board_id):
             raise RuntimeError('Server did not accept writes after restarting')
         wait_for_display(ticket)
         pair = show_ticket(ticket, minutes=0)
-        assert pair['companion_ticket']['ticket_id'] == previous
+        if not pair.get('companion_ticket') or pair['companion_ticket'].get('ticket_id') != previous:
+            # Intermittent on emulated arm64: report the full display context so the
+            # cause (lost first overlay vs. companion not recorded) is visible.
+            current = get('/api/v1/display')
+            raise RuntimeError('Companion ticket missing after restarts: '
+                               f'previous={previous} new={ticket} pair={json.dumps(pair)} '
+                               f'current={json.dumps(current)}')
         assert pair['expires_at'] is None
     finally:
         stop.set()
