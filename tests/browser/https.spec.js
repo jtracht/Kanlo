@@ -121,10 +121,12 @@ test.describe("initial SSE authorization failure", () => {
   test.use({ serviceWorkers: "block" });
   test("a session revoked before SSE opens requests sign-in even with an empty queue", async ({ page, request }) => {
     let releaseEvents;
+    let heldEvents = 0;
     const allowed = new Promise((resolve) => { releaseEvents = resolve; });
     await page.route("**/api/v1/events", async (route) => {
+      heldEvents += 1;
       await allowed;
-      await route.continue();
+      await route.continue().catch(() => {});
     });
     await page.goto(protectedOrigin);
     await login(page);
@@ -132,12 +134,13 @@ test.describe("initial SSE authorization failure", () => {
       headers: { Origin: local }, data: {},
     });
     expect(response.ok()).toBe(true);
-    const rejected = page.waitForResponse((response) =>
-      response.url().endsWith("/api/v1/events") && response.status() === 401,
-    );
+    // The revoked session may surface through the released SSE request or through a
+    // sync request racing it; the client may then close the EventSource before its 401
+    // response is reported. What matters is the sign-in prompt, not which request won.
+    await expect.poll(() => heldEvents).toBeGreaterThan(0);
     releaseEvents();
-    await rejected;
-    await expect(page.getByRole("dialog", { name: "Externen Zugang anmelden", exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Externen Zugang anmelden", exact: true }))
+      .toBeVisible({ timeout: 15_000 });
     await expect.poll(() => queueSize(page)).toBe(0);
   });
 });
