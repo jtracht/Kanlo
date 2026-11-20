@@ -1,0 +1,7 @@
+{
+  "GHSA-fc5q-39xc-vjpf": {
+    "packages": ["picomatch"],
+    "reason": "ReDoS in glob patterns; no fixed release exists (<=4.0.7, the latest). Only the vite build tooling uses it with patterns from our own configuration; the shipped web bundle does not contain it.",
+    "expires": "2026-12-31"
+  }
+}
