@@ -22,8 +22,25 @@ SOURCES
     set -- firmware-linux-free firmware-iwlwifi firmware-realtek firmware-brcm80211 \
         firmware-atheros firmware-misc-nonfree firmware-amd-graphics firmware-intel-graphics
 fi
-apt-get update
-apt-get install -y --no-install-recommends python3 python3-pygame weston cage seatd \
+# Distribution mirrors (notably raspbian.raspberrypi.com) drop connections now and then;
+# let apt retry single files and repeat the whole step with backoff before giving up.
+printf 'Acquire::Retries "5";
+Acquire::http::Timeout "60";
+Acquire::https::Timeout "60";
+'     > /etc/apt/apt.conf.d/80kanlo-build-retries
+retry() {
+    attempt=1
+    until "$@"; do
+        if [ "$attempt" -ge 4 ]; then
+            return 1
+        fi
+        echo "apt attempt $attempt failed, retrying in $((attempt * 30))s" >&2
+        sleep $((attempt * 30))
+        attempt=$((attempt + 1))
+    done
+}
+retry apt-get update
+retry apt-get install -y --no-install-recommends python3 python3-pygame weston cage seatd \
     fonts-dejavu-core network-manager avahi-daemon systemd-resolved \
     cloud-guest-utils parted systemd-zram-generator sudo openssh-server iw \
     wpasupplicant wireless-regdb dnsmasq-base bluez rfkill kbd console-setup \
@@ -88,5 +105,6 @@ path.write_text('\n'.join(lines) + '\n')
 PY
 dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\n' > /usr/share/kanlo/image-packages.tsv
 apt-get clean
+rm -f /etc/apt/apt.conf.d/80kanlo-build-retries
 rm -rf /var/lib/apt/lists/* /var/log/journal/*
 rm -f /usr/sbin/policy-rc.d
