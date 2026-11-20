@@ -23,8 +23,14 @@ import update
 display.ORIGIN = 'http://127.0.0.1'
 
 
+# The guest always runs under QEMU TCG (no KVM), often next to another emulated
+# image job on the same CI host. Waits are upper bounds, so a generous budget
+# costs nothing when the system is fast.
+SLOW = 3
+
+
 def get(path, origin='http://127.0.0.1'):
-    with urllib.request.urlopen(origin + path, timeout=5) as response:
+    with urllib.request.urlopen(origin + path, timeout=5 * SLOW) as response:
         return json.load(response)
 
 
@@ -54,7 +60,7 @@ def mutate(command):
     health = get('/api/v1/health')
     body = {'op_id': str(uuid.uuid4()), 'client_id': 'image-boot-test', 'server_instance_id': health['instance_id'], 'base_epoch': health['epoch'], 'base_context': None, 'command': command}
     request = urllib.request.Request('http://127.0.0.1/api/v1/commands', data=json.dumps(body).encode(), headers={'Content-Type': 'application/json', 'Origin': 'http://127.0.0.1'})
-    with urllib.request.urlopen(request, timeout=5) as response:
+    with urllib.request.urlopen(request, timeout=5 * SLOW) as response:
         return json.load(response)['result']['entity_id']
 
 
@@ -65,7 +71,7 @@ def service_pid(unit):
 
 
 def wait_for_new_pid(unit, old):
-    for _ in range(25):
+    for _ in range(25 * SLOW):
         pid = service_pid(unit)
         if pid and pid != old:
             return pid
@@ -88,7 +94,7 @@ def verify_independent_restarts(board_id):
     threading.Thread(target=display.reader, args=(updates, stop, display_updates), daemon=True).start()
 
     def wait_for_display(ticket=None):
-        deadline = time.monotonic() + 30
+        deadline = time.monotonic() + 30 * SLOW
         while time.monotonic() < deadline:
             boards, online = updates.get(timeout=max(0.1, deadline - time.monotonic()))
             if online and (ticket is None or any(
@@ -101,18 +107,28 @@ def verify_independent_restarts(board_id):
         return mutate({'kind': 'create_ticket', 'board_id': board_id, 'title': 'Live display probe',
                        'description': '', 'importance': 0, 'column_id': None, 'parent_id': None, 'type_id': None})
 
-    def show_ticket(ticket, minutes=None):
+    def show_ticket(ticket, minutes=None, companion=None):
         origin = 'http://127.0.0.1'
         req = urllib.request.Request(origin + '/api/v1/display',
             data=json.dumps({'kind': 'show_ticket', 'ticket_id': ticket, 'minutes': minutes}).encode(),
             headers={'Content-Type': 'application/json', 'Origin': origin})
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=5 * SLOW) as response:
             assert response.status == 200
-        deadline = time.monotonic() + 30
+        deadline = time.monotonic() + 30 * SLOW
+        state = None
         while time.monotonic() < deadline:
-            state = display_updates.get(timeout=max(0.1, deadline - time.monotonic()))
-            if state['overlays'] and state['overlays'][-1].get('ticket_id') == ticket:
+            try:
+                state = display_updates.get(timeout=max(0.1, deadline - time.monotonic()))
+            except queue.Empty:
+                break
+            if not state['overlays'] or state['overlays'][-1].get('ticket_id') != ticket:
+                continue
+            # The display stream is eventually consistent: the overlay can arrive
+            # one update before the companion pairing that belongs to it.
+            if companion is None or (state.get('companion_ticket') or {}).get('ticket_id') == companion:
                 return state
+        if state is not None and companion is not None:
+            return state
         raise RuntimeError('Display did not receive the overlay action')
 
     try:
@@ -148,7 +164,7 @@ def verify_independent_restarts(board_id):
         wait_for_new_pid(server, server_before)
         assert service_pid(tv) == display_after
         previous = ticket
-        for _ in range(15):
+        for _ in range(15 * SLOW):
             try:
                 ticket = create_display_ticket()
                 break
@@ -157,7 +173,7 @@ def verify_independent_restarts(board_id):
         else:
             raise RuntimeError('Server did not accept writes after restarting')
         wait_for_display(ticket)
-        pair = show_ticket(ticket, minutes=0)
+        pair = show_ticket(ticket, minutes=0, companion=previous)
         if not pair.get('companion_ticket') or pair['companion_ticket'].get('ticket_id') != previous:
             # Intermittent on emulated arm64: report the full display context so the
             # cause (lost first overlay vs. companion not recorded) is visible.
@@ -174,7 +190,7 @@ def verify_independent_restarts(board_id):
 
 
 def main():
-    for _ in range(90):
+    for _ in range(90 * SLOW):
         try:
             state = get('/api/v1/bootstrap')
             break
@@ -226,7 +242,7 @@ def main():
         ['systemctl', 'show', '--property=ExecStart', '--value', 'kanlo-tv.service'], text=True
     )
     lan_verified = False
-    for _ in range(60):
+    for _ in range(60 * SLOW):
         interfaces = json.loads(subprocess.check_output(['ip', '-j', '-4', 'address', 'show'], text=True))
         addresses = [address['local'] for interface in interfaces if interface['ifname'] != 'lo' for address in interface.get('addr_info', []) if address.get('family') == 'inet']
         for address in addresses:
@@ -262,7 +278,7 @@ def main():
     verify_independent_restarts(board)
     # Actually restart the service and check the same SQLite instance remains intact.
     subprocess.run(['systemctl', 'restart', 'kanlo-server.service'], check=True)
-    for _ in range(30):
+    for _ in range(30 * SLOW):
         try:
             assert get('/api/v1/bootstrap')['instance_id'] == state['instance_id']
             break

@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -63,12 +64,62 @@ def download(profile, cache):
         raise ValueError('Cached base must be a regular file')
     if not path.exists():
         temporary = path.with_suffix(path.suffix + '.download')
-        with urllib.request.urlopen(url, timeout=120) as response, temporary.open('wb') as stream:
-            shutil.copyfileobj(response, stream, 4 * 1024 * 1024)
+        for attempt in range(1, 4):
+            try:
+                with urllib.request.urlopen(url, timeout=120) as response, temporary.open('wb') as stream:
+                    shutil.copyfileobj(response, stream, 4 * 1024 * 1024)
+                break
+            except OSError as error:
+                # Runner networks drop connections now and then; the checksum below
+                # still decides whether the downloaded file is acceptable.
+                if attempt == 3:
+                    raise
+                print(f'Base image download attempt {attempt} failed: {error}', flush=True)
+                time.sleep(15 * attempt)
         temporary.replace(path)
     if checksum(path, base['hash_algorithm']) != base['checksum']:
         raise ValueError('Official base-image checksum mismatch; update pins explicitly')
     return path
+
+
+def attach_loop(image, attempts=8):
+    """Attach an image with partition scanning, robust against shared CI hosts.
+
+    A privileged container sees a snapshot of the host's /dev, so a loop
+    device that the kernel allocates later has no node here, and a parallel
+    job on the same host can take the free device between lookup and attach.
+    """
+    error = ''
+    for attempt in range(attempts):
+        found = subprocess.run(['losetup', '--find'], capture_output=True, text=True)
+        device = found.stdout.strip()
+        if found.returncode == 0 and re.fullmatch(r'/dev/loop\d+', device):
+            if not os.path.exists(device):
+                os.mknod(device, 0o60660, os.makedev(7, int(device.removeprefix('/dev/loop'))))
+            attached = subprocess.run(['losetup', '--partscan', device, str(image)], capture_output=True, text=True)
+            if attached.returncode == 0:
+                return device
+            error = attached.stderr.strip()
+        else:
+            error = found.stderr.strip() or f'unexpected device {device!r}'
+        print(f'Loop attach attempt {attempt + 1}/{attempts} failed: {error}', flush=True)
+        time.sleep(1 + attempt)
+    raise RuntimeError(f'No loop device for {image} after {attempts} attempts: {error}')
+
+
+def loop_partitions(loop, timeout=20):
+    """Return the loop's partitions once the kernel has published them."""
+    deadline = time.monotonic() + timeout
+    while True:
+        if shutil.which('udevadm'):
+            subprocess.run(['udevadm', 'settle'], check=False)
+        listing = run('lsblk', '--json', '-p', '-o', 'NAME,FSTYPE,UUID,PARTUUID', loop, capture_output=True).stdout
+        parts = json.loads(listing)['blockdevices'][0].get('children', [])
+        if parts or time.monotonic() > deadline:
+            return parts
+        # The partition scan is asynchronous; ask again explicitly.
+        subprocess.run(['partx', '--add', loop], capture_output=True, check=False)
+        time.sleep(0.5)
 
 
 @contextlib.contextmanager
@@ -76,13 +127,10 @@ def mounted(image, work, expand=False):
     image = image.resolve()
     if image.is_symlink() or not image.is_file() or not image.is_relative_to(work.resolve()):
         raise ValueError('Only a regular image inside the explicit work directory is allowed')
-    loop = run('losetup', '--find', '--show', '--partscan', image, capture_output=True).stdout.strip()
-    if not loop.startswith('/dev/loop'):
-        raise ValueError('Expected an allocated loop device')
+    loop = attach_loop(image)
     root = work / 'root'; root.mkdir(exist_ok=True)
     try:
-        run('udevadm', 'settle') if shutil.which('udevadm') else None
-        parts = json.loads(run('lsblk', '--json', '-p', '-o', 'NAME,FSTYPE,UUID,PARTUUID', loop, capture_output=True).stdout)['blockdevices'][0].get('children', [])
+        parts = loop_partitions(loop)
         for part in parts:
             device = Path(part['name'])
             if not device.exists():
@@ -128,7 +176,10 @@ def mounted(image, work, expand=False):
     finally:
         run('sync')
         subprocess.run(['umount', '-R', str(root)], check=False)
-        run('losetup', '-d', loop)
+        detached = subprocess.run(['losetup', '-d', loop], capture_output=True, text=True)
+        if detached.returncode != 0:
+            # Do not hide the original error; a leaked loop shows up in the log.
+            print(f'Warning: could not detach {loop}: {detached.stderr.strip()}', flush=True)
 
 
 @contextlib.contextmanager

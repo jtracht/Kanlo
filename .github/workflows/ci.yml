@@ -176,12 +176,25 @@ jobs:
           name: kanlo-emulator-tools
           path: image-tools
       - name: Enable cross-architecture package configuration
-        run: docker run --privileged --rm tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0 --install arm,arm64
+        run: |
+          # Registry pulls on the shared runners fail now and then; retry before giving up.
+          for attempt in 1 2 3; do
+            docker run --privileged --rm tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0 --install arm,arm64 && exit 0
+            echo "binfmt attempt $attempt failed"; sleep $((attempt * 20))
+          done
+          exit 1
       - uses: actions/cache@v4
         with:
           path: image-cache
           key: kanlo-base-${{ matrix.profile }}-${{ hashFiles('packaging/images/bases.json') }}
-      - run: docker build -f packaging/images/Dockerfile -t kanlo-image-builder:debian13 .
+      - name: Build the image builder
+        run: |
+          # apt mirrors are the most common transient failure on the runners.
+          for attempt in 1 2 3; do
+            docker build -f packaging/images/Dockerfile -t kanlo-image-builder:debian13 . && exit 0
+            echo "builder image attempt $attempt failed"; sleep $((attempt * 30))
+          done
+          exit 1
       - name: Native display on a headless Wayland compositor
         run: |
           docker run --rm --network none --user 65534 -v "$PWD:/src:ro" kanlo-image-builder:debian13 sh -ec '
