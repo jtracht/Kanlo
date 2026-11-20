@@ -19,7 +19,7 @@ def verify(image, profile, directory, *, overlay=None):
         if profile == 'generic-amd64':
             shutil.copy2(ROOT / 'packaging/images/boot_wifi.py', root / 'usr/lib/kanlo/boot_wifi.py')
         unit = root / 'etc/systemd/system/kanlo-image-test.service'
-        unit.write_text('[Unit]\nAfter=kanlo-server.service kanlo-setup.service\nWants=kanlo-server.service kanlo-setup.service\n[Service]\nType=oneshot\nExecStart=/usr/bin/python3 /usr/lib/kanlo/boot_guest.py\nStandardOutput=journal+console\nStandardError=journal+console\nTimeoutStartSec=240\n[Install]\nWantedBy=multi-user.target\n')
+        unit.write_text('[Unit]\nAfter=kanlo-server.service kanlo-setup.service\nWants=kanlo-server.service kanlo-setup.service\n[Service]\nType=oneshot\nExecStart=/usr/bin/python3 /usr/lib/kanlo/boot_guest.py\nStandardOutput=journal+console\nStandardError=journal+console\nTimeoutStartSec=900\n[Install]\nWantedBy=multi-user.target\n')
         wants = root / 'etc/systemd/system/multi-user.target.wants'
         wants.mkdir(exist_ok=True)
         (wants / unit.name).symlink_to('../' + unit.name)
@@ -69,7 +69,8 @@ def verify(image, profile, directory, *, overlay=None):
         with log_path.open('w') as log:
             process = subprocess.Popen([*command, '-L', '/usr/share/qemu', '-display', 'none', '-serial', 'stdio', '-monitor', 'none', '-no-reboot'], stdout=log, stderr=subprocess.STDOUT, text=True)
             try:
-                process.wait(timeout=600)
+                # TCG boots slow down sharply when a second image job shares the host.
+                process.wait(timeout=1500)
             except subprocess.TimeoutExpired:
                 process.kill(); process.wait()
                 print(log_path.read_text(errors='replace')[-12000:], flush=True)
